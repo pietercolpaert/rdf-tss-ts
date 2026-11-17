@@ -2,7 +2,7 @@
 
 A TypeScript library to read, follow and write [RDF Time Series Snippets](https://knowledgeonwebscale.github.io/rdf-timeseriessnippets/) (RDF-TSS).
 
-> **Status: API draft.** This README describes the planned interface. The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change. The package name `rdf-tss` is a placeholder.
+> **Status: API draft.** This README describes the planned interface. The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change.
 
 ## What is a snippet?
 
@@ -24,24 +24,34 @@ A snippet is a table of readings described in RDF: one time column, and one colu
 npm install rdf-tss
 ```
 
-## Quick start
+The library runs in Node and in the browser. Reading local files, and all writing to files, needs Node. In the browser, read with `Snippet.fetch` or from an RDF/JS `Dataset`.
+
+## Reading snippets
 
 ### Read a snippet
 
 ```ts
 import { Snippet } from 'rdf-tss';
 
-const snippet = await Snippet.fetch('https://example.org/weather/2026-11.ttl');
+const snippet = await Snippet.open('./weather-2026-11.ttl');
 
 for await (const reading of snippet.read()) {
-  console.log(reading.time, reading.get('https://example.org/fields/temperature')?.value);
+  console.log(reading.time, reading.get('temperature')?.value);
 }
 ```
+
+`Snippet.open` reads a local file. For a remote snippet use `Snippet.fetch`:
+
+```ts
+const snippet = await Snippet.fetch('https://example.org/weather/2026-11.ttl');
+```
+
+Fields are identified by their local name (`temperature`) or by their full IRI (`https://example.org/fields/temperature`). The local name is the part after the last `#` or `/`. If two fields share a local name, using it throws an error; use the IRI then.
 
 If the document contains several snippets, pick one:
 
 ```ts
-const snippet = await Snippet.fetch(url, { snippet: 'https://example.org/weather/2026-11#snippet' });
+const snippet = await Snippet.open(file, { snippet: 'https://example.org/weather/2026-11#snippet' });
 ```
 
 ### Read a time range and selected fields
@@ -50,7 +60,7 @@ const snippet = await Snippet.fetch(url, { snippet: 'https://example.org/weather
 for await (const r of snippet.read({
   from: '2026-11-17T00:00:00Z',     // included
   until: '2026-11-18T00:00:00Z',    // excluded
-  fields: ['https://example.org/fields/temperature'],
+  fields: ['temperature'],
 })) { … }
 ```
 
@@ -81,7 +91,7 @@ for await (const r of snippet.read({
 With `follow: true`, the stream first returns the existing points and then keeps polling for new ones. It ends when:
 
 - the snippet becomes immutable (`tss:mutable false`), after the remaining points,
-- `tss:committedUntil` passes the `until` you asked for,
+- you set an `until` and a point at or after it has been seen,
 - you call `controller.abort()`, or stop iterating with `break`.
 
 On an immutable snippet, `follow: true` behaves like a normal read, so you can always pass it.
@@ -97,6 +107,10 @@ for await (const message of toRDFMessages(snippet.read({ follow: true }))) {
 ```
 
 The default mapping uses SOSA, QUDT and Dublin Core, as in the informative section of the spec. Pass `{ mapping: myMapper }` to use another vocabulary. Fields without `tss:observedProperty` produce no observations.
+
+## Writing snippets
+
+Writing is more advanced than reading and needs Node.
 
 ### Create a new snippet and write to it
 
@@ -124,19 +138,19 @@ const snippet = await Snippet.create({
 
 await snippet.append({
   time: '2026-11-17T12:00:00Z',
-  values: { [`${ex}fields/temperature`]: '8.4' },
+  values: { temperature: '8.4' },    // local name or full IRI
 });
 
 await snippet.append([   // a batch: either all readings are added, or none
-  { time: '2026-11-17T12:10:00Z', values: { [`${ex}fields/temperature`]: '8.6' } },
-  { time: '2026-11-17T12:20:00Z', values: { [`${ex}fields/temperature`]: '8.5' } },
+  { time: '2026-11-17T12:10:00Z', values: { temperature: '8.6' } },
+  { time: '2026-11-17T12:20:00Z', values: { temperature: '8.5' } },
 ]);
 
 await writeFile('./weather-2026-11.ttl', await snippet.serialize('text/turtle'));
 await snippet.close();
 ```
 
-Each `append` checks the readings (datatypes, unique times, time order), adds them, widens the window, updates `tss:committedUntil`, and recomputes the summaries. If the snippet would no longer conform, nothing is changed and a `ValidationError` is thrown.
+Each `append` checks the readings (datatypes, unique times, time order), adds them, widens the window, and recomputes the summaries. If the snippet would no longer conform, nothing is changed and a `ValidationError` is thrown.
 
 ### Continue writing to an existing snippet
 
@@ -160,29 +174,26 @@ For Parquet, rows are collected in memory and the file is written on `close()`. 
 
 ## API
 
-### Fetching
+`Dataset` is the RDF/JS [`DatasetCore`](https://rdf.js.org/types/) interface.
+
+### Opening and fetching
 
 ```ts
-Snippet.fetch(source: string| URL | Dataset, options?: {
+// local file (Node) or Dataset
+Snippet.open(source: string | Dataset, options?: {
+  snippet?: string;          // IRI of the snippet, if the document has several
+  write?: boolean;           // default false; true returns a WritableSnippet
+}): Promise<ReadableSnippet>   // WritableSnippet when write is true
+
+// remote document
+Snippet.fetch(source: string | URL, options?: {
   snippet?: string;          // IRI of the snippet, if the document has several
   fetch?: typeof fetch;      // custom fetch, e.g. with authentication
-  localFiles?: boolean;  // defaults to false: whether local files are allowed
+  localFiles?: boolean;      // default false: whether the document may refer to local files
 }): Promise<ReadableSnippet>
-
-Snippet.create(options: CreateOptions): Promise<WritableSnippet>
 ```
 
-### Opening a file for writing
-
-```ts
-Snippet.open(source: string| Dataset, options?: {
-  snippet?: string;          // IRI of the snippet, if the document has several
-}): Promise<WritableSnippet>
-
-Snippet.create(options: CreateOptions): Promise<WritableSnippet>
-```
-
-In the future this could also be a remote location that supports POST (e.g., through the LWS protocol).
+In the future, writing could also target a remote location that supports POST (e.g., through the LWS protocol).
 
 ### `ReadableSnippet`
 
@@ -190,7 +201,7 @@ In the future this could also be a remote location that supports POST (e.g., thr
 |---|---|
 | `id` | IRI of the snippet |
 | `kind` | `'EmbeddedRDF' \| 'EmbeddedJSON' \| 'CSV' \| 'Parquet' \| 'Arrow'` |
-| `metadata` | time field, fields, `from`, `until`, `mutable`, `committedUntil`, labels |
+| `metadata` | time field, fields, `from`, `until`, `mutable`, labels |
 | `read(options?)` | `AsyncIterable<Reading>`, see below |
 | `summary(field)` | the summary stored in the snippet for a field |
 | `validate()` | a `Report` listing every rule that fails and where |
@@ -201,10 +212,16 @@ In the future this could also be a remote location that supports POST (e.g., thr
 |---|---|---|
 | `from` | snippet start | included |
 | `until` | snippet end | excluded |
-| `fields` | all | field IRIs to include |
+| `fields` | all | fields to include, by local name or IRI |
 | `unit` | `'source'` | `'source'`, `'qudt'`, or a unit IRI |
 | `follow` | `false` | `true` or `{ interval }` (an `xsd:duration`) |
 | `signal` | none | `AbortSignal` to stop |
+
+### Creating and writing
+
+```ts
+Snippet.create(options: CreateOptions): Promise<WritableSnippet>
+```
 
 ### `WritableSnippet` (extends `ReadableSnippet`)
 
@@ -219,7 +236,7 @@ In the future this could also be a remote location that supports POST (e.g., thr
 ```ts
 interface Reading {
   time: string;                          // xsd:dateTimeStamp, exactly as published
-  get(field: string): Value | undefined; // undefined means no value
+  get(field: string): Value | undefined; // local name or IRI; undefined means no value
   fields(): Iterable<[string, Value]>;
 }
 
@@ -255,7 +272,7 @@ convertUnit(value: string, from: string, to: string): string
 
 The library depends on these points, which the spec does not define yet:
 
-- **Following a stream:** how consumers detect updates, what `tss:committedUntil` guarantees, and how CSV and Arrow files are appended to.
+- **Following a stream:** how consumers detect updates, and how CSV and Arrow files are appended to. `tss:committedUntil` is proposed for removal ([issue #20](https://github.com/KNowledgeOnWebScale/rdf-timeseriessnippets/issues/20)), so the library does not rely on it.
 - **Single writer:** how to prevent two processes writing to the same snippet.
 - **Empty values:** an empty string and no value are currently the same.
 - **Several snippets in one file:** each snippet repeats the file configuration, and long tables (`sensor_id, time, value`) can't be described.

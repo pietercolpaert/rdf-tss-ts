@@ -18,8 +18,6 @@ A snippet is a table of readings described in RDF: one time column, and one colu
 
 \* Appending to external files is not yet defined in the spec; see [Open spec issues](#open-spec-issues).
 
-The library uses one class, `Snippet`. Opened normally, you can read it; opened for writing (or newly created), you can also append to it.
-
 ## Install
 
 ```sh

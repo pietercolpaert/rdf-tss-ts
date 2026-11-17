@@ -1,4 +1,4 @@
-# rdf-tss
+# rdf-tss-ts
 
 A TypeScript library to read, follow and write [RDF Time Series Snippets](https://knowledgeonwebscale.github.io/rdf-timeseriessnippets/) (RDF-TSS).
 
@@ -33,7 +33,7 @@ npm install rdf-tss
 ```ts
 import { Snippet } from 'rdf-tss';
 
-const snippet = await Snippet.open('https://example.org/weather/2026-11.ttl');
+const snippet = await Snippet.fetch('https://example.org/weather/2026-11.ttl');
 
 for await (const reading of snippet.read()) {
   console.log(reading.time, reading.get('https://example.org/fields/temperature')?.value);
@@ -43,7 +43,7 @@ for await (const reading of snippet.read()) {
 If the document contains several snippets, pick one:
 
 ```ts
-const snippet = await Snippet.open(url, { snippet: 'https://example.org/weather/2026-11#snippet' });
+const snippet = await Snippet.fetch(url, { snippet: 'https://example.org/weather/2026-11#snippet' });
 ```
 
 ### Read a time range and selected fields
@@ -162,17 +162,29 @@ For Parquet, rows are collected in memory and the file is written on `close()`. 
 
 ## API
 
-### Opening
+### Fetching
 
 ```ts
-Snippet.open(source: string | URL | Dataset, options?: {
+Snippet.fetch(source: string| URL | Dataset, options?: {
   snippet?: string;          // IRI of the snippet, if the document has several
-  write?: boolean;           // default false
   fetch?: typeof fetch;      // custom fetch, e.g. with authentication
-}): Promise<ReadableSnippet | WritableSnippet>
+  localFiles?: boolean;  // defaults to false: whether local files are allowed
+}): Promise<ReadableSnippet>
 
 Snippet.create(options: CreateOptions): Promise<WritableSnippet>
 ```
+
+### Opening a file for writing
+
+```ts
+Snippet.open(source: string| Dataset, options?: {
+  snippet?: string;          // IRI of the snippet, if the document has several
+}): Promise<WritableSnippet>
+
+Snippet.create(options: CreateOptions): Promise<WritableSnippet>
+```
+
+In the future this could also be a remote location that supports POST (e.g., through the LWS protocol).
 
 ### `ReadableSnippet`
 

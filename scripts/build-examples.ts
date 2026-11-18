@@ -1,0 +1,189 @@
+/**
+ * Writes the example snippets of the playground, with the library's own writer:
+ *
+ *   - a weather day in every format (embedded RDF, embedded JSON, CSV, Arrow, Parquet),
+ *   - a time grid, written by hand because the writer states each time,
+ *   - three locations of the Telraam LDES, and how much smaller they are than the LDES.
+ *
+ *   npm run examples [outputDirectory]     (default: _site/examples)
+ */
+import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Snippet, type CreateOptions, type ReadingInput, type SnippetKind } from '../src/index.js';
+import { convertLocation, ldesSize, readMembers, snippetSize, type Member } from './telraam.js';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const out = resolve(process.argv[2] ?? join(root, '_site', 'examples'));
+
+const XSD = 'http://www.w3.org/2001/XMLSchema#';
+const UNIT = 'http://qudt.org/vocab/unit/';
+const QK = 'http://qudt.org/vocab/quantitykind/';
+const ex = 'https://example.org/ghent/';
+const day = '2026-11-17';
+
+export interface Example {
+  id: string;
+  title: string;
+  group: string;
+  description: string;
+  /** Path of the metadata document, relative to the examples directory. */
+  metadata: string;
+  kind: SnippetKind | 'CSV (time grid)';
+  /** Files of the example with their size in bytes, for display. */
+  files?: string[];
+}
+
+/** Hourly readings of a day in Ghent: made up, but smooth and deterministic. */
+function weatherReadings(): ReadingInput[] {
+  const readings: ReadingInput[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    const phase = ((hour - 9) / 24) * 2 * Math.PI;
+    readings.push({
+      time: `${day}T${String(hour).padStart(2, '0')}:00:00Z`,
+      values: {
+        temperature: (8 + 5 * Math.sin(phase)).toFixed(1),
+        humidity: (72 - 14 * Math.sin(phase)).toFixed(0),
+        windspeed: (14 + 7 * Math.cos(phase * 2)).toFixed(1),
+        pressure: (101.3 + 0.4 * Math.sin(phase / 2)).toFixed(2),
+      },
+    });
+  }
+  return readings;
+}
+
+function weatherOptions(kind: CreateOptions['kind'], name: string, extension?: string): CreateOptions {
+  return {
+    id: `${ex}${name}`,
+    kind,
+    label: `Weather in Ghent, ${day}`,
+    dataFile: extension ? join(out, `${name}.${extension}`) : undefined,
+    file: join(out, `${name}.ttl`),
+    from: `${day}T00:00:00Z`,
+    until: '2026-11-18T00:00:00Z',
+    timeField: { id: `${ex}fields/time`, columnName: 'time' },
+    prefixes: { ex, qk: QK, unit: UNIT },
+    fields: [
+      { id: `${ex}fields/temperature`, label: 'Air temperature', columnName: 'temp', datatype: `${XSD}double`, observedProperty: `${QK}Temperature`, unit: `${UNIT}DEG_C`, sensor: `${ex}sensors/thermometer`, featureOfInterest: `${ex}outside-air` },
+      { id: `${ex}fields/humidity`, label: 'Relative humidity', columnName: 'hum', datatype: `${XSD}integer`, observedProperty: `${QK}RelativeHumidity`, unit: `${UNIT}PERCENT`, sensor: `${ex}sensors/hygrometer`, featureOfInterest: `${ex}outside-air` },
+      { id: `${ex}fields/windspeed`, label: 'Wind speed', columnName: 'wind', datatype: `${XSD}double`, observedProperty: `${QK}Speed`, unit: `${UNIT}KiloM-PER-HR`, sensor: `${ex}sensors/anemometer`, featureOfInterest: `${ex}outside-air` },
+      { id: `${ex}fields/pressure`, label: 'Air pressure', columnName: 'press', datatype: `${XSD}double`, observedProperty: `${QK}AtmosphericPressure`, unit: `${UNIT}KiloPA`, sensor: `${ex}sensors/barometer`, featureOfInterest: `${ex}outside-air` },
+    ],
+  };
+}
+
+async function weather(kind: CreateOptions['kind'], name: string, extension?: string): Promise<void> {
+  const snippet = await Snippet.create(weatherOptions(kind, name, extension));
+  await snippet.append(weatherReadings());
+  await snippet.close({ freeze: true });
+}
+
+/** A time grid: the hours are steps from a base, so the file has no times. */
+async function timeGrid(): Promise<void> {
+  const readings = weatherReadings();
+  const rows = readings.map((r, step) => `${step},${r.values.temperature},${r.values.humidity}`);
+  await writeFile(join(out, 'weather-grid.csv'), `step,temp,hum\n${rows.join('\n')}\n`);
+  await writeFile(
+    join(out, 'weather-grid.ttl'),
+    `@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix qk: <${QK}> .
+@prefix unit: <${UNIT}> .
+@prefix ex: <${ex}> .
+
+# The times of the rows are not in the file: row n is at timeBase + n × timeStep.
+ex:weather-grid a tss:CSVSnippet ;
+    rdfs:label "Weather in Ghent, ${day}, on a time grid" ;
+    tss:mutable false ;
+    tss:committedUntil "2026-11-18T00:00:00Z"^^xsd:dateTimeStamp ;
+    tss:from "${day}T00:00:00Z"^^xsd:dateTimeStamp ;
+    tss:until "2026-11-18T00:00:00Z"^^xsd:dateTimeStamp ;
+    tss:dataFile <weather-grid.csv> ;
+    tss:timeBase "${day}T00:00:00Z"^^xsd:dateTimeStamp ;
+    tss:timeStep "PT1H"^^xsd:duration ;
+    tss:timeField ex:time ;
+    tss:stepField ex:step ;
+    tss:hasField ex:time, ex:step, ex:temperature, ex:humidity .
+
+ex:time a tss:Field ; tss:datatype xsd:dateTimeStamp .
+ex:step a tss:Field ; tss:columnName "step" ; tss:datatype xsd:integer .
+ex:temperature a tss:Field ; rdfs:label "Air temperature" ; tss:columnName "temp" ; tss:datatype xsd:double ;
+    tss:observedProperty qk:Temperature ; tss:unit unit:DEG_C .
+ex:humidity a tss:Field ; rdfs:label "Relative humidity" ; tss:columnName "hum" ; tss:datatype xsd:integer ;
+    tss:observedProperty qk:RelativeHumidity ; tss:unit unit:PERCENT .
+`,
+  );
+}
+
+const examples: Example[] = [];
+const add = (example: Example) => examples.push(example);
+
+async function telraam(): Promise<void> {
+  const directory = join(out, 'telraam');
+  await mkdir(directory, { recursive: true });
+  const members = await readMembers(join(root, 'examples', 'telraam', 'members.ttl'));
+  const locations = [...new Set(members.map((m) => m.location))].sort();
+  const ldesTotal = await ldesSize(members);
+
+  const report = [];
+  for (const location of locations) {
+    const id = location.split('/').pop()!;
+    const own: Member[] = members.filter((m) => m.location === location);
+    const ldes = await ldesSize(own);
+    const sizes: Record<string, Awaited<ReturnType<typeof snippetSize>>> = {};
+    for (const [kind, suffix] of [['CSV', ''], ['Parquet', '-parquet'], ['Arrow', '-arrow']] as const) {
+      const conversion = await convertLocation(members, location, { dir: directory, kind, name: `${id}${suffix}`, day });
+      sizes[kind] = await snippetSize(conversion);
+    }
+    report.push({ id, location, series: 8, hours: 24, ldes, snippet: sizes });
+    add({
+      id: `telraam-${id}`,
+      title: `Telraam ${id}`,
+      group: 'Telraam LDES, as RDF-TSS',
+      description: `Hourly traffic counts of one Telraam location on ${day}: ${own.length} LDES members become one table of 24 rows and 8 columns.`,
+      metadata: `telraam/${id}.ttl`,
+      kind: 'CSV',
+    });
+  }
+  const first = locations[0].split('/').pop()!;
+  add({ id: `telraam-${first}-parquet`, title: `Telraam ${first} (Parquet)`, group: 'Telraam LDES, as RDF-TSS', description: 'The same counts in a Parquet file.', metadata: `telraam/${first}-parquet.ttl`, kind: 'Parquet' });
+  add({ id: `telraam-${first}-arrow`, title: `Telraam ${first} (Arrow)`, group: 'Telraam LDES, as RDF-TSS', description: 'The same counts as an Arrow IPC stream.', metadata: `telraam/${first}-arrow.ttl`, kind: 'Arrow' });
+
+  const sample = members.filter((m) => m.location === locations[0] && m.time.startsWith(`${day}T08`)).slice(0, 2);
+  const { Writer } = await import('n3');
+  const writer = new Writer({ prefixes: (await import('./telraam.js')).PREFIXES });
+  for (const m of sample) for (const q of m.quads) writer.addQuad(q);
+  const sampleTurtle = await new Promise<string>((resolveSample, reject) => writer.end((e, r) => (e ? reject(e) : resolveSample(r as string))));
+  await writeFile(join(directory, 'sample-members.ttl'), sampleTurtle);
+  await cp(join(root, 'examples', 'telraam', 'members.ttl'), join(directory, 'ldes-members.ttl'));
+  await writeFile(
+    join(directory, 'compaction.json'),
+    JSON.stringify({ day, source: 'https://ldes.telraam-api.net/measurements', members: members.length, ldes: ldesTotal, locations: report }, null, 2),
+  );
+}
+
+await rm(out, { recursive: true, force: true });
+await mkdir(out, { recursive: true });
+
+await weather('EmbeddedRDF', 'weather-embedded');
+await weather('EmbeddedJSON', 'weather-json');
+await weather('CSV', 'weather-csv', 'csv');
+await weather('Arrow', 'weather-arrow', 'arrows');
+await weather('Parquet', 'weather-parquet', 'parquet');
+await timeGrid();
+
+const group = 'One day of weather, in every format';
+add({ id: 'weather-embedded', title: 'Embedded RDF', group, description: 'The points are RDF nodes in the metadata document: one document, nothing else to fetch.', metadata: 'weather-embedded.ttl', kind: 'EmbeddedRDF' });
+add({ id: 'weather-json', title: 'Embedded JSON', group, description: 'The points are one JSON literal in the metadata document.', metadata: 'weather-json.ttl', kind: 'EmbeddedJSON' });
+add({ id: 'weather-csv', title: 'CSV', group, description: 'The points are in a CSV file, found through tss:dataFile.', metadata: 'weather-csv.ttl', kind: 'CSV' });
+add({ id: 'weather-grid', title: 'CSV on a time grid', group, description: 'The times are not in the file: row n is at timeBase + n × timeStep.', metadata: 'weather-grid.ttl', kind: 'CSV (time grid)' });
+add({ id: 'weather-arrow', title: 'Arrow', group, description: 'An Arrow IPC stream: a file that can be appended to while it is read.', metadata: 'weather-arrow.ttl', kind: 'Arrow' });
+add({ id: 'weather-parquet', title: 'Parquet', group, description: 'A Parquet file: written once, compact, with typed columns.', metadata: 'weather-parquet.ttl', kind: 'Parquet' });
+await telraam();
+
+// show the groups in this order
+const order = ['Telraam LDES, as RDF-TSS', group];
+examples.sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
+await writeFile(join(out, 'index.json'), JSON.stringify(examples, null, 2));
+console.log(`wrote ${examples.length} examples to ${out}`);

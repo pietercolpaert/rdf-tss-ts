@@ -19,12 +19,16 @@
 </header>
 
 <div class="url-bar-band">
-  <form id="url-form" class="url-bar" role="search" aria-label="Open an RDF Time Series Snippet">
+  <div class="picker">
+    <label for="dataset">Dataset</label>
+    <select id="dataset" aria-label="Example dataset"><option>Loading the examples…</option></select>
+  </div>
+  <p id="dataset-note" class="muted"></p>
+  <form id="url-form" class="url-bar" role="search" aria-label="Open an RDF Time Series Snippet" hidden>
     <span class="url-bar-icon" aria-hidden="true">&#128200;</span>
     <input id="url" type="text" spellcheck="false" autocomplete="off" placeholder="https://example.org/snippet.ttl" value="">
     <button id="open" type="submit">Open</button>
   </form>
-  <div id="examples" class="examples-row" aria-label="Examples"></div>
 </div>
 
 <main>

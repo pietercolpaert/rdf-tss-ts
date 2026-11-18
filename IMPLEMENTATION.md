@@ -22,7 +22,7 @@ flowchart LR
   F --> G[toRDFMessages]
 ```
 
-1. **Metadata model.** Parse the RDF/JS `Dataset` into a typed `SnippetMetadata`: class, fields, time field, window, `mutable`, summaries. Field lookup by local name (the part after the last `#` or `/`) or IRI is built once; an ambiguous local name throws only when it is used. Describing fields (`tss:describesField`) are ordinary fields; expose the link in `metadata`.
+1. **Metadata model.** Parse the RDF/JS `Dataset` into a typed `SnippetMetadata`: class, fields, time field, window, `immutable`, summaries. Field lookup by local name (the part after the last `#` or `/`) or IRI is built once; an ambiguous local name throws only when it is used. Describing fields (`tss:describesField`) are ordinary fields; expose the link in `metadata`.
 2. **`PointSource`.** One interface, `AsyncIterable<RawPoint>`, where a `RawPoint` maps field to a lexical string or `undefined`. One implementation per class:
 
    | Class | Source |
@@ -53,25 +53,28 @@ flowchart LR
 
 ## Following a live snippet
 
-`tss:committedUntil` is proposed for removal (issue #20), so `follow` must not rely on it. Detect change per source instead:
+The model of [pull request #25](https://github.com/KNowledgeOnWebScale/rdf-timeseriessnippets/pull/25): a snippet grows by appending at its end, and ends with `tss:immutable true`. There is no `tss:mutable` and no `tss:committedUntil`; a follower uses HTTP only (`src/follow.ts`).
 
 | Source | Change detection |
 |---|---|
-| CSV, Arrow stream (append-only) | remember the byte offset; poll with `HEAD` / `If-None-Match` / `ETag`, then `Range: bytes=offset-` and parse only the new bytes. Ignore an incomplete last line until it ends with a newline. |
-| Embedded | refetch the document, emit points not yet seen (the key is unique, so the set of seen times is enough) |
-| Local file | `fs.watch` with a polling fallback on size and mtime |
+| CSV | remember the character offset of the last complete row; `Range: bytes=<bytes so far>-`; parse only the new bytes; ignore an incomplete last line |
+| Arrow stream | the schema message is kept; the new bytes are walked as flatbuffer messages (`walkArrowMessages`), only complete ones are used; a dictionary batch means a full re-read |
+| Embedded RDF (Message Log) | `Range` again; a preamble of the `PREFIX` lines plus the complete new messages are parsed with `n3.js-messages`; the new quads are merged into the metadata store |
+| Embedded JSON | the literal is replaced as a whole: refetch the document |
+| Local file | the same, with `readFromOffset` (size and offset) instead of HTTP |
 
-End conditions: `tss:mutable false` read after the last poll, a point at or after `until` seen, or `AbortSignal`. Back off on errors; honour `interval`.
+`ByteSource` handles the answers: `206` gives the new bytes, `416` means nothing new, `200` means a server without ranges (skip what is already known), a shorter `Content-Length` means the file was replaced (read it again), `404`/`410` end with an error. The poll interval is the `max-age` of the last response (at least a second), else 10 seconds, or the `interval` option. An external snippet's metadata is loaded again every round (with ldfetch, so its HTTP cache applies) to see `tss:immutable true`.
+
+End conditions: `tss:immutable true` read after the last poll, a point at or after `until` seen, or `AbortSignal`. Back off on errors; honour `interval`. A snippet that is immutable from the start is read once.
 
 ## Writing (Node only)
 
-- **Order of a write**, as in spec § 9: validate the new points, add them, widen the window, recompute summaries, and keep the change only if the snippet still conforms. Until the spec drops `tss:committedUntil`, a conforming writer must still set it on every write; readers ignore it.
-- **Atomicity.** Validate in memory first. For external files, append the whole batch in one `write` and `fsync`. For metadata, write a temp file and `rename`.
-- **Embedded RDF** could append one Turtle statement per point, but the window and the summaries change existing triples, so rewrite the whole document at first.
+- **Growing is appending.** `append` validates the new points (datatypes, unique increasing times, inside the fixed `from`/`until`) and then writes data only: CSV rows, an Arrow record batch (no end-of-stream marker), one message per point for an embedded RDF Message Log. Embedded JSON is one literal, so that metadata file is rewritten. The window is never widened and nothing is summarized while growing, so no existing byte changes.
+- **Ending.** `close({ freeze: true })` adds `tss:immutable true` and the stored summaries (computed from running statistics over all points), writes the Parquet file, appends the Arrow end-of-stream marker, and for a message log appends a final message. `close()` without `freeze` leaves the snippet growing and can be continued with `open(…, { write: true })`.
+- **Atomicity.** Validate in memory first. For external files, append the whole batch in one `write`. For metadata, write a temp file and `rename`.
 - **Lock.** A lock file created with `O_EXCL` (`wx`) holding pid and timestamp, with stale-lock detection; `LockError` if it exists. Provisional until the spec defines single-writer behaviour.
-- **Summaries.** Count, missing, min, max and mean update incrementally. The median needs all values, so recompute it by re-reading, or keep a sorted array in memory. Because that costs O(n) per write for large external files, consider recomputing on `close()` only and documenting the deviation.
-- **Parquet** is written once on `close()`: `hyparquet-writer`, always frozen.
-- **Arrow formats.** The spec (§ 6.3) says the IPC *file* format, which cannot be appended to. For now the library assumes the IPC *streaming* format: it is the only one that can be appended to and followed. The IPC file format is also read, but only when the snippet is immutable (`tss:mutable false`). A mutable snippet with an IPC file throws `ValidationError`, and `open` with `write: true` on an immutable one throws `NotWritableError`. Detect the format from the first bytes: a file starts with `ARROW1`, a stream with the continuation marker `0xFFFFFFFF`. When appending to a stream that ends with the optional end-of-stream marker (`0xFFFFFFFF 0x00000000`), overwrite those last 8 bytes with the new batches; readers must also accept streams without a marker. An issue for the spec is pending.
+- **Parquet** is written once on `close()`: `hyparquet-writer`, always immutable.
+- **Arrow formats.** The spec (§ 6.3) says the IPC *file* format, which cannot be appended to. For now the library assumes the IPC *streaming* format: it is the only one that can be appended to and followed. The IPC file format is also read, but only when the snippet is immutable. A growing snippet with an IPC file throws `ValidationError`, and `open` with `write: true` on an immutable one throws `NotWritableError`. Detect the format from the first bytes: a file starts with `ARROW1`, a stream with the continuation marker `0xFFFFFFFF`. A stream that ends is closed with the end-of-stream marker (`0xFFFFFFFF 0x00000000`); readers also accept streams without one. An issue for the spec is pending.
 - **`Storage` interface** (`read`, `append`, `replace`, `lock`) so that a remote target (LWS/POST) can be added later.
 
 ## Validation

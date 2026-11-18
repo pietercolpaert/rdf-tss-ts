@@ -2,13 +2,13 @@
 
 A TypeScript library to read, follow and write [RDF Time Series Snippets](https://knowledgeonwebscale.github.io/rdf-timeseriessnippets/) (RDF-TSS).
 
-> **Status: first implementation of an API draft.** The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change.
+> **Status: first implementation of an API draft.** The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change. This version follows the proposal of [pull request #25](https://github.com/KNowledgeOnWebScale/rdf-timeseriessnippets/pull/25): a snippet *grows* until it is *ended* with `tss:immutable true`, and followers use plain HTTP (`Range`, `ETag`, `max-age`).
 
-**Try the [playground](https://pietercolpaert.github.io/rdf-tss-ts/)**: example snippets in every format, charts, unit conversion with QUDT, RDF Messages, and a comparison with the [Telraam LDES](https://ldes.telraam-api.net/measurements): one day of one location is 192 LDES members (190 kB of Turtle) or one snippet of 11 kB.
+**Try the [playground](https://pietercolpaert.github.io/rdf-tss-ts/)**: pick a dataset from the drop-down (months of Telraam traffic counts and speeds, and a day of weather in every format), see charts, convert units with QUDT, and see the RDF Messages. The Telraam data is read from the [Telraam LDES](https://ldes.telraam-api.net/measurements) as RDF Messages and turned into binary snippets, see [Telraam](#telraam).
 
 ## What is a snippet?
 
-A snippet is a table of readings described in RDF: one time column, and one column per field. The RDF metadata says what each field observes (property, unit, sensor, feature of interest), the time window, and whether points can still be added. The points themselves are stored in one of five ways, set by the snippet's class:
+A snippet is a table of readings described in RDF: one time column, and one column per field. The RDF metadata says what each field observes (property, unit, sensor, feature of interest), the time window, and whether the snippet has ended (`tss:immutable true`). A snippet that has not ended is *growing*: points are only ever added at its end. The points themselves are stored in one of five ways, set by the snippet's class:
 
 | Snippet class | Where the points are | Can be appended to |
 |---|---|---|
@@ -18,7 +18,7 @@ A snippet is a table of readings described in RDF: one time column, and one colu
 | `tss:ArrowSnippet` | an external Arrow file | yes* (IPC streaming format; the IPC file format is read-only, for immutable snippets) |
 | `tss:ParquetSnippet` | an external Parquet file | no, written once |
 
-\* Appending to external files is not yet defined in the spec; see [Open spec issues](#open-spec-issues).
+\* Growing is by appending bytes: a CSV row, an Arrow record batch, or a message at the end of an RDF Message Log. An embedded RDF snippet is an [RDF Message Log](https://w3c-cg.github.io/rsp/spec/messages): the metadata is the first message and every point is a message. See [Open spec issues](#open-spec-issues).
 
 ## Install
 
@@ -27,6 +27,8 @@ npm install rdf-tss
 ```
 
 The library runs in Node and in the browser. Reading local files, and all writing to files, needs Node. In the browser, read with `Snippet.fetch` or from an RDF/JS `Dataset`.
+
+Metadata documents are loaded with [ldfetch](https://github.com/pietercolpaert/ldfetch), so they can be in any RDF syntax, also as an RDF Message Log (the messages are merged, and kept for following). Data files (CSV, Arrow, Parquet) are fetched with plain HTTP.
 
 Formats and units need packages that you only install when you use them (optional peer dependencies):
 
@@ -100,9 +102,15 @@ for await (const r of snippet.read({
 }
 ```
 
-With `follow: true`, the stream first returns the existing points and then keeps polling for new ones. It ends when:
+With `follow: true`, the stream first returns the existing points and then keeps polling for new ones. It does what a client of any growing file does, and no more:
 
-- the snippet becomes immutable (`tss:mutable false`), after the remaining points,
+- **Appended bytes only.** A CSV or Arrow file, and an embedded RDF Message Log, are asked for with `Range: bytes=<length so far>-`. The server answers `206` with the new bytes, `416` when nothing was added, and `200` with the whole file when it does not support ranges (then the library skips what it already has). A file that got shorter is read again from the start. Only complete rows, record batches and messages are used; a half-written one is waited for.
+- **The metadata of an external snippet** is fetched again every round, to see whether the snippet has ended; HTTP caching (`ETag`, `max-age`) does the rest. The default interval is the `max-age` of the response (at least a second), or 10 seconds.
+- **Parquet** is written once and is always immutable: nothing to follow.
+
+It ends when:
+
+- the snippet has ended (`tss:immutable true`), after the remaining points,
 - you set an `until` and a point at or after it has been seen,
 - you call `controller.abort()`, or stop iterating with `break`.
 
@@ -144,7 +152,6 @@ const snippet = await Snippet.create({
   dataFile: './weather-2026-11.csv',
   file: './weather-2026-11.ttl',     // the metadata: written now, and after every append
   csv: { delimiter: ',', encoding: 'utf-8', header: true },
-  mutable: true,
   timeField: { id: `${ex}fields/time`, columnName: 'time' },
   fields: [{
     id: `${ex}fields/temperature`,
@@ -171,7 +178,7 @@ await snippet.close();
 
 With `file`, the metadata is kept up to date on disk, so followers see every append; without it, call `await snippet.serialize('text/turtle')` and write the result yourself. The lock is taken on the metadata file (or on the data file when there is no `file`).
 
-Each `append` checks the readings (datatypes, unique times, time order), adds them, widens the window, and recomputes the summaries. If the snippet would no longer conform, nothing is changed and a `ValidationError` is thrown.
+Each `append` checks the readings (datatypes, unique increasing times, inside the `from`/`until` window of the snippet) and then only *adds data at the end*: a CSV row, an Arrow record batch, a message of the log. The window is fixed when the snippet is created, and no summaries are written while it grows. If a reading does not conform, nothing is changed and a `ValidationError` is thrown.
 
 ### Continue writing to an existing snippet
 
@@ -190,10 +197,12 @@ Opening for writing fails with:
 ### Finish a snippet
 
 ```ts
-await snippet.close({ freeze: true });   // sets tss:mutable false; followers stop
+await snippet.close({ freeze: true });   // ends the snippet: tss:immutable true; followers stop
 ```
 
-For Parquet, rows are collected in memory and the file is written on `close()`. Parquet snippets are always written frozen.
+`close()` alone releases the lock and leaves the snippet growing, so that you can continue later. `close({ freeze: true })` ends it: the metadata gets `tss:immutable true` and, with `summaries` (the default), a stored summary of every field, computed over the whole snippet; an Arrow stream gets its end-of-stream marker. An embedded RDF snippet gets a final message.
+
+For Parquet, rows are collected in memory and the file is written on `close()`. Parquet snippets are always immutable once written.
 
 ## API
 
@@ -208,10 +217,12 @@ Snippet.open(source: string | Dataset, options?: {
   write?: boolean;           // default false; true returns a WritableSnippet
 }): Promise<ReadableSnippet>   // WritableSnippet when write is true
 
-// remote document
+// remote document, loaded with ldfetch
 Snippet.fetch(source: string | URL, options?: {
   snippet?: string;          // IRI of the snippet, if the document has several
-  fetch?: typeof fetch;      // custom fetch, e.g. with authentication
+  fetch?: typeof fetch;      // custom fetch for the data files and following, e.g. with authentication
+  headers?: Record<string, string>;   // headers for every request
+  loader?: RdfLoader;        // replace ldfetch for the metadata
   localFiles?: boolean;      // default false: whether the document may refer to local files
   unitConverter?: UnitConverter;   // default: eyemind with QUDT
 }): Promise<ReadableSnippet>
@@ -225,7 +236,7 @@ In the future, writing could also target a remote location that supports POST (e
 |---|---|
 | `id` | IRI of the snippet |
 | `kind` | `'EmbeddedRDF' \| 'EmbeddedJSON' \| 'CSV' \| 'Parquet' \| 'Arrow'` |
-| `metadata` | time field, fields, `from`, `until`, `mutable`, labels |
+| `metadata` | time field, fields, `from`, `until`, `immutable`, labels |
 | `read(options?)` | `AsyncIterable<Reading>`, see below |
 | `summary(field)` | the summary stored in the snippet for a field |
 | `validate()` | a `Report` listing every rule that fails and where |
@@ -254,8 +265,8 @@ Snippet.create(options: CreateOptions): Promise<WritableSnippet>
 | `dataFile` | path of the data file of an external snippet |
 | `file` | path of the metadata file, kept up to date; the lock is taken on it |
 | `csv` | `{ delimiter?, encoding?, header? }` |
-| `mutable`, `from`, `until`, `label` | as in the metadata; `mutable` defaults to `true` |
-| `summaries` | keep a stored summary of every field, default `true` |
+| `immutable`, `from`, `until`, `label` | as in the metadata; a new snippet grows, unless `immutable` |
+| `summaries` | store a summary of every field when the snippet ends, default `true` |
 | `prefixes` | prefixes for the Turtle of the metadata |
 
 ### `WritableSnippet` (extends `ReadableSnippet`)
@@ -264,7 +275,7 @@ Snippet.create(options: CreateOptions): Promise<WritableSnippet>
 |---|---|
 | `append(reading \| readings[])` | adds readings; all or nothing |
 | `serialize(mediaType?, prefixes?)` | the metadata (and embedded points) as Turtle, TriG, N-Triples, N-Quads or JSON-LD |
-| `close({ freeze? })` | writes outstanding data, releases the lock; `freeze` sets `mutable false` |
+| `close({ freeze? })` | writes outstanding data, releases the lock; `freeze` ends the snippet (`tss:immutable true`, summaries) |
 
 ### `Reading`
 
@@ -310,12 +321,21 @@ convertUnit(value: string, from: string, to: string | 'qudt'): Promise<string>
 
 The library depends on these points, which the spec does not define yet:
 
-- **Following a stream:** how consumers detect updates, and how CSV and Arrow files are appended to. `tss:committedUntil` is proposed for removal ([issue #20](https://github.com/KNowledgeOnWebScale/rdf-timeseriessnippets/issues/20)), so the library does not rely on it.
+- **Following a stream:** the library follows with HTTP `Range`, `ETag` and `max-age` and stops at `tss:immutable true`, as in [pull request #25](https://github.com/KNowledgeOnWebScale/rdf-timeseriessnippets/pull/25). `tss:mutable` and `tss:committedUntil` are gone; the validator reports them as removed terms. Not yet in the proposal: which Arrow format to append to (the library uses the IPC *stream* format, and also reads the IPC file format of an ended snippet).
 - **Single writer:** how to prevent two processes writing to the same snippet.
 - **Empty values:** an empty string and no value are currently the same.
 - **Several snippets in one file:** each snippet repeats the file configuration, and long tables (`sensor_id, time, value`) can't be described.
 
 Until these are settled, the behaviour of `follow`, `append` on external files, and locking is provisional.
+
+## Telraam
+
+The playground shows months of [Telraam](https://telraam.net/) traffic counts and V85 speeds. The source is a compressed RDF Message Log of TriG (about 14 million messages, one measurement each). [scripts/telraam-log.ts](scripts/telraam-log.ts) reads it as a stream, with the message parser of ldfetch ([n3.js-messages](https://github.com/pietercolpaert/n3.js-messages)), keeps some locations and writes one snippet per location in a binary format, with a column per series. The speed is in km/h, so reading it in m/s or mph is a unit conversion:
+
+```sh
+npm run examples:telraam-months -- telraam.trig.gz --out examples/telraam-months --first 12 --kind Parquet,Arrow,CSV
+npm run build:site
+```
 
 ## Development
 

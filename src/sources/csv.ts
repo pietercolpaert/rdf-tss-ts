@@ -7,6 +7,8 @@ export interface CsvRow {
   cells: string[];
   /** False for a last row that is not ended by a line break: it may still be written. */
   terminated: boolean;
+  /** The number of characters up to and including the line break that ends the row (counting a byte order mark). */
+  end: number;
 }
 
 /** A streaming RFC 4180 parser: quoted cells, doubled quotes, line breaks inside quotes. */
@@ -18,11 +20,15 @@ export async function* parseCsv(chunks: AsyncIterable<string>, delimiter = ','):
   let fieldStarted = false;
   let crPending = false;
   let first = true;
+  let before = 0;
 
   for await (let chunk of chunks) {
     if (first) {
       first = false;
-      if (chunk.charCodeAt(0) === 0xfeff) chunk = chunk.slice(1);
+      if (chunk.charCodeAt(0) === 0xfeff) {
+        chunk = chunk.slice(1);
+        before = 1;
+      }
     }
     for (let i = 0; i < chunk.length; i++) {
       const c = chunk[i];
@@ -61,7 +67,7 @@ export async function* parseCsv(chunks: AsyncIterable<string>, delimiter = ','):
       if (c === '\n' || c === '\r') {
         if (row.length > 0 || field !== '' || fieldStarted) {
           row.push(field);
-          yield { cells: row, terminated: true };
+          yield { cells: row, terminated: true, end: before + i + 1 };
         }
         row = [];
         field = '';
@@ -72,11 +78,68 @@ export async function* parseCsv(chunks: AsyncIterable<string>, delimiter = ','):
       field += c;
       fieldStarted = true;
     }
+    before += chunk.length;
   }
   if (row.length > 0 || field !== '' || fieldStarted) {
     row.push(field);
-    yield { cells: row, terminated: false };
+    yield { cells: row, terminated: false, end: before };
   }
+}
+
+/** The columns of the fields in a CSV file: the position of each field's cells. */
+export type CsvColumns = Map<string, number>;
+
+function columnsOfHeader(meta: SnippetMetadata, header: string[]): CsvColumns {
+  const columns: CsvColumns = new Map();
+  for (const f of meta.fields) {
+    if (f.columnName === undefined) continue;
+    const index = header.indexOf(f.columnName);
+    if (index < 0) throw new ValidationError(`the CSV file has no column ${JSON.stringify(f.columnName)} for field ${f.id}`);
+    columns.set(f.id, index);
+  }
+  return columns;
+}
+
+/**
+ * Read the complete records of (a part of) a CSV file that start at a record. `columns` are
+ * those of the header, when the text does not start with it. Returns the points, the columns
+ * and the number of characters of the complete records: the next part starts there.
+ */
+export async function parseCsvText(
+  meta: SnippetMetadata,
+  text: string,
+  columns?: CsvColumns,
+): Promise<{ points: RawPoint[]; columns?: CsvColumns; consumed: number }> {
+  const convert = makeRowConverter(meta);
+  let known = columns;
+  if (!meta.header && !known) {
+    known = new Map();
+    for (const f of meta.fields) if (f.columnIndex !== undefined) known.set(f.id, f.columnIndex);
+  }
+  const points: RawPoint[] = [];
+  let consumed = 0;
+  async function* one() {
+    yield text;
+  }
+  let rowNumber = 0;
+  for await (const row of parseCsv(one(), meta.delimiter)) {
+    if (!row.terminated) break;
+    consumed = row.end;
+    if (!known) {
+      known = columnsOfHeader(meta, row.cells);
+      continue;
+    }
+    rowNumber++;
+    const index = known;
+    const access = (f: FieldMetadata): string | undefined => {
+      const at = index.get(f.id);
+      if (at === undefined) return undefined;
+      const cell = row.cells[at];
+      return cell === undefined || cell === '' ? undefined : cell;
+    };
+    points.push(convert(access, rowNumber));
+  }
+  return { points, columns: known, consumed };
 }
 
 /** The points of a CSV data file, after skipping the first `skip` data rows. */

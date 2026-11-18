@@ -58,17 +58,47 @@ describe.each<{ kind: SnippetKind; dataFile?: string }>([
 });
 
 describe('following', () => {
-  it('asks the server whether anything changed, instead of downloading again', async () => {
+  it('asks only for the bytes after the ones it has: 416 when nothing is new, 206 for a new row', async () => {
     const writer = await Snippet.create({ ...weatherOptions('CSV', 'c'), dataFile: join(dir, 'c.csv'), file: join(dir, 'c.ttl') });
     await writer.append(weatherReadings.slice(0, 1));
     const reader = following(Snippet.fetch(`${server.url}/c.ttl`));
     await reader.until(1);
     await new Promise((r) => setTimeout(r, 300));
+    await writer.append(weatherReadings.slice(1, 2));
+    await reader.until(2);
     await writer.close({ freeze: true });
     await reader.done;
-    const conditional = server.requests.filter((r) => r.ifNoneMatch);
-    expect(conditional.some((r) => r.path === '/c.csv' && r.status === 304)).toBe(true);
-    expect(conditional.some((r) => r.path === '/c.ttl' && r.status === 304)).toBe(true);
+    const data = server.requests.filter((r) => r.path === '/c.csv');
+    expect(data.filter((r) => !r.range)).toHaveLength(1);
+    expect(data.some((r) => r.range && r.status === 416)).toBe(true);
+    expect(data.some((r) => r.range && r.status === 206)).toBe(true);
+    expect(temperatures(reader.seen)).toEqual(['8.4', '8.6']);
+  });
+
+  it('still follows when the server ignores Range and answers 200 with the whole file', async () => {
+    await server.close();
+    server = await startServer(dir, { ignoreRange: true });
+    const writer = await Snippet.create({ ...weatherOptions('CSV', 'g'), dataFile: join(dir, 'g.csv'), file: join(dir, 'g.ttl') });
+    await writer.append(weatherReadings.slice(0, 2));
+    const reader = following(Snippet.fetch(`${server.url}/g.ttl`));
+    await reader.until(2);
+    await writer.append(weatherReadings.slice(2));
+    await writer.close({ freeze: true });
+    await reader.done;
+    expect(temperatures(reader.seen)).toEqual(['8.4', '8.6', '8.5', '9']);
+  });
+
+  it('reads the new messages of an RDF Message Log, which grows by appending', async () => {
+    const writer = await Snippet.create({ ...weatherOptions('EmbeddedRDF', 'm'), file: join(dir, 'm.ttl') });
+    await writer.append(weatherReadings.slice(0, 2));
+    const reader = following(Snippet.fetch(`${server.url}/m.ttl`));
+    await reader.until(2);
+    await writer.append(weatherReadings.slice(2));
+    await reader.until(4);
+    await writer.close({ freeze: true });
+    await reader.done;
+    expect(temperatures(reader.seen)).toEqual(['8.4', '8.6', '8.5', '9']);
+    expect(server.requests.some((r) => r.path === '/m.ttl' && r.range && r.status === 206)).toBe(true);
   });
 
   it('stops when the signal aborts, without an error', async () => {
@@ -128,20 +158,16 @@ describe('following', () => {
     expect(reader.seen).toHaveLength(4);
   });
 
-  it('does not lose a row that arrives before the writer announces it in the time window', async () => {
-    const options = { ...weatherOptions('CSV', 'w'), dataFile: join(dir, 'w.csv'), file: join(dir, 'w.ttl'), from: '2026-11-17T12:00:00Z', until: '2026-11-17T12:05:00Z' };
-    const writer = await Snippet.create(options);
+  it('reads rows that were appended to the data file after the first read, without losing one', async () => {
+    const writer = await Snippet.create({ ...weatherOptions('CSV', 'w'), dataFile: join(dir, 'w.csv'), file: join(dir, 'w.ttl') });
     await writer.append(weatherReadings.slice(0, 1));
     const reader = following(Snippet.fetch(`${server.url}/w.ttl`));
     await reader.until(1);
-    // the data file is written first, and the window widened right after: simulate a reader in between
-    const { appendFile } = await import('node:fs/promises');
-    await appendFile(join(dir, 'w.csv'), '2026-11-17T12:10:00Z,8.6,,estimated\n');
-    await new Promise((r) => setTimeout(r, 250));
-    expect(reader.seen).toHaveLength(1);
-    await writer.append(weatherReadings.slice(1, 2).map((r) => ({ ...r, time: '2026-11-17T12:20:00Z' })));
+    await writer.append(weatherReadings.slice(1, 2));
+    await writer.append(weatherReadings.slice(2, 3));
+    await reader.until(3);
     await writer.close({ freeze: true });
     await reader.done;
-    expect(reader.seen.map((r) => r.time)).toEqual(['2026-11-17T12:00:00Z', '2026-11-17T12:10:00Z', '2026-11-17T12:20:00Z']);
+    expect(reader.seen.map((r) => r.time)).toEqual(weatherReadings.slice(0, 3).map((r) => r.time));
   });
 });

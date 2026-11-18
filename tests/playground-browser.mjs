@@ -16,9 +16,11 @@ const server = createServer(async (req, res) => {
   try {
     const path = normalize(join(root, decodeURIComponent(req.url.split('?')[0]).replace(/\/$/, '/index.html')));
     if (!path.startsWith(root)) throw new Error('outside');
+    const body = await readFile(path);
     res.writeHead(200, { 'Content-Type': TYPES[extname(path)] ?? 'application/octet-stream' });
-    res.end(await readFile(path));
+    res.end(body);
   } catch {
+    console.error(`404 ${req.url}`);
     res.writeHead(404).end();
   }
 });
@@ -42,6 +44,12 @@ try {
 
   const ready = () => page.waitForFunction(() => !document.getElementById('result').hidden && document.querySelector('#panel-chart svg'), { timeout: 20000 });
   const text = (selector) => page.$eval(selector, (e) => e.textContent);
+  /** Pick a dataset in the drop-down and wait until it is shown. */
+  const choose = async (id) => {
+    await page.select('#dataset', id);
+    await page.waitForFunction((id) => decodeURIComponent(location.hash.slice(1)) === id && !document.getElementById('result').hidden, { timeout: 30000 }, id);
+    await ready();
+  };
 
   await page.goto(base, { waitUntil: 'networkidle0' });
   await ready();
@@ -50,10 +58,12 @@ try {
   console.log(`first example: ${await text('#title')}`);
 
   // every example renders a chart, in every format
+  // the drop-down groups them in categories
+  const groups = await page.$$eval('#dataset optgroup', (nodes) => nodes.map((n) => n.label));
+  assert.ok(groups.length >= 3, `categories: ${groups}`);
+  console.log(`categories: ${groups.join(' | ')}`);
   for (const example of examples) {
-    await page.click(`.chip[data-id="${example.id}"]`);
-    await page.waitForFunction((id) => document.querySelector(`.chip[data-id="${id}"]`)?.getAttribute('aria-pressed') === 'true' && !document.getElementById('result').hidden, {}, example.id);
-    await ready();
+    await choose(example.id);
     const status = await text('#status');
     assert.equal(status, '', `${example.id}: ${status}`);
     const paths = await page.$$eval('#panel-chart svg path.line', (nodes) => nodes.filter((n) => (n.getAttribute('d') ?? '').length > 5).length);
@@ -63,9 +73,7 @@ try {
   }
 
   // units: temperature in Fahrenheit, with QUDT through eyemind
-  await page.click('.chip[data-id="weather-csv"]');
-  await page.waitForFunction(() => document.querySelector('.chip[data-id="weather-csv"]')?.getAttribute('aria-pressed') === 'true');
-  await ready();
+  await choose('weather-csv');
   const charts = await page.$$('#panel-chart .chart');
   assert.equal(charts.length, 4, 'four charts: temperature, humidity, wind speed, pressure');
   const before = await page.$eval('#panel-chart .chart:nth-of-type(2) h3, #panel-chart .chart h3', (e) => e.textContent);
@@ -86,10 +94,31 @@ try {
   assert.equal(rows[0][0], '2026-11-17T09:00:00Z');
   assert.equal(rows[0][1], '46.4', `converted at 09:00: ${rows[0]}`);
 
+  // months of Telraam data in a binary format, with a speed in km/h that converts to m/s
+  const months = examples.find((e) => e.id.startsWith('telraam-months-'));
+  if (months) {
+    await choose(months.id);
+    const subtitle = await text('#subtitle');
+    const readings = Number(/(\d+) readings/.exec(subtitle)?.[1]);
+    assert.ok(readings > 1500, `months of hourly rows: ${subtitle}`);
+    const titles = await page.$$eval('#panel-chart .chart h3', (nodes) => nodes.map((n) => n.textContent));
+    const speed = titles.findIndex((t) => t.includes('km/h'));
+    assert.ok(speed >= 0, `a speed chart in km/h: ${titles}`);
+    await (await (await page.$$('#panel-chart .chart'))[speed].$('select')).select('http://qudt.org/vocab/unit/M-PER-SEC');
+    await page.waitForFunction((i) => document.querySelectorAll('#panel-chart .chart h3')[i].textContent.includes('m/s'), { timeout: 30000 }, speed);
+    console.log(`  ok months: ${subtitle}; speed km/h -> m/s`);
+  }
+
+  // your own URL
+  await page.select('#dataset', '__custom__');
+  assert.equal(await page.$eval('#url-form', (f) => f.hidden), false, 'the URL form appears');
+  await page.$eval('#url', (input) => (input.value = ''));
+  await page.type('#url', `${base}examples/weather-csv.ttl`);
+  await page.click('#open');
+  await page.waitForFunction(() => document.getElementById('dataset').value === 'weather-csv', { timeout: 20000 });
+
   // every other tab, for a Telraam location
-  await page.click('.chip[data-id="telraam-27387"]');
-  await page.waitForFunction(() => document.querySelector('.chip[data-id="telraam-27387"]')?.getAttribute('aria-pressed') === 'true');
-  await ready();
+  await choose('telraam-27387');
   assert.equal(await page.$$eval('#panel-chart .legend label', (l) => l.length), 8, 'eight series in one chart');
   await page.click('#tab-metadata');
   await page.waitForFunction(() => document.querySelector('#panel-metadata pre'));

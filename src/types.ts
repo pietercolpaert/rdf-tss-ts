@@ -47,12 +47,15 @@ export interface SnippetMetadata {
   id: string;
   kind: SnippetKind;
   labels: string[];
-  mutable: boolean;
+  /**
+   * `true` when no point is added any more (`tss:immutable true`). A snippet that is not
+   * immutable is growing: points may still be added at its end.
+   */
+  immutable: boolean;
   /** Start of the time window (included), as written. */
   from?: string;
   /** End of the time window (excluded), as written. */
   until?: string;
-  committedUntil?: string;
   /** IRI of the time field. */
   timeField: string;
   /** IRI of the step field of a time grid. */
@@ -78,7 +81,7 @@ export interface ReadOptions {
   fields?: string[];
   /** `'source'` (default), `'qudt'` (the QUDT normalized unit) or a unit IRI. */
   unit?: 'source' | 'qudt' | (string & {});
-  /** Keep polling for new points: `true` or `{ interval }`, an `xsd:duration` such as `'PT30S'`. */
+  /** Keep polling for new points: `true` or `{ interval }`, an `xsd:duration` such as `'PT30S'`. Default: the `max-age` of the server, else 10 seconds. */
   follow?: boolean | { interval?: string };
   signal?: AbortSignal;
 }
@@ -113,20 +116,24 @@ export interface CreateOptions {
   /** Path of the data file of an external snippet. */
   dataFile?: string;
   csv?: { delimiter?: string; encoding?: string; header?: boolean };
-  /** Default `true`. Parquet snippets are always frozen when they are closed. */
-  mutable?: boolean;
+  /**
+   * Start with `tss:immutable true`: no point can be added. Default `false`: a growing
+   * snippet. Parquet snippets are always immutable, from the moment they are closed.
+   */
+  immutable?: boolean;
   label?: string;
+  /** The time window of a growing snippet is fixed: every point has to lie in it. */
   from?: string;
   until?: string;
   timeField: { id: string; columnName?: string; columnIndex?: number };
   fields: CreateField[];
-  /** Keep a stored summary of every numeric field. Default `true`. */
+  /** Add a stored summary of every field when the snippet is ended. Default `true`. */
   summaries?: boolean;
   /** Prefixes to abbreviate IRIs with when the metadata is written as Turtle. */
   prefixes?: Record<string, string>;
   /**
-   * Path of the metadata file. When given, it is written on creation and after every
-   * `append`; the lock is taken on it.
+   * Path of the metadata file. When given, it is written on creation, and kept up to date
+   * as the specification allows (see `append` and `close`); the lock is taken on it.
    */
   file?: string;
 }

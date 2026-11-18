@@ -19,8 +19,7 @@ const EXAMPLE_1 = `${PREFIXES}
 ex:snippet
     a tss:EmbeddedRDFSnippet ;
     rdfs:label "Conductivity readings"@en ;
-    tss:mutable true ;
-    tss:committedUntil "2024-05-12T09:46:10Z"^^xsd:dateTimeStamp ;
+    tss:immutable true ;
     tss:producedBy ex:producer ;
     tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
     tss:until "2024-05-13T00:00:00Z"^^xsd:dateTimeStamp ;
@@ -62,12 +61,40 @@ ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T08:30:00Z"^^xsd:dateTimeStam
 ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T09:45:00Z"^^xsd:dateTimeStamp ; ex:value-field "4783.6"^^xsd:double ] .
 `;
 
+// the embedded example of the specification: a growing snippet is an RDF Message Log
+const EXAMPLE_LOG = `VERSION "1.2-messages"
+PREFIX tss: <https://w3id.org/tss#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX quantitykind: <http://qudt.org/vocab/quantitykind/>
+PREFIX unit: <http://qudt.org/vocab/unit/>
+PREFIX ex: <https://example.org/ex#>
+
+ex:snippet
+    a tss:EmbeddedRDFSnippet ;
+    rdfs:label "Conductivity readings"@en ;
+    tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
+    tss:until "2024-05-13T00:00:00Z"^^xsd:dateTimeStamp ;
+    tss:timeField ex:time-field ;
+    tss:hasField ex:time-field, ex:value-field .
+ex:time-field a tss:Field ; tss:datatype xsd:dateTimeStamp .
+ex:value-field a tss:Field ; tss:datatype xsd:double ;
+    tss:observedProperty quantitykind:ElectricConductivity ; tss:unit unit:MicroS-PER-CentiM .
+MESSAGE
+ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ; ex:value-field "4810.5"^^xsd:double ] .
+MESSAGE
+ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T08:15:00Z"^^xsd:dateTimeStamp ; ex:value-field "4722.4"^^xsd:double ] .
+MESSAGE
+ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T08:30:00Z"^^xsd:dateTimeStamp ; ex:value-field "4751.9"^^xsd:double ] .
+MESSAGE
+`;
+
 const EXAMPLE_4 = `${PREFIXES}
 ex:weather-snippet
     a tss:EmbeddedRDFSnippet ;
     rdfs:label "Weather station readings"@en ;
-    tss:mutable false ;
-    tss:committedUntil "2024-05-12T09:00:00Z"^^xsd:dateTimeStamp ;
+    tss:immutable true ;
     tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
     tss:until "2024-05-12T09:00:00Z"^^xsd:dateTimeStamp ;
     tss:timeField ex:weather-time-field ;
@@ -87,8 +114,6 @@ ex:weather-snippet tss:hasPoint [ ex:weather-time-field "2024-05-12T08:20:00Z"^^
 const EXAMPLE_7 = `${PREFIXES}
 ex:json-snippet
     a tss:EmbeddedJSONSnippet ;
-    tss:mutable true ;
-    tss:committedUntil "2024-05-12T09:46:10Z"^^xsd:dateTimeStamp ;
     tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
     tss:until "2024-05-13T00:00:00Z"^^xsd:dateTimeStamp ;
     tss:timeField ex:json-time-field ;
@@ -105,8 +130,7 @@ ex:json-value-field a tss:Field ; tss:columnName "value" ; tss:datatype xsd:doub
 `;
 
 const external = (cls: string, body: string) => `${PREFIXES}
-ex:snippet a tss:${cls} ; tss:mutable false ;
-    tss:committedUntil "2024-05-12T09:46:10Z"^^xsd:dateTimeStamp ;
+ex:snippet a tss:${cls} ; tss:immutable true ;
 ${body}
 `;
 
@@ -154,6 +178,15 @@ describe('examples of the specification', () => {
     ]);
     expect(values(readings, 'value-field')).toEqual(['4810.5', '4722.4', '4751.9', '4719.3', '4783.6']);
     expect(snippet.summary('value-field')).toMatchObject({ count: 5, observedMinimum: '4719.3', mean: '4757.54' });
+    expect((await snippet.validate()).results).toEqual([]);
+  });
+
+  it('example 1 as a growing snippet: an RDF Message Log is read as the merge of its messages', async () => {
+    const snippet = await open('example1-log.ttl', EXAMPLE_LOG);
+    expect(snippet.metadata.immutable).toBe(false);
+    expect(snippet.metadata.fields.map((f) => f.localName)).toEqual(['time-field', 'value-field']);
+    const readings = await all(snippet.read());
+    expect(values(readings, 'value-field')).toEqual(['4810.5', '4722.4', '4751.9']);
     expect((await snippet.validate()).results).toEqual([]);
   });
 
@@ -308,7 +341,7 @@ ex:t a tss:Field ; tss:columnName "time" ; tss:datatype xsd:dateTimeStamp .`,
     const snippet = await Snippet.open(
       await parseRdf(
         `${PREFIXES}
-ex:s a tss:EmbeddedRDFSnippet ; tss:timeField ex:t ; tss:hasField ex:t, ex:v ; tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
+ex:s a tss:EmbeddedRDFSnippet ; tss:mutable true ; tss:committedUntil "2024-05-12T09:00:00Z"^^xsd:dateTimeStamp ; tss:timeField ex:t ; tss:hasField ex:t, ex:v ; tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
   tss:until "2024-05-12T09:00:00Z"^^xsd:dateTimeStamp ; tss:dataFile <x.csv> .
 ex:t a tss:Field ; tss:datatype xsd:dateTimeStamp .
 ex:v a tss:Field ; tss:datatype xsd:double .
@@ -320,6 +353,6 @@ ex:s tss:hasPoint [ ex:t "2024-05-12T10:00:00Z"^^xsd:dateTimeStamp ; ex:v "1"^^x
     const report = await snippet.validate();
     expect(report.conforms).toBe(false);
     const rules = report.results.map((r) => r.rule);
-    expect(rules).toEqual(expect.arrayContaining(['mutable', 'committed-until', 'not-allowed', 'lexical-form', 'unique-time', 'window', 'value-datatype']));
+    expect(rules).toEqual(expect.arrayContaining(['removed-term', 'not-allowed', 'lexical-form', 'unique-time', 'window', 'value-datatype']));
   });
 });

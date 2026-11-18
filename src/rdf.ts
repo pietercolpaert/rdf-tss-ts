@@ -44,7 +44,12 @@ const N3_FORMATS: Record<Exclude<RdfFormat, 'jsonld'>, string> = {
   'n-quads': 'application/n-quads',
 };
 
-/** Parse an RDF document into a store. */
+/** Whether a Turtle or TriG document announces itself as an RDF Message Log (`@version "1.2-messages"`). */
+export function isMessageLog(text: string): boolean {
+  return /^\s*(?:#[^\n]*\n\s*)*(?:@version|VERSION)\s+"[^"]*-messages"/i.test(text.slice(0, 2000));
+}
+
+/** Parse an RDF document into a store. An RDF Message Log is read as the merge of its messages. */
 export async function parseRdf(
   text: string,
   options: { contentType?: string | null; filename?: string; baseIRI?: string } = {},
@@ -62,8 +67,31 @@ export async function parseRdf(
       parser.end();
     });
   }
+  if (isMessageLog(text)) {
+    const { parseMessages } = await import('n3.js-messages');
+    const messages = parseMessages(text, { format: N3_FORMATS[format], baseIRI: options.baseIRI });
+    return new Store(messages.flat());
+  }
   const parser = new Parser({ format: N3_FORMATS[format], baseIRI: options.baseIRI });
   return new Store(parser.parse(text));
+}
+
+/** Parse the messages of an RDF Message Log, with the prefixes of the log in force; `messages: true` for a log without a version line. */
+export async function parseLogMessages(text: string, options: { baseIRI?: string } = {}): Promise<Quad[][]> {
+  const { parseMessages } = await import('n3.js-messages');
+  return parseMessages(text, { format: 'TriG', baseIRI: options.baseIRI, messages: true }) as Quad[][];
+}
+
+/** Write messages as a Turtle RDF Message Log: the version label, the prefixes, and `@message .` after each message. */
+export async function serializeMessages(messages: Quad[][], prefixes: Record<string, string> = {}): Promise<string> {
+  const { writeMessages } = await import('n3.js-messages');
+  return writeMessages(messages, { format: 'Turtle', prefixes });
+}
+
+/** The same messages without the version label and the prefixes, to append them to an existing log that declares them. */
+export async function serializeMessagesTail(messages: Quad[][], prefixes: Record<string, string> = {}): Promise<string> {
+  const text = await serializeMessages(messages, prefixes);
+  return text.replace(/^@version[^\n]*\n(?:@(?:prefix|base)[^\n]*\n)*\n?/, '');
 }
 
 /** Serialize quads as Turtle, TriG, N-Triples, N-Quads or JSON-LD. */

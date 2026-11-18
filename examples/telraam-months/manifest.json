@@ -1,0 +1,142 @@
+[
+  {
+    "id": "9000010186",
+    "location": "https://telraam.net/en/location/9000010186",
+    "kind": "Parquet",
+    "readings": 1886,
+    "from": "2026-01-07T08:00:00Z",
+    "until": "2026-05-03T07:00:00Z",
+    "series": [
+      "car-lft",
+      "car-rgt",
+      "v85"
+    ],
+    "metadata": "9000010186.ttl"
+  },
+  {
+    "id": "9000010186",
+    "location": "https://telraam.net/en/location/9000010186",
+    "kind": "Arrow",
+    "readings": 1886,
+    "from": "2026-01-07T08:00:00Z",
+    "until": "2026-05-03T07:00:00Z",
+    "series": [
+      "car-lft",
+      "car-rgt",
+      "v85"
+    ],
+    "metadata": "9000010186-arrow.ttl"
+  },
+  {
+    "id": "9000010186",
+    "location": "https://telraam.net/en/location/9000010186",
+    "kind": "CSV",
+    "readings": 1886,
+    "from": "2026-01-07T08:00:00Z",
+    "until": "2026-05-03T07:00:00Z",
+    "series": [
+      "car-lft",
+      "car-rgt",
+      "v85"
+    ],
+    "metadata": "9000010186-csv.ttl"
+  },
+  {
+    "id": "9000010194",
+    "location": "https://telraam.net/en/location/9000010194",
+    "kind": "Parquet",
+    "readings": 1808,
+    "from": "2026-01-07T08:00:00Z",
+    "until": "2026-05-03T07:00:00Z",
+    "series": [
+      "car-lft",
+      "car-rgt",
+      "v85"
+    ],
+    "metadata": "9000010194.ttl"
+  },
+  {
+    "id": "9000010199",
+    "location": "https://telraam.net/en/location/9000010199",
+    "kind": "Parquet",
+    "readings": 1752,
+    "from": "2026-01-07T08:00:00Z",
+    "until": "2026-05-03T07:00:00Z",
+    "series": [
+      "car-lft",
+      "car-rgt",
+      "v85"
+    ],
+    "metadata": "9000010199.ttl"
+  },
+  {
+    "id": "9000006949",
+    "location": "https://telraam.net/en/location/9000006949",
+    "kind": "Parquet",
+    "readings": 1627,
+    "from": "2026-01-07T08:00:00Z",
+    "until": "2026-05-03T06:00:00Z",
+    "series": [
+      "car-lft",
+      "car-rgt",
+      "v85"
+    ],
+    "metadata": "9000006949.ttl"
+  },
+  {
+    "id": "9000010187",
+    "location": "https://telraam.net/en/location/9000010187",
+    "kind": "Parquet",
+    "readings": 1579,
+    "from": "2026-01-07T08:00:00Z",
+    "until": "2026-05-03T07:00:00Z",
+    "series": [
+      "car-lft",
+      "car-rgt",
+      "v85"
+    ],
+    "metadata": "9000010187.ttl"
+  },
+  {
+    "id": "9000010181",
+    "location": "https://telraam.net/en/location/9000010181",
+    "kind": "Parquet",
+    "readings": 1552,
+    "from": "2026-01-07T08:00:00Z",
+    "until": "2026-05-03T07:00:00Z",
+    "series": [
+      "car-lft",
+      "car-rgt",
+      "v85"
+    ],
+    "metadata": "9000010181.ttl"
+  },
+  {
+    "id": "9000006942",
+    "location": "https://telraam.net/en/location/9000006942",
+    "kind": "Parquet",
+    "readings": 1512,
+    "from": "2026-01-07T08:00:00Z",
+    "until": "2026-05-03T07:00:00Z",
+    "series": [
+      "car-lft",
+      "car-rgt",
+      "v85"
+    ],
+    "metadata": "9000006942.ttl"
+  },
+  {
+    "id": "9000006920",
+    "location": "https://telraam.net/en/location/9000006920",
+    "kind": "Parquet",
+    "readings": 1492,
+    "from": "2026-01-07T08:00:00Z",
+    "until": "2026-05-03T07:00:00Z",
+    "series": [
+      "car-lft",
+      "car-rgt",
+      "v85"
+    ],
+    "metadata": "9000006920.ttl"
+  }
+]

@@ -3,11 +3,13 @@
  *
  *   - a weather day in every format (embedded RDF, embedded JSON, CSV, Arrow, Parquet),
  *   - a time grid, written by hand because the writer states each time,
- *   - three locations of the Telraam LDES, and how much smaller they are than the LDES.
+ *   - three locations of the Telraam LDES, and how much smaller they are than the LDES,
+ *   - months of Telraam counts and speeds, if examples/telraam-months/ exists.
  *
  *   npm run examples [outputDirectory]     (default: _site/examples)
  */
-import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Snippet, type CreateOptions, type ReadingInput, type SnippetKind } from '../src/index.js';
@@ -95,8 +97,7 @@ async function timeGrid(): Promise<void> {
 # The times of the rows are not in the file: row n is at timeBase + n × timeStep.
 ex:weather-grid a tss:CSVSnippet ;
     rdfs:label "Weather in Ghent, ${day}, on a time grid" ;
-    tss:mutable false ;
-    tss:committedUntil "2026-11-18T00:00:00Z"^^xsd:dateTimeStamp ;
+    tss:immutable true ;
     tss:from "${day}T00:00:00Z"^^xsd:dateTimeStamp ;
     tss:until "2026-11-18T00:00:00Z"^^xsd:dateTimeStamp ;
     tss:dataFile <weather-grid.csv> ;
@@ -116,6 +117,8 @@ ex:humidity a tss:Field ; rdfs:label "Relative humidity" ; tss:columnName "hum" 
   );
 }
 
+const TELRAAM_DAY = 'Telraam LDES, one day, compared with the LDES';
+const TELRAAM_MONTHS = 'Traffic: months of Telraam counts and speeds';
 const examples: Example[] = [];
 const add = (example: Example) => examples.push(example);
 
@@ -140,15 +143,15 @@ async function telraam(): Promise<void> {
     add({
       id: `telraam-${id}`,
       title: `Telraam ${id}`,
-      group: 'Telraam LDES, as RDF-TSS',
+      group: TELRAAM_DAY,
       description: `Hourly traffic counts of one Telraam location on ${day}: ${own.length} LDES members become one table of 24 rows and 8 columns.`,
       metadata: `telraam/${id}.ttl`,
       kind: 'CSV',
     });
   }
   const first = locations[0].split('/').pop()!;
-  add({ id: `telraam-${first}-parquet`, title: `Telraam ${first} (Parquet)`, group: 'Telraam LDES, as RDF-TSS', description: 'The same counts in a Parquet file.', metadata: `telraam/${first}-parquet.ttl`, kind: 'Parquet' });
-  add({ id: `telraam-${first}-arrow`, title: `Telraam ${first} (Arrow)`, group: 'Telraam LDES, as RDF-TSS', description: 'The same counts as an Arrow IPC stream.', metadata: `telraam/${first}-arrow.ttl`, kind: 'Arrow' });
+  add({ id: `telraam-${first}-parquet`, title: `Telraam ${first} (Parquet)`, group: TELRAAM_DAY, description: 'The same counts in a Parquet file.', metadata: `telraam/${first}-parquet.ttl`, kind: 'Parquet' });
+  add({ id: `telraam-${first}-arrow`, title: `Telraam ${first} (Arrow)`, group: TELRAAM_DAY, description: 'The same counts as an Arrow IPC stream.', metadata: `telraam/${first}-arrow.ttl`, kind: 'Arrow' });
 
   const sample = members.filter((m) => m.location === locations[0] && m.time.startsWith(`${day}T08`)).slice(0, 2);
   const { Writer } = await import('n3');
@@ -163,6 +166,43 @@ async function telraam(): Promise<void> {
   );
 }
 
+
+interface MonthsEntry {
+  id: string;
+  kind: 'Parquet' | 'Arrow' | 'CSV';
+  metadata: string;
+  readings: number;
+  from: string;
+  until: string;
+  series: string[];
+}
+
+/**
+ * Months of Telraam counts and V85 speeds per location, made from the compressed RDF Message
+ * Log of Telraam by `scripts/telraam-log.ts` into examples/telraam-months/ (the log is 1.6 GB).
+ */
+async function telraamMonths(): Promise<void> {
+  const source = join(root, 'examples', 'telraam-months');
+  if (!existsSync(join(source, 'manifest.json'))) return;
+  const entries: MonthsEntry[] = JSON.parse(await readFile(join(source, 'manifest.json'), 'utf8'));
+  const directory = join(out, 'telraam-months');
+  await cp(source, directory, { recursive: true });
+  const first = entries[0].id;
+  for (const entry of entries) {
+    if (entry.kind !== 'Parquet' && entry.id !== first) continue;
+    const days = Math.round((Date.parse(entry.until) - Date.parse(entry.from)) / 86_400_000);
+    const speed = entry.series.includes('v85') ? ' and the V85 speed in km/h (convert it to m/s or mph)' : '';
+    add({
+      id: `telraam-months-${entry.id}${entry.kind === 'Parquet' ? '' : `-${entry.kind.toLowerCase()}`}`,
+      title: `Location ${entry.id}${entry.kind === 'Parquet' ? '' : ` (${entry.kind})`}`,
+      group: TELRAAM_MONTHS,
+      description: `${days} days, ${entry.readings} hourly rows: the counts per vehicle type and direction${speed}, from ${entry.from.slice(0, 10)} to ${entry.until.slice(0, 10)}. ${entry.kind === 'Parquet' ? 'A Parquet file: compact, typed columns.' : entry.kind === 'Arrow' ? 'An Arrow IPC stream.' : 'A CSV file.'}`,
+      metadata: `telraam-months/${entry.metadata}`,
+      kind: entry.kind,
+    });
+  }
+}
+
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
@@ -173,7 +213,7 @@ await weather('Arrow', 'weather-arrow', 'arrows');
 await weather('Parquet', 'weather-parquet', 'parquet');
 await timeGrid();
 
-const group = 'One day of weather, in every format';
+const group = 'Weather, one day, in every format';
 add({ id: 'weather-embedded', title: 'Embedded RDF', group, description: 'The points are RDF nodes in the metadata document: one document, nothing else to fetch.', metadata: 'weather-embedded.ttl', kind: 'EmbeddedRDF' });
 add({ id: 'weather-json', title: 'Embedded JSON', group, description: 'The points are one JSON literal in the metadata document.', metadata: 'weather-json.ttl', kind: 'EmbeddedJSON' });
 add({ id: 'weather-csv', title: 'CSV', group, description: 'The points are in a CSV file, found through tss:dataFile.', metadata: 'weather-csv.ttl', kind: 'CSV' });
@@ -181,9 +221,10 @@ add({ id: 'weather-grid', title: 'CSV on a time grid', group, description: 'The 
 add({ id: 'weather-arrow', title: 'Arrow', group, description: 'An Arrow IPC stream: a file that can be appended to while it is read.', metadata: 'weather-arrow.ttl', kind: 'Arrow' });
 add({ id: 'weather-parquet', title: 'Parquet', group, description: 'A Parquet file: written once, compact, with typed columns.', metadata: 'weather-parquet.ttl', kind: 'Parquet' });
 await telraam();
+await telraamMonths();
 
 // show the groups in this order
-const order = ['Telraam LDES, as RDF-TSS', group];
+const order = [TELRAAM_MONTHS, TELRAAM_DAY, group];
 examples.sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
 await writeFile(join(out, 'index.json'), JSON.stringify(examples, null, 2));
 console.log(`wrote ${examples.length} examples to ${out}`);

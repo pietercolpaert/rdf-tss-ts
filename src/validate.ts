@@ -40,12 +40,16 @@ function metadataRules(snippet: ReadableSnippet, add: Add): void {
   const kinds = new Set(findSnippets(ds).map((s) => isExternalKind(s.kind)));
   if (kinds.size > 1) add('document-kind', 'all snippets of a document are embedded, or all are external', id);
 
-  // mutable, committedUntil
-  const mutable = many(node, tss('mutable'));
-  if (mutable.length !== 1 || !isBoolean(mutable[0])) add('mutable', 'tss:mutable is required, once, and an xsd:boolean', id);
-  const committed = many(node, tss('committedUntil'));
-  if (committed.length !== 1 || tryInstantOf(committed[0].value) === null) {
-    add('committed-until', 'tss:committedUntil is required, once, and an xsd:dateTimeStamp', id);
+  // immutable; tss:mutable and tss:committedUntil are gone
+  const immutable = many(node, tss('immutable'));
+  if (immutable.length > 1 || (immutable[0] && !isBoolean(immutable[0]))) add('immutable', 'tss:immutable is optional, once, and an xsd:boolean', id);
+  const isImmutable = immutable[0] && (immutable[0].value === 'true' || immutable[0].value === '1');
+  if (meta.kind === 'Parquet' && !isImmutable) add('immutable', 'a tss:ParquetSnippet cannot be appended to: it states tss:immutable true', id);
+  for (const removed of ['mutable', 'committedUntil']) {
+    if (many(node, tss(removed)).length > 0) add('removed-term', `tss:${removed} is no longer part of the vocabulary: use tss:immutable, and HTTP validators to follow a snippet`, id);
+  }
+  if (!meta.immutable) {
+    for (const f of meta.fields) if (f.summary) add('growing-summary', 'a field of a growing snippet has no tss:summary: it is added when the snippet is ended', f.id);
   }
 
   // fields, time field, key

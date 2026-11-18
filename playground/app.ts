@@ -152,9 +152,9 @@ async function open(url: string, example?: Example): Promise<void> {
     state = { url, example, snippet, times: readings.map((r) => r.time), values, unit, selectedUnit: new Map(), rendered: new Set(), stopCharts: [] };
     history.replaceState(null, '', `#${example ? example.id : encodeURIComponent(url)}`);
     $<HTMLInputElement>('url').value = url;
-    for (const chip of document.querySelectorAll<HTMLButtonElement>('.chip')) chip.setAttribute('aria-pressed', String(chip.dataset.id === example?.id));
+    selectDataset(example);
     renderSummary();
-    $('tab-compare').hidden = !(example && compaction && example.group.startsWith('Telraam'));
+    $('tab-compare').hidden = !(example && compaction && example.group.startsWith('Telraam LDES'));
     selectTab('chart');
     setStatus('');
     $('result').hidden = false;
@@ -172,7 +172,7 @@ function renderSummary(): void {
   const bits = [`${m.kind} snippet`, `${times.length} readings`, `${m.fields.length - 1 - (m.stepField ? 1 : 0)} fields`];
   if (m.from) bits.push(`from ${m.from}`);
   if (m.until) bits.push(`until ${m.until}`);
-  bits.push(m.mutable ? 'mutable: new readings may still arrive' : 'immutable');
+  bits.push(m.immutable ? 'immutable' : 'growing: new readings may still arrive');
   $('subtitle').textContent = bits.join(' · ');
   $('description').textContent = example?.description ?? '';
 }
@@ -462,28 +462,50 @@ for await (const message of toRDFMessages(snippet.read(${unit ? `{ unit: '${unit
 
 /* ---------- start ---------- */
 
+const CUSTOM = '__custom__';
+const exampleUrl = (example: Example) => new URL(`examples/${example.metadata}`, location.href).href;
+
+/** A drop-down with the examples, grouped by category, and a custom URL. */
 function renderExamples(): void {
-  const row = $('examples');
-  row.replaceChildren();
+  const select = $<HTMLSelectElement>('dataset');
+  select.replaceChildren();
   for (const group of [...new Set(examples.map((e) => e.group))]) {
-    const div = document.createElement('div');
-    div.className = 'group';
-    const name = document.createElement('span');
-    name.className = 'group-label';
-    name.textContent = group;
-    div.append(name);
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = group;
     for (const example of examples.filter((e) => e.group === group)) {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'chip';
-      chip.dataset.id = example.id;
-      chip.textContent = example.title;
-      chip.title = example.description;
-      chip.addEventListener('click', () => void open(new URL(`examples/${example.metadata}`, location.href).href, example));
-      div.append(chip);
+      const option = new Option(example.title, example.id);
+      option.title = example.description;
+      optgroup.append(option);
     }
-    row.append(div);
+    select.append(optgroup);
   }
+  const custom = document.createElement('optgroup');
+  custom.label = 'Your own data';
+  custom.append(new Option('Another URL …', CUSTOM));
+  select.append(custom);
+  select.addEventListener('change', () => {
+    if (select.value === CUSTOM) {
+      showCustom(true);
+      $<HTMLInputElement>('url').focus();
+      return;
+    }
+    showCustom(false);
+    const example = examples.find((e) => e.id === select.value)!;
+    void open(exampleUrl(example), example);
+  });
+}
+
+function showCustom(visible: boolean): void {
+  $('url-form').hidden = !visible;
+  if (visible) $('dataset-note').textContent = 'Paste the URL of the metadata of a snippet, in any RDF syntax. A server on another site needs CORS headers (Access-Control-Allow-Origin: *).';
+}
+
+/** Show the example, or the custom URL, in the drop-down. */
+function selectDataset(example?: Example): void {
+  const select = $<HTMLSelectElement>('dataset');
+  select.value = example ? example.id : CUSTOM;
+  showCustom(!example);
+  if (example) $('dataset-note').textContent = example.description;
 }
 
 async function start(): Promise<void> {
@@ -491,7 +513,10 @@ async function start(): Promise<void> {
   $('url-form').addEventListener('submit', (event) => {
     event.preventDefault();
     const url = $<HTMLInputElement>('url').value.trim();
-    if (url) void open(new URL(url, location.href).href, examples.find((e) => new URL(`examples/${e.metadata}`, location.href).href === new URL(url, location.href).href));
+    if (url) {
+      const absolute = new URL(url, location.href).href;
+      void open(absolute, examples.find((e) => exampleUrl(e) === absolute));
+    }
   });
   try {
     examples = await (await fetch('examples/index.json')).json();
@@ -502,9 +527,9 @@ async function start(): Promise<void> {
   renderExamples();
   const hash = decodeURIComponent(location.hash.slice(1));
   const fromHash = examples.find((e) => e.id === hash);
-  if (fromHash) await open(new URL(`examples/${fromHash.metadata}`, location.href).href, fromHash);
+  if (fromHash) await open(exampleUrl(fromHash), fromHash);
   else if (/^https?:/.test(hash)) await open(hash);
-  else if (examples[0]) await open(new URL(`examples/${examples[0].metadata}`, location.href).href, examples[0]);
+  else if (examples[0]) await open(exampleUrl(examples[0]), examples[0]);
 }
 
 void start();

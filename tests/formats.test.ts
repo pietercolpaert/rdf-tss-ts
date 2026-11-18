@@ -51,7 +51,7 @@ describe.each(formats)('a $kind snippet made by the writer and served by a mock 
   it('can be read over HTTP, exactly as written', async () => {
     const snippet = await Snippet.fetch(metadataUrl());
     expect(snippet.kind).toBe(kind);
-    expect(snippet.metadata.mutable).toBe(false);
+    expect(snippet.metadata.immutable).toBe(true);
     const readings = await collect(snippet.read());
     expect(table(readings)).toEqual(weatherExpected);
   });
@@ -108,7 +108,7 @@ describe.each(formats)('a $kind snippet made by the writer and served by a mock 
     expect(report.conforms).toBe(true);
   });
 
-  it('widens the time window while writing', async () => {
+  it('keeps the time window it was created with', async () => {
     const snippet = await Snippet.fetch(metadataUrl());
     expect(snippet.metadata.from).toBe('2026-11-17T12:00:00Z');
     expect(snippet.metadata.until).toBe('2026-11-18T00:00:00Z');

@@ -32,7 +32,6 @@ describe('appending', () => {
     expect(err).toBeInstanceOf(ValidationError);
     expect(err.report.results.map((r: { rule: string }) => r.rule)).toEqual(['lexical-form', 'lexical-form']);
     expect(await readFile(join(dir, 'w.csv'), 'utf8')).toBe(before);
-    expect(snippet.summary('temperature')!.count).toBe(1);
     await snippet.close();
     expect(await times(join(dir, 'w.ttl'))).toEqual(['2026-11-17T12:00:00Z']);
   });
@@ -68,19 +67,31 @@ describe('appending', () => {
     expect(reading.get('status')!.value).toBe('a, "quoted"\nline');
   });
 
-  it('widens the time window and keeps committedUntil up to date', async () => {
-    const snippet = await Snippet.create({ ...csv(), from: '2026-11-17T12:05:00Z', until: '2026-11-17T12:15:00Z' });
-    const created = snippet.metadata.committedUntil!;
+  it('keeps the time window it was created with, and refuses a time outside of it', async () => {
+    const snippet = await Snippet.create({ ...csv(), from: '2026-11-17T12:00:00Z', until: '2026-11-17T12:15:00Z' });
     await snippet.append({ time: '2026-11-17T12:00:00Z', values: { temperature: '1' } });
+    await expect(snippet.append({ time: '2026-11-17T12:30:00Z', values: { temperature: '2' } })).rejects.toThrow(ValidationError);
+    await expect(snippet.append({ time: '2026-11-17T11:59:00Z', values: { temperature: '2' } })).rejects.toThrow(ValidationError);
     expect(snippet.metadata.from).toBe('2026-11-17T12:00:00Z');
     expect(snippet.metadata.until).toBe('2026-11-17T12:15:00Z');
-    await snippet.append({ time: '2026-11-17T12:30:00Z', values: { temperature: '2' } });
-    expect(snippet.metadata.until).toBe('2026-11-17T12:30:01Z');
-    expect(Date.parse(snippet.metadata.committedUntil!)).toBeGreaterThanOrEqual(Date.parse(created));
     await snippet.close();
     const reread = await Snippet.open(join(dir, 'w.ttl'));
-    expect(reread.metadata.until).toBe('2026-11-17T12:30:01Z');
-    expect((await reread.validate()).results).toEqual([]);
+    expect(reread.metadata.until).toBe('2026-11-17T12:15:00Z');
+    expect(await times(join(dir, 'w.ttl'))).toEqual(['2026-11-17T12:00:00Z']);
+  });
+
+  it('writes no summaries while the snippet grows, and adds them with tss:immutable when it ends', async () => {
+    const snippet = await Snippet.create(csv());
+    await snippet.append(weatherReadings);
+    const growing = await readFile(join(dir, 'w.ttl'), 'utf8');
+    expect(growing).not.toContain('tss:summary');
+    expect(growing).not.toContain('immutable');
+    expect(growing).not.toContain('committedUntil');
+    await snippet.close({ freeze: true });
+    const ended = await readFile(join(dir, 'w.ttl'), 'utf8');
+    expect(ended).toContain('tss:immutable true');
+    expect(ended).toContain('tss:summary');
+    expect(ended).not.toContain('committedUntil');
   });
 
   it('leaves an open side of the window open', async () => {
@@ -91,10 +102,12 @@ describe('appending', () => {
     await snippet.close();
   });
 
-  it('recomputes summaries exactly', async () => {
+  it('computes the summaries over the whole snippet when it ends', async () => {
     const snippet = await Snippet.create(csv());
     await snippet.append(weatherReadings);
-    expect(snippet.summary('temperature')).toMatchObject({
+    await snippet.close({ freeze: true });
+    const ended = await Snippet.open(join(dir, 'w.ttl'));
+    expect(ended.summary('temperature')).toMatchObject({
       count: 4,
       missing: 0,
       firstTime: '2026-11-17T12:00:00Z',
@@ -103,13 +116,12 @@ describe('appending', () => {
       observedMaximum: '9',
       median: '8.55',
     });
-    expect(snippet.summary('humidity')).toMatchObject({ count: 3, missing: 1, firstTime: '2026-11-17T12:00:00Z', lastTime: '2026-11-17T12:30:00Z' });
-    await snippet.close();
+    expect(ended.summary('humidity')).toMatchObject({ count: 3, missing: 1, firstTime: '2026-11-17T12:00:00Z', lastTime: '2026-11-17T12:30:00Z' });
   });
 });
 
 describe('opening for writing', () => {
-  it('continues a snippet that was left open, with its summaries and its last time', async () => {
+  it('continues a snippet that was left open, from its last time, and summarizes all of it when it ends', async () => {
     const first = await Snippet.create(csv());
     await first.append(weatherReadings.slice(0, 2));
     await first.close();
@@ -117,8 +129,8 @@ describe('opening for writing', () => {
     const again = await Snippet.open(join(dir, 'w.ttl'), { write: true });
     await expect(again.append(weatherReadings[1])).rejects.toThrow(ValidationError);
     await again.append(weatherReadings.slice(2));
-    expect(again.summary('temperature')!.count).toBe(4);
-    await again.close();
+    await again.close({ freeze: true });
+    expect((await Snippet.open(join(dir, 'w.ttl'))).summary('temperature')!.count).toBe(4);
 
     expect(await times(join(dir, 'w.ttl'))).toEqual(weatherReadings.map((r) => r.time));
   });
@@ -146,12 +158,12 @@ describe('opening for writing', () => {
     await csvSnippet.close({ freeze: true });
     await expect(Snippet.open(join(dir, 'w.ttl'), { write: true })).rejects.toThrow(NotWritableError);
     const closed = await Snippet.open(join(dir, 'w.ttl'));
-    expect(closed.metadata.mutable).toBe(false);
+    expect(closed.metadata.immutable).toBe(true);
 
     const parquet = await Snippet.create({ ...weatherOptions('Parquet', 'p'), dataFile: join(dir, 'p.parquet'), file: join(dir, 'p.ttl') });
     await parquet.append(weatherReadings);
     await parquet.close();
-    expect((await Snippet.open(join(dir, 'p.ttl'))).metadata.mutable).toBe(false);
+    expect((await Snippet.open(join(dir, 'p.ttl'))).metadata.immutable).toBe(true);
     await expect(Snippet.open(join(dir, 'p.ttl'), { write: true })).rejects.toThrow(NotWritableError);
   });
 
@@ -188,13 +200,18 @@ describe('every format keeps appending', () => {
     });
   }
 
-  it('Arrow: the file stays a valid IPC stream that ends with the end-of-stream marker', async () => {
+  it('Arrow: the file is a valid IPC stream that only ends with the end-of-stream marker when the snippet ends', async () => {
     const snippet = await Snippet.create({ ...weatherOptions('Arrow', 'a'), dataFile: join(dir, 'a.arrows') });
     await snippet.append(weatherReadings.slice(0, 2));
+    const EOS = [255, 255, 255, 255, 0, 0, 0, 0];
+    const growing = new Uint8Array(await readFile(join(dir, 'a.arrows')));
+    expect([...growing.slice(-8)]).not.toEqual(EOS);
     await snippet.append(weatherReadings.slice(2));
-    await snippet.close();
+    await snippet.close({ freeze: true });
     const bytes = new Uint8Array(await readFile(join(dir, 'a.arrows')));
-    expect([...bytes.slice(-8)]).toEqual([255, 255, 255, 255, 0, 0, 0, 0]);
+    expect([...bytes.slice(-8)]).toEqual(EOS);
+    expect(bytes.length).toBeGreaterThan(growing.length);
+    expect([...bytes.slice(0, growing.length)]).toEqual([...growing]);
     const arrow = await import('apache-arrow');
     const table = arrow.tableFromIPC(bytes);
     expect(table.numRows).toBe(4);
@@ -212,7 +229,7 @@ describe('every format keeps appending', () => {
     await writeFile(
       join(dir, 'file.ttl'),
       `@prefix tss: <https://w3id.org/tss#> . @prefix xsd: <http://www.w3.org/2001/XMLSchema#> . @prefix ex: <https://example.org/> .
-ex:s a tss:ArrowSnippet ; tss:mutable false ; tss:committedUntil "2026-11-17T13:00:00Z"^^xsd:dateTimeStamp ;
+ex:s a tss:ArrowSnippet ; tss:immutable true ;
   tss:dataFile <file.arrow> ; tss:timeField ex:t ; tss:hasField ex:t, ex:v .
 ex:t a tss:Field ; tss:columnName "time" ; tss:datatype xsd:dateTimeStamp .
 ex:v a tss:Field ; tss:columnName "value" ; tss:datatype xsd:double .`,
@@ -226,10 +243,10 @@ ex:v a tss:Field ; tss:columnName "value" ; tss:datatype xsd:double .`,
   it('Parquet: is written when the snippet is closed, and frozen', async () => {
     const snippet = await Snippet.create({ ...weatherOptions('Parquet', 'p'), dataFile: join(dir, 'p.parquet'), file: join(dir, 'p.ttl') });
     await snippet.append(weatherReadings);
-    expect(snippet.summary('temperature')!.count).toBe(4);
     await snippet.close();
+    expect((await Snippet.open(join(dir, 'p.ttl'))).summary('temperature')!.count).toBe(4);
     expect(await times(join(dir, 'p.ttl'))).toEqual(weatherReadings.map((r) => r.time));
-    expect((await Snippet.open(join(dir, 'p.ttl'))).metadata.mutable).toBe(false);
+    expect((await Snippet.open(join(dir, 'p.ttl'))).metadata.immutable).toBe(true);
   });
 });
 

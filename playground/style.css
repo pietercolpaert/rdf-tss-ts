@@ -34,12 +34,10 @@ button { font: inherit; cursor: pointer; }
 .url-bar button { padding: .6rem 1.2rem; border: 0; border-radius: 6px; background: var(--primary); color: white; font-weight: bold; }
 .url-bar button:hover { background: #2f5273; }
 
-.examples-row { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; margin-top: .8rem; align-items: baseline; }
-.examples-row .group { display: flex; flex-wrap: wrap; gap: .35rem; align-items: baseline; }
-.examples-row .group-label { font-size: .8rem; font-weight: bold; color: #536779; text-transform: uppercase; letter-spacing: .03em; }
-.chip { border: 1px solid var(--primary-light); background: white; color: var(--primary); padding: .2rem .7rem; border-radius: 999px; font-size: .88rem; }
-.chip:hover { background: #eef4fb; }
-.chip[aria-pressed="true"] { background: var(--primary); color: white; border-color: var(--primary); }
+.picker { display: flex; gap: .6rem; align-items: center; max-width: 60rem; margin-bottom: .5rem; }
+.picker label { font-size: .8rem; font-weight: bold; color: #536779; text-transform: uppercase; letter-spacing: .03em; }
+.picker select { flex: 1; padding: .55rem .7rem; border: 1px solid var(--primary-light); border-radius: 6px; font: inherit; background: white; color: inherit; }
+#dataset-note { margin: 0 0 .6rem; max-width: 60rem; font-size: .9rem; }
 
 main { max-width: 74rem; margin: 0 auto; padding: 1.2rem 1.5rem 2rem; }
 .status { color: #536779; }

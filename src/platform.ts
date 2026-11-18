@@ -48,6 +48,29 @@ export async function localEtag(path: string): Promise<string> {
   return `${s.size}-${s.mtimeMs}`;
 }
 
+/**
+ * The bytes of a file after the first `offset` ones, like a Range request: `bytes` when the
+ * file grew, `same` when it is as long as the offset, `shrunk` when it is shorter.
+ */
+export async function readFromOffset(
+  path: string,
+  offset: number,
+): Promise<{ status: 'bytes'; bytes: Uint8Array } | { status: 'same' } | { status: 'shrunk' }> {
+  requireNode('Reading a local file');
+  const { open } = await import('node:fs/promises');
+  const handle = await open(path, 'r');
+  try {
+    const { size } = await handle.stat();
+    if (size < offset) return { status: 'shrunk' };
+    if (size === offset) return { status: 'same' };
+    const bytes = new Uint8Array(size - offset);
+    const { bytesRead } = await handle.read(bytes, 0, bytes.length, offset);
+    return { status: 'bytes', bytes: bytes.subarray(0, bytesRead) };
+  } finally {
+    await handle.close();
+  }
+}
+
 export async function localSize(path: string): Promise<number> {
   requireNode('Reading a local file');
   const { stat } = await import('node:fs/promises');

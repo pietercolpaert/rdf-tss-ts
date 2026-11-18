@@ -1,12 +1,20 @@
-import type { Store } from 'n3';
+import { Store } from 'n3';
 import { Decimal } from './decimal.js';
 import { ValidationError, type Report } from './errors.js';
+import {
+  ArrowFollower,
+  ByteSource,
+  CsvFollower,
+  RdfLogFollower,
+  Seen,
+  type Follower,
+  type PollResult,
+} from './follow.js';
 import { isNumericDatatype } from './lexical.js';
+import { loadDocument, type RdfLoader } from './loader.js';
 import { parseSnippet, type ParsedSnippet } from './metadata.js';
 import { tss, xsd } from './ns.js';
-import { localEtag, readLocalText } from './platform.js';
-import type { Dataset, Term } from './rdf.js';
-import { parseRdf } from './rdf.js';
+import type { Dataset, Quad, Term } from './rdf.js';
 import { Reading, Value } from './reading.js';
 import { arrowPoints, parquetPoints } from './sources/table.js';
 import { collect, openData, type DataContext } from './sources/access.js';
@@ -17,10 +25,7 @@ import { durationToMs, toInstant, tryInstantOf, type Instant } from './time.js';
 import { defaultUnitConverter, type UnitConversion, type UnitConverter } from './units.js';
 import type { FieldMetadata, FieldSummary, ReadOptions, SnippetMetadata, SnippetKind } from './types.js';
 
-export type Origin =
-  | { type: 'http'; url: string; etag?: string }
-  | { type: 'file'; path: string; etag?: string }
-  | { type: 'dataset' };
+export type Origin = { type: 'http'; url: string } | { type: 'file'; url: string; path: string } | { type: 'dataset' };
 
 export interface SnippetContext extends DataContext {
   /** Base IRI to resolve a relative `tss:dataFile` against. */
@@ -28,11 +33,12 @@ export interface SnippetContext extends DataContext {
   /** The snippet IRI to pick when the document has several. */
   snippet?: string;
   converter?: UnitConverter;
+  /** Reads the metadata document: ldfetch. */
+  loader?: RdfLoader;
+  headers?: Record<string, string>;
 }
 
 const DELTA = tss('DeltaFromBaseline');
-export const ACCEPT =
-  'text/turtle, application/trig;q=0.9, application/ld+json;q=0.8, application/n-triples;q=0.7, application/n-quads;q=0.7, */*;q=0.1';
 
 interface Plan {
   fields: FieldMetadata[];
@@ -42,10 +48,7 @@ interface Plan {
 }
 
 interface PassState {
-  /** Data rows read so far; the next pass skips them. */
-  rows: number;
   reachedUntil: boolean;
-  etag?: string;
 }
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
@@ -61,19 +64,24 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+const isTrue = (value: string | undefined) => value === 'true' || value === '1';
+
 /** A snippet that can be read. */
 export class ReadableSnippet {
   protected store: Store;
   protected parsed: ParsedSnippet;
   protected origin: Origin;
   protected ctx: SnippetContext;
+  /** The messages of the metadata document when it is an RDF Message Log. */
+  protected messages: Quad[][];
   private fieldIndex?: Map<string, FieldMetadata[]>;
 
-  constructor(store: Store, parsed: ParsedSnippet, origin: Origin, ctx: SnippetContext) {
+  constructor(store: Store, parsed: ParsedSnippet, origin: Origin, ctx: SnippetContext, messages: Quad[][] = []) {
     this.store = store;
     this.parsed = parsed;
     this.origin = origin;
     this.ctx = ctx;
+    this.messages = messages;
   }
 
   /** IRI of the snippet. */
@@ -85,7 +93,7 @@ export class ReadableSnippet {
     return this.parsed.metadata.kind;
   }
 
-  /** The time field, the fields, the time window, `mutable` and labels. */
+  /** The time field, the fields, the time window, `immutable` and labels. */
   get metadata(): SnippetMetadata {
     return this.parsed.metadata;
   }
@@ -117,7 +125,7 @@ export class ReadableSnippet {
     throw new Error(`unknown field ${JSON.stringify(key)}; the fields are ${fields.map((f) => f.localName).join(', ')}`);
   }
 
-  /** The summary stored in the snippet for a field. */
+  /** The summary stored in the snippet for a field (only an immutable snippet has one). */
   summary(field: string): FieldSummary | undefined {
     return this.resolveField(field).summary;
   }
@@ -137,60 +145,44 @@ export class ReadableSnippet {
     return new URL(dataFile, this.ctx.baseIRI).href;
   }
 
-  /** Read the metadata document again; true when it changed. */
-  async refresh(signal?: AbortSignal): Promise<boolean> {
-    if (this.origin.type === 'http') {
-      const headers: Record<string, string> = { Accept: ACCEPT };
-      if (this.origin.etag) headers['If-None-Match'] = this.origin.etag;
-      const response = await this.ctx.fetch(this.origin.url, { headers, signal });
-      if (response.status === 304) return false;
-      if (!response.ok) throw new Error(`could not fetch ${this.origin.url}: HTTP ${response.status}`);
-      const store = await parseRdf(await response.text(), {
-        contentType: response.headers.get('content-type'),
-        filename: this.origin.url,
-        baseIRI: this.ctx.baseIRI,
-      });
-      this.replace(store);
-      this.origin = { ...this.origin, etag: response.headers.get('etag') ?? undefined };
-      return true;
-    }
-    if (this.origin.type === 'file') {
-      const etag = await localEtag(this.origin.path);
-      if (etag === this.origin.etag) return false;
-      const store = await parseRdf(await readLocalText(this.origin.path), { filename: this.origin.path, baseIRI: this.ctx.baseIRI });
-      this.replace(store);
-      this.origin = { ...this.origin, etag };
-      return true;
-    }
-    return false;
+  /** Read the metadata document again (ldfetch follows HTTP caching): the description of a growing snippet only gains `tss:immutable true` and summaries. */
+  async refresh(): Promise<void> {
+    if (this.origin.type === 'dataset') return;
+    const document = await loadDocument(this.origin.url, {
+      loader: this.ctx.loader,
+      localFiles: this.origin.type === 'file',
+      headers: this.ctx.headers,
+    });
+    this.replace(document.store, document.messages);
   }
 
-  protected replace(store: Store): void {
+  protected replace(store: Store, messages?: Quad[][]): void {
     this.store = store;
+    if (messages) this.messages = messages;
     this.parsed = parseSnippet(store, this.ctx.snippet ?? this.parsed.metadata.id);
     this.fieldIndex = undefined;
   }
 
-  /** The points of the snippet after the first `skip` rows, as stored. */
-  async *points(options: { skip: number; strict: boolean; state?: PassState; signal?: AbortSignal }): AsyncIterable<RawPoint> {
+  /** All the points of the snippet, as stored. */
+  async *points(options: { skip?: number; strict?: boolean; signal?: AbortSignal } = {}): AsyncIterable<RawPoint> {
     const meta = this.metadata;
+    const skip = options.skip ?? 0;
     switch (meta.kind) {
       case 'EmbeddedRDF':
-        yield* embeddedRdfPoints(this.store, this.parsed).slice(options.skip);
+        yield* embeddedRdfPoints(this.store, this.parsed).slice(skip);
         return;
       case 'EmbeddedJSON':
-        yield* embeddedJsonPoints(this.store, this.parsed).slice(options.skip);
+        yield* embeddedJsonPoints(this.store, this.parsed).slice(skip);
         return;
       default: {
-        const response = await openData(this.dataFileIri(), this.ctx, { etag: options.state?.etag, signal: options.signal });
-        if (response.notModified) return;
-        if (options.state) options.state.etag = response.etag;
+        const response = await openData(this.dataFileIri(), this.ctx, { signal: options.signal });
+        const params = { skip, strict: options.strict ?? false };
         if (meta.kind === 'CSV') {
-          yield* csvPoints(meta, response.chunks(), options);
+          yield* csvPoints(meta, response.chunks(), params);
         } else if (meta.kind === 'Arrow') {
-          yield* arrowPoints(meta, await collect(response.chunks()), options);
+          yield* arrowPoints(meta, await collect(response.chunks()), params);
         } else {
-          yield* parquetPoints(meta, await collect(response.chunks()), options);
+          yield* parquetPoints(meta, await collect(response.chunks()), params);
         }
       }
     }
@@ -259,20 +251,40 @@ export class ReadableSnippet {
     return new Reading(this, raw.time, values);
   }
 
-  private async *pass(plan: Plan, state: PassState, strict: boolean, signal?: AbortSignal): AsyncGenerator<Reading> {
-    for await (const raw of this.points({ skip: state.rows, strict, state, signal })) {
-      if (strict && this.metadata.until) {
-        // A writer adds the data before it widens the window: a point after the window is
-        // not yet announced, so wait for the next poll instead of skipping it for good.
-        const instant = tryInstantOf(raw.time);
-        if (instant !== null && instant >= toInstant(this.metadata.until)) {
-          state.etag = undefined;
-          return;
-        }
+  /** The follower of a growing snippet, or nothing when it cannot be followed (it is in memory). */
+  private createFollower(): Follower | undefined {
+    if (this.origin.type === 'dataset') return undefined;
+    const meta = this.metadata;
+    switch (meta.kind) {
+      case 'CSV':
+        return new CsvFollower(meta, new ByteSource(this.dataFileIri(), this.ctx));
+      case 'Arrow':
+        return new ArrowFollower(meta, new ByteSource(this.dataFileIri(), this.ctx));
+      case 'EmbeddedRDF': {
+        const id = this.id;
+        return new RdfLogFollower(
+          new ByteSource(this.origin.url, this.ctx),
+          this.ctx.baseIRI,
+          (quads) => embeddedRdfPoints(new Store(quads), this.parsed),
+          (quads) =>
+            quads.some(
+              (q) =>
+                q.subject.value === id &&
+                ((q.predicate.value === tss('immutable') && isTrue(q.object.value)) || (q.predicate.value === tss('mutable') && !isTrue(q.object.value))),
+            ),
+        );
       }
-      state.rows++;
-      const reading = this.toReading(plan, raw, state);
-      if (reading) yield reading;
+      case 'EmbeddedJSON': {
+        const seen = new Seen();
+        return {
+          poll: async (): Promise<PollResult> => {
+            await this.refresh();
+            return { points: seen.fresh(embeddedJsonPoints(this.store, this.parsed)), ended: this.metadata.immutable };
+          },
+        };
+      }
+      default:
+        return undefined;
     }
   }
 
@@ -283,18 +295,43 @@ export class ReadableSnippet {
    */
   async *read(options: ReadOptions = {}): AsyncGenerator<Reading> {
     const plan = await this.plan(options);
-    const state: PassState = { rows: 0, reachedUntil: false };
-    if (!options.follow) {
-      yield* this.pass(plan, state, false, options.signal);
+    const state: PassState = { reachedUntil: false };
+    const follower = options.follow && !this.metadata.immutable ? this.createFollower() : undefined;
+    if (!follower) {
+      for await (const raw of this.points({ signal: options.signal })) {
+        const reading = this.toReading(plan, raw, state);
+        if (reading) yield reading;
+      }
       return;
     }
-    const interval = typeof options.follow === 'object' && options.follow.interval ? durationToMs(options.follow.interval) : 10_000;
+
+    const explicit = typeof options.follow === 'object' && options.follow.interval ? durationToMs(options.follow.interval) : undefined;
+    const seen = new Seen();
+    const embedded = this.metadata.kind === 'EmbeddedRDF' || this.metadata.kind === 'EmbeddedJSON';
     for (let round = 0; ; round++) {
       if (options.signal?.aborted) return;
-      if (round > 0) await this.refresh(options.signal);
-      yield* this.pass(plan, state, this.metadata.mutable, options.signal);
-      if (!this.metadata.mutable || state.reachedUntil || options.signal?.aborted) return;
-      await sleep(interval, options.signal);
+      let ended = false;
+      // an external snippet states in its metadata that it is immutable: read the data once more, and stop
+      if (round > 0 && !embedded) {
+        await this.refresh();
+        ended = this.metadata.immutable;
+      }
+      const result = await follower.poll(options.signal);
+      if (result.quads) {
+        if (result.replaced) this.replace(new Store(result.quads));
+        else {
+          this.store.addQuads(result.quads);
+          this.replace(this.store);
+        }
+      }
+      if (embedded) ended = result.ended || this.metadata.immutable;
+      else if (result.ended) ended = true;
+      for (const raw of seen.fresh(result.points)) {
+        const reading = this.toReading(plan, raw, state);
+        if (reading) yield reading;
+      }
+      if (ended || state.reachedUntil || options.signal?.aborted) return;
+      await sleep(explicit ?? Math.max(follower.maxAgeMs ?? 10_000, 1000), options.signal);
     }
   }
 

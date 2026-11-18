@@ -1,12 +1,12 @@
 import { Store } from 'n3';
 import { buildStore } from './create.js';
 import { NotWritableError } from './errors.js';
+import { loadDocument, type RdfLoader } from './loader.js';
 import { parseSnippet } from './metadata.js';
 import { isExternalKind } from './ns.js';
-import { iriToPath, localEtag, pathToIri, readLocalText } from './platform.js';
+import { iriToPath, pathToIri } from './platform.js';
 import type { Dataset } from './rdf.js';
-import { parseRdf } from './rdf.js';
-import { ACCEPT, ReadableSnippet, type Origin, type SnippetContext } from './readable.js';
+import { ReadableSnippet, type Origin, type SnippetContext } from './readable.js';
 import type { UnitConverter } from './units.js';
 import type { CreateOptions } from './types.js';
 import { WritableSnippet } from './writable.js';
@@ -14,8 +14,12 @@ import { WritableSnippet } from './writable.js';
 export interface FetchOptions {
   /** IRI of the snippet, if the document has several. */
   snippet?: string;
-  /** A custom fetch, e.g. with authentication. */
+  /** A custom fetch for the data files, e.g. with authentication. */
   fetch?: typeof fetch;
+  /** Reads the metadata document: your own ldfetch, e.g. with another cache. Default: a shared ldfetch. */
+  loader?: RdfLoader;
+  /** Headers for the requests of the default ldfetch, e.g. `Authorization`. */
+  headers?: Record<string, string>;
   /** Whether the document may refer to local files. Default `false`. */
   localFiles?: boolean;
   /** Converts units; default: eyemind with QUDT. */
@@ -30,6 +34,8 @@ export interface OpenOptions {
   /** Base IRI of a `Dataset`, to resolve a relative `tss:dataFile`. */
   baseIRI?: string;
   fetch?: typeof fetch;
+  loader?: RdfLoader;
+  headers?: Record<string, string>;
   localFiles?: boolean;
   unitConverter?: UnitConverter;
 }
@@ -37,24 +43,22 @@ export interface OpenOptions {
 const defaultFetch: typeof fetch = (...args) => globalThis.fetch(...args);
 
 export class Snippet {
-  /** Fetch a remote snippet over HTTP(S). */
+  /** Fetch a remote snippet over HTTP(S), with ldfetch: any RDF serialization, and RDF Message Logs. */
   static async fetch(source: string | URL, options: FetchOptions = {}): Promise<ReadableSnippet> {
     const url = source instanceof URL ? source.href : source;
     if (!/^https?:/i.test(url)) throw new Error('Snippet.fetch reads http(s) URLs; use Snippet.open for a local file');
-    const doFetch = options.fetch ?? defaultFetch;
-    const response = await doFetch(url, { headers: { Accept: ACCEPT } });
-    if (!response.ok) throw new Error(`could not fetch ${url}: HTTP ${response.status}`);
-    const baseIRI = response.url || url;
-    const store = await parseRdf(await response.text(), { contentType: response.headers.get('content-type'), filename: url, baseIRI });
+    const document = await loadDocument(url, { loader: options.loader, headers: options.headers });
     const ctx: SnippetContext = {
-      fetch: doFetch,
+      fetch: options.fetch ?? defaultFetch,
       allowLocal: options.localFiles ?? false,
-      baseIRI,
+      baseIRI: document.url,
       snippet: options.snippet,
       converter: options.unitConverter,
+      loader: options.loader,
+      headers: options.headers,
     };
-    const origin: Origin = { type: 'http', url, etag: response.headers.get('etag') ?? undefined };
-    return new ReadableSnippet(store, parseSnippet(store, options.snippet), origin, ctx);
+    const origin: Origin = { type: 'http', url };
+    return new ReadableSnippet(document.store, parseSnippet(document.store, options.snippet), origin, ctx, document.messages);
   }
 
   /** Open a snippet from a local file (Node) or an RDF/JS `Dataset`. */
@@ -62,14 +66,17 @@ export class Snippet {
   static async open(source: string | Dataset, options?: OpenOptions): Promise<ReadableSnippet>;
   static async open(source: string | Dataset, options: OpenOptions = {}): Promise<ReadableSnippet | WritableSnippet> {
     let store: Store;
+    let messages: ReadableSnippet['messages'] = [];
     let origin: Origin;
     let baseIRI = options.baseIRI;
     let path: string | undefined;
     if (typeof source === 'string') {
       path = /^file:/i.test(source) ? await iriToPath(source) : source;
       baseIRI = await pathToIri(path);
-      store = await parseRdf(await readLocalText(path), { filename: path, baseIRI });
-      origin = { type: 'file', path, etag: await localEtag(path) };
+      const document = await loadDocument(baseIRI, { loader: options.loader, localFiles: true });
+      store = document.store;
+      messages = document.messages;
+      origin = { type: 'file', url: baseIRI, path };
     } else {
       store = source instanceof Store ? source : new Store([...source]);
       origin = { type: 'dataset' };
@@ -80,9 +87,11 @@ export class Snippet {
       baseIRI,
       snippet: options.snippet,
       converter: options.unitConverter,
+      loader: options.loader,
+      headers: options.headers,
     };
     const parsed = parseSnippet(store, options.snippet);
-    if (!options.write) return new ReadableSnippet(store, parsed, origin, ctx);
+    if (!options.write) return new ReadableSnippet(store, parsed, origin, ctx, messages);
 
     let dataPath: string | undefined;
     if (isExternalKind(parsed.metadata.kind)) {
@@ -90,12 +99,13 @@ export class Snippet {
       if (!/^file:/i.test(iri)) throw new NotWritableError(`cannot write to ${iri}: only local data files can be written`);
       dataPath = await iriToPath(iri);
     }
-    return WritableSnippet.start(store, parsed, { type: 'dataset' }, ctx, { metadataFile: path, dataPath, fresh: false });
+    return WritableSnippet.start(store, parsed, { type: 'dataset' }, ctx, { metadataFile: path, dataPath, fresh: false }, messages);
   }
 
   /**
-   * Create a new snippet to append to. With `file`, the metadata is written to that file
-   * now and after every `append`; without it, use `serialize()`.
+   * Create a new growing snippet to append to. With `file`, the metadata is written to that
+   * file now (an RDF Message Log for an embedded RDF snippet, to which messages are appended);
+   * without it, use `serialize()`.
    */
   static async create(options: CreateOptions): Promise<WritableSnippet> {
     const { resolve, relative, dirname, basename, sep } = await import('node:path');
@@ -116,15 +126,16 @@ export class Snippet {
     } else if (metadataFile) {
       baseIRI = await pathToIri(metadataFile);
     }
-    // A Parquet file is written once, when the snippet is closed; it is frozen then.
-    const store = buildStore(options.kind === 'Parquet' ? { ...options, mutable: true } : options, dataFileRef);
+    // A Parquet file is written once, when the snippet is closed; it is immutable then.
+    const store = buildStore(options.immutable && options.kind !== 'Parquet' ? options : { ...options, immutable: false }, dataFileRef);
     const ctx: SnippetContext = { fetch: defaultFetch, allowLocal: true, baseIRI, snippet: options.id };
-    const snippet = await WritableSnippet.start(store, parseSnippet(store, options.id), { type: 'dataset' }, ctx, {
-      metadataFile,
-      dataPath,
-      fresh: true,
-      prefixes: options.prefixes,
-    });
+    const snippet = await WritableSnippet.start(
+      store,
+      parseSnippet(store, options.id),
+      { type: 'dataset' },
+      ctx,
+      { metadataFile, dataPath, fresh: true, prefixes: options.prefixes, summaries: options.summaries },
+    );
     await snippet.persistNow();
     return snippet;
   }

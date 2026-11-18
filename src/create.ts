@@ -1,9 +1,8 @@
 import { Store } from 'n3';
 import { RDF, RDFS, SNIPPET_CLASSES, isExternalKind, tss, xsd } from './ns.js';
-import { blankNode, literal, namedNode, quad } from './rdf.js';
+import { literal, namedNode, quad } from './rdf.js';
 import type { Quad, Term } from './rdf.js';
 import { localNameOf } from './metadata.js';
-import { formatInstant } from './time.js';
 import type { CreateOptions } from './types.js';
 
 const lit = (value: string, datatype: string) => literal(value, namedNode(datatype));
@@ -16,12 +15,11 @@ export function buildStore(options: CreateOptions, dataFileRef?: string): Store 
   const snippet = namedNode(options.id);
   const external = isExternalKind(options.kind);
   const needsColumnNames = options.kind !== 'EmbeddedRDF';
-  const mutable = options.mutable ?? true;
 
   add(snippet, RDF + 'type', namedNode(SNIPPET_CLASSES[options.kind]));
   if (options.label) add(snippet, RDFS + 'label', literal(options.label));
-  add(snippet, tss('mutable'), lit(String(mutable), xsd('boolean')));
-  add(snippet, tss('committedUntil'), lit(formatInstant(BigInt(Date.now()) * 1_000_000n), xsd('dateTimeStamp')));
+  // a growing snippet does not state tss:immutable: it is added when the snippet is ended
+  if (options.immutable) add(snippet, tss('immutable'), lit('true', xsd('boolean')));
   if (options.from) add(snippet, tss('from'), lit(options.from, xsd('dateTimeStamp')));
   if (options.until) add(snippet, tss('until'), lit(options.until, xsd('dateTimeStamp')));
   add(snippet, tss('timeField'), namedNode(options.timeField.id));
@@ -45,7 +43,6 @@ export function buildStore(options: CreateOptions, dataFileRef?: string): Store 
   }
   if (options.timeField.columnIndex !== undefined) add(time, tss('columnIndex'), lit(String(options.timeField.columnIndex), xsd('integer')));
 
-  const generated = lit(formatInstant(BigInt(Date.now()) * 1_000_000n), xsd('dateTimeStamp'));
   for (const f of options.fields) {
     const field = namedNode(f.id);
     add(snippet, tss('hasField'), field);
@@ -61,14 +58,6 @@ export function buildStore(options: CreateOptions, dataFileRef?: string): Store 
     if (f.describesField) add(field, tss('describesField'), namedNode(f.describesField));
     if (f.minimum !== undefined) add(field, tss('minimum'), lit(String(f.minimum), f.datatype ?? xsd('decimal')));
     if (f.maximum !== undefined) add(field, tss('maximum'), lit(String(f.maximum), f.datatype ?? xsd('decimal')));
-    if (options.summaries !== false) {
-      const summary = blankNode();
-      add(field, tss('summary'), summary);
-      add(summary, tss('missingValuePolicy'), namedNode(tss('ExcludeEmptyValues')));
-      add(summary, tss('count'), lit('0', xsd('integer')));
-      add(summary, tss('missing'), lit('0', xsd('integer')));
-      add(summary, tss('generatedAtTime'), generated);
-    }
   }
   return store;
 }

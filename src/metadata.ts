@@ -114,11 +114,16 @@ export function parseSnippet(ds: Dataset, snippetIri?: string): ParsedSnippet {
   if (!timeField) throw new ValidationError(`snippet ${termId(term)} has no tss:timeField`);
   if (!fieldTerms.has(timeField)) throw new ValidationError(`the time field ${timeField} of ${termId(term)} is not one of its fields`);
 
+  const isTrue = (value: string | undefined) => value === 'true' || value === '1';
+  // `tss:immutable true` ends a snippet. Earlier drafts stated `tss:mutable`: `false` is the same.
+  const legacyMutable = text(ds, term, tss('mutable'));
+  const immutable = isTrue(text(ds, term, tss('immutable'))) || kind === 'Parquet' || legacyMutable === 'false' || legacyMutable === '0';
+
   const metadata: SnippetMetadata = {
     id: termId(term),
     kind,
     labels: objectsOf(ds, term, RDFS + 'label').map((o) => o.value),
-    mutable: text(ds, term, tss('mutable')) === 'true' || text(ds, term, tss('mutable')) === '1',
+    immutable,
     timeField,
     fields,
     delimiter: text(ds, term, tss('delimiter')) ?? ',',
@@ -130,7 +135,6 @@ export function parseSnippet(ds: Dataset, snippetIri?: string): ParsedSnippet {
   };
   set('from', text(ds, term, tss('from')));
   set('until', text(ds, term, tss('until')));
-  set('committedUntil', text(ds, term, tss('committedUntil')));
   set('stepField', iriOrUndefined(ds, term, tss('stepField')));
   set('timeBase', text(ds, term, tss('timeBase')));
   set('timeStep', text(ds, term, tss('timeStep')));

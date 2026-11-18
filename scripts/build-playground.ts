@@ -24,9 +24,18 @@ await esbuild.build({
   sourcemap: true,
   chunkNames: 'chunks/[name]-[hash]',
   // the Node parts of the library (local files, locks) are only reached in Node
-  external: ['node:*'],
+  external: ['node:fs', 'node:fs/promises', 'node:path', 'node:os', 'node:crypto', 'node:child_process', 'node:module'],
   // eyemind keeps its QUDT profile out of its exports: the command line entry has it
-  alias: { 'eyemind-cli': join(root, 'node_modules', 'eyemind', 'src', 'cli.js') },
+  alias: {
+    'eyemind-cli': join(root, 'node_modules', 'eyemind', 'src', 'cli.js'),
+    // ldfetch (and the RDF parsers it loads) expect Node's core modules
+    http: 'stream-http',
+    https: 'https-browserify',
+    stream: 'stream-browserify',
+    'node:url': 'url',
+  },
+  // ... and the `process` and `Buffer` globals
+  inject: [join(root, 'scripts', 'shims', 'process.js'), join(root, 'scripts', 'shims', 'buffer.js')],
   define: { global: 'globalThis' },
   logLevel: 'info',
 });

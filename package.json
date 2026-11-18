@@ -1,0 +1,79 @@
+{
+  "name": "rdf-tss",
+  "version": "0.1.0",
+  "description": "Read, follow and write RDF Time Series Snippets (RDF-TSS) in Node and the browser",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:playground": "node tests/playground-browser.mjs",
+    "examples": "tsx scripts/build-examples.ts",
+    "examples:telraam": "node scripts/fetch-telraam.mjs",
+    "build:playground": "tsx scripts/build-playground.ts",
+    "build:site": "npm run examples && npm run build:playground",
+    "serve": "npm run build:site && npx --yes http-server _site -c-1 -o"
+  },
+  "dependencies": {
+    "@rdfjs/types": "^2.0.1",
+    "jsonld-streaming-parser": "^5.0.2",
+    "jsonld-streaming-serializer": "^4.0.0",
+    "n3": "^2.13.12"
+  },
+  "peerDependencies": {
+    "apache-arrow": ">=17",
+    "eyemind": "0.8.4",
+    "hyparquet": ">=1.30",
+    "hyparquet-writer": ">=0.18"
+  },
+  "peerDependenciesMeta": {
+    "apache-arrow": {
+      "optional": true
+    },
+    "eyemind": {
+      "optional": true
+    },
+    "hyparquet": {
+      "optional": true
+    },
+    "hyparquet-writer": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/n3": "^1.26.5",
+    "@types/node": "^25.0.0",
+    "@vitest/coverage-v8": "^5.1.1",
+    "apache-arrow": "^21.0.0",
+    "esbuild": "^0.28.2",
+    "eyemind": "0.8.4",
+    "hyparquet": "^1.33.1",
+    "hyparquet-writer": "^0.18.0",
+    "puppeteer-core": "^25.18.1",
+    "tsx": "^4.20.0",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pietercolpaert/rdf-tss-ts.git"
+  },
+  "license": "MIT"
+}

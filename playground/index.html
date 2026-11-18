@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rdf-tss playground</title>
+<meta name="description" content="Read RDF Time Series Snippets in your browser: charts, unit conversion with QUDT and eyemind, RDF Messages, and a comparison with the Telraam LDES.">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="intro">
+    <h1>rdf-tss playground</h1>
+    <p>Read <a href="https://knowledgeonwebscale.github.io/rdf-timeseriessnippets/">RDF Time Series Snippets</a> in your browser, in any format, with the
+      <a href="https://github.com/pietercolpaert/rdf-tss-ts">rdf-tss</a> library.</p>
+  </div>
+</header>
+
+<div class="url-bar-band">
+  <form id="url-form" class="url-bar" role="search" aria-label="Open an RDF Time Series Snippet">
+    <span class="url-bar-icon" aria-hidden="true">&#128200;</span>
+    <input id="url" type="text" spellcheck="false" autocomplete="off" placeholder="https://example.org/snippet.ttl" value="">
+    <button id="open" type="submit">Open</button>
+  </form>
+  <div id="examples" class="examples-row" aria-label="Examples"></div>
+</div>
+
+<main>
+  <p id="status" class="status" role="status">Loading the examples…</p>
+
+  <section id="result" hidden>
+    <div class="summary">
+      <h2 id="title"></h2>
+      <p id="subtitle" class="muted"></p>
+      <p id="description" class="muted"></p>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-chart" aria-selected="true" data-tab="chart">Chart</button>
+      <button role="tab" id="tab-table" aria-selected="false" data-tab="table">Table</button>
+      <button role="tab" id="tab-metadata" aria-selected="false" data-tab="metadata">Metadata</button>
+      <button role="tab" id="tab-messages" aria-selected="false" data-tab="messages">RDF Messages</button>
+      <button role="tab" id="tab-validate" aria-selected="false" data-tab="validate">Validate</button>
+      <button role="tab" id="tab-compare" aria-selected="false" data-tab="compare" hidden>Compared to the LDES</button>
+    </div>
+
+    <div id="panel-chart" class="panel"></div>
+    <div id="panel-table" class="panel" hidden></div>
+    <div id="panel-metadata" class="panel" hidden></div>
+    <div id="panel-messages" class="panel" hidden></div>
+    <div id="panel-validate" class="panel" hidden></div>
+    <div id="panel-compare" class="panel" hidden></div>
+
+    <details class="code" open>
+      <summary>The same in code</summary>
+      <pre id="code"></pre>
+    </details>
+  </section>
+</main>
+
+<footer>
+  <p>The RDF-TSS specification is a <em>living document</em>, not ready for implementation: this playground follows its drafts.
+     Units are converted with <a href="https://qudt.org/">QUDT</a> by <a href="https://github.com/eyereasoner/eyemind">eyemind</a>.
+     The Telraam data is open data of <a href="https://telraam.net/">Telraam</a> through its
+     <a href="https://ldes.telraam-api.net/measurements">Linked Data Event Stream</a>.</p>
+</footer>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

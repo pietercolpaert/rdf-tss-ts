@@ -200,12 +200,14 @@ export class ReadableSnippet {
     if (options.from !== undefined) plan.from = toInstant(options.from);
     if (options.until !== undefined) plan.until = toInstant(options.until);
 
-    const unit = options.unit ?? 'source';
-    if (unit !== 'source') {
-      const converter = this.ctx.converter ?? defaultUnitConverter();
-      for (const f of fields) {
-        if (f.unit && isNumericDatatype(f.datatype)) plan.conversions.set(f.id, await converter.conversion(f.unit, unit));
-      }
+    const choice = options.unit ?? 'source';
+    // one unit for every field, or a unit per field (by local name or IRI)
+    const perField = new Map<string, string>();
+    if (typeof choice === 'object') for (const [key, unit] of Object.entries(choice)) perField.set(this.resolveField(key).id, unit);
+    const converter = this.ctx.converter ?? defaultUnitConverter();
+    for (const f of fields) {
+      const unit = typeof choice === 'string' ? choice : (perField.get(f.id) ?? 'source');
+      if (unit !== 'source' && f.unit && isNumericDatatype(f.datatype)) plan.conversions.set(f.id, await converter.conversion(f.unit, unit));
     }
     return plan;
   }

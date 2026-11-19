@@ -84,6 +84,9 @@ try {
   await page.waitForFunction((i) => document.querySelectorAll('#panel-chart .chart h3')[i].textContent.includes('°F'), { timeout: 30000 }, index);
   const note = await page.$$eval('#panel-chart .chart .note', (nodes, i) => nodes[i].textContent, index);
   assert.match(note, /Converted from °C to °F/);
+  // the code sample names the unit per field: the other fields keep theirs
+  const code = await text('#code');
+  assert.match(code, /unit: \{ temp\w*: unit\('DEG_F'\) \}/, `the code sample: ${code}`);
   const tooltipValues = await page.$$eval('#panel-chart .chart svg', (svgs, i) => svgs[i].querySelectorAll('circle').length, index);
   assert.ok(tooltipValues > 0, 'the converted chart has points');
   console.log(`  ok units: ${before} -> °F (${note.slice(0, 60)}…)`);
@@ -107,6 +110,27 @@ try {
     await (await (await page.$$('#panel-chart .chart'))[speed].$('select')).select('http://qudt.org/vocab/unit/M-PER-SEC');
     await page.waitForFunction((i) => document.querySelectorAll('#panel-chart .chart h3')[i].textContent.includes('m/s'), { timeout: 30000 }, speed);
     console.log(`  ok months: ${subtitle}; speed km/h -> m/s`);
+
+    // months of hourly values are downsampled to a daily average, and zooming in shows the raw values
+    const chartStatus = (i) => page.$$eval('#panel-chart .chart .chart-status', (nodes, i) => nodes[i].textContent, i);
+    const counts = titles.findIndex((t) => !t.includes('km/h'));
+    assert.match(await chartStatus(counts), /average per day with a band from the minimum to the maximum/);
+    const box = await (await page.$$('#panel-chart .chart svg'))[counts].boundingBox();
+    const dragTo = async (from, to) => {
+      await page.mouse.move(box.x + box.width * from, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width * to, box.y + box.height / 2, { steps: 5 });
+      await page.mouse.up();
+    };
+    await dragTo(0.5, 0.6); // about 11 days: a point per 3 hours, or raw
+    await page.waitForFunction((i) => !/per day/.test(document.querySelectorAll('#panel-chart .chart .chart-status')[i].textContent), {}, counts);
+    const zoomed = await chartStatus(counts);
+    assert.match(zoomed, /average per (3 hours|6 hours|hour)|all shown/, zoomed);
+    await dragTo(0.4, 0.45); // about 4 days: the raw values
+    await page.waitForFunction((i) => /all shown/.test(document.querySelectorAll('#panel-chart .chart .chart-status')[i].textContent), {}, counts);
+    await page.$$eval('#panel-chart .chart .overlay', (nodes, i) => nodes[i].dispatchEvent(new MouseEvent('dblclick', { bubbles: true })), counts);
+    await page.waitForFunction((i) => /per day/.test(document.querySelectorAll('#panel-chart .chart .chart-status')[i].textContent), {}, counts);
+    console.log('  ok months: downsampled to days, zoom shows more, double-click zooms out');
   }
 
   // your own URL

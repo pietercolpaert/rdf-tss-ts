@@ -443,19 +443,24 @@ async function renderCompare(): Promise<void> {
 
 function renderCode(): void {
   const { url, snippet, selectedUnit } = state!;
-  const first = snippet.metadata.fields.find((f) => f.id !== snippet.metadata.timeField && f.id !== snippet.metadata.stepField);
-  const unit = [...selectedUnit.values()].find((u) => u);
-  const absolute = url;
+  const fields = snippet.metadata.fields;
+  const first = fields.find((f) => f.id !== snippet.metadata.timeField && f.id !== snippet.metadata.stepField);
+  // the units chosen in the charts, per field: fields have different dimensions
+  const chosen = fields.filter((f) => selectedUnit.get(f.id) && selectedUnit.get(f.id) !== f.unit);
+  const quote = (unit: string) => (unit === 'qudt' ? "'qudt'" : unit.startsWith(QUDT_UNIT) ? `unit('${unit.slice(QUDT_UNIT.length)}')` : `'${unit}'`);
+  const options = chosen.length ? `{ unit: { ${chosen.map((f) => `${/^[A-Za-z_]\w*$/.test(f.localName) ? f.localName : `'${f.localName}'`}: ${quote(selectedUnit.get(f.id)!)}`).join(', ')} } }` : '';
+  const helper = chosen.some((f) => selectedUnit.get(f.id)!.startsWith(QUDT_UNIT)) ? `const unit = (name: string) => '${QUDT_UNIT}' + name;\n\n` : '';
+  const shown = chosen[0] ?? first;
   $('code').textContent = `import { Snippet, toRDFMessages } from 'rdf-tss';
 
-const snippet = await Snippet.fetch('${absolute}');
+${helper}const snippet = await Snippet.fetch('${url}');
 
-for await (const reading of snippet.read(${unit ? `{ unit: '${unit === 'qudt' ? 'qudt' : unit}' }` : ''})) {
-  console.log(reading.time, reading.get('${first?.localName ?? 'field'}')?.value);
+for await (const reading of snippet.read(${options})) {
+  console.log(reading.time, reading.get('${shown?.localName ?? 'field'}')?.value);
 }
 
 // and as RDF Messages
-for await (const message of toRDFMessages(snippet.read(${unit ? `{ unit: '${unit}' }` : ''}))) {
+for await (const message of toRDFMessages(snippet.read(${options}))) {
   publish(message);
 }`;
 }

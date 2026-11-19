@@ -62,6 +62,19 @@ describe('unit conversion with QUDT and eyemind', () => {
       expect(first.get('status')!.value).toBe('ok');
     });
 
+    it('takes a unit per field, by local name or IRI, and leaves the other fields as published', async () => {
+      const [first] = await read({ unit: { temperature: unit('DEG_F'), 'https://example.org/fields/humidity': 'qudt' } });
+      expect(first.get('temperature')).toMatchObject({ value: '47.12', unit: unit('DEG_F') });
+      expect(first.get('humidity')).toMatchObject({ value: '61' });
+      const [other] = await read({ unit: { temperature: 'qudt' } });
+      expect(other.get('temperature')).toMatchObject({ value: '281.55', unit: unit('K') });
+    });
+
+    it('throws for a unit of another dimension in a per-field choice, and for an unknown field', async () => {
+      await expect(read({ unit: { temperature: unit('M') } })).rejects.toThrow(UnitConversionError);
+      await expect(read({ unit: { nope: unit('K') } })).rejects.toThrow(/field/);
+    });
+
     it('throws before reading when the target has another dimension', async () => {
       await expect(read({ unit: unit('M') })).rejects.toThrow(UnitConversionError);
     });

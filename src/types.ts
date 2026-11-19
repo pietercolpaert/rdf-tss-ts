@@ -71,6 +71,9 @@ export interface SnippetMetadata {
   producedBy?: string;
 }
 
+/** The unit to read a field in: as published, QUDT normalized, or a unit IRI. */
+export type UnitChoice = 'source' | 'qudt' | (string & {});
+
 /** Options of `read()`. */
 export interface ReadOptions {
   /** Included; an `xsd:dateTimeStamp` or a `Date`. Default: the start of the snippet. */
@@ -79,8 +82,12 @@ export interface ReadOptions {
   until?: string | Date;
   /** Fields to include, by local name or IRI. Default: all. */
   fields?: string[];
-  /** `'source'` (default), `'qudt'` (the QUDT normalized unit) or a unit IRI. */
-  unit?: 'source' | 'qudt' | (string & {});
+  /**
+   * `'source'` (default), `'qudt'` (the QUDT normalized unit) or a unit IRI, for every field with a
+   * unit; or an object with a unit per field (local name or IRI), where a field that is left out
+   * stays as published. A single unit IRI throws for a field of another dimension: use an object.
+   */
+  unit?: UnitChoice | Record<string, UnitChoice>;
   /** Keep polling for new points: `true` or `{ interval }`, an `xsd:duration` such as `'PT30S'`. Default: the `max-age` of the server, else 10 seconds. */
   follow?: boolean | { interval?: string };
   signal?: AbortSignal;

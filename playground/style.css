@@ -63,6 +63,12 @@ main { max-width: 74rem; margin: 0 auto; padding: 1.2rem 1.5rem 2rem; }
 .chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .chart .dot { stroke: white; stroke-width: 1.5; }
 .chart .cursor { stroke: #7a8c9c; stroke-dasharray: 3 3; }
+.chart .band { opacity: .2; stroke: none; }
+.chart .selection { fill: #3b679033; stroke: #3b6790; }
+.chart .overlay { cursor: crosshair; }
+.chart-tools { display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; font-size: .82rem; color: #536779; margin: .2rem 0; }
+.chart-tools .chart-status { flex: 1 1 24rem; }
+.chart-tools button { padding: .15rem .6rem; border: 1px solid var(--primary-light); border-radius: 4px; background: white; color: var(--primary); }
 .legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin: .4rem 0 0; font-size: .86rem; }
 .legend label { display: inline-flex; gap: .35rem; align-items: center; cursor: pointer; }
 .legend .swatch { width: .9rem; height: .25rem; border-radius: 2px; display: inline-block; }

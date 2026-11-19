@@ -4,7 +4,7 @@ A TypeScript library to read, follow and write [RDF Time Series Snippets](https:
 
 > **Status: first implementation of an API draft.** The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change. This version follows the proposal of [pull request #25](https://github.com/KNowledgeOnWebScale/rdf-timeseriessnippets/pull/25): a snippet *grows* until it is *ended* with `tss:immutable true`, and followers use plain HTTP (`Range`, `ETag`, `max-age`).
 
-**Try the [playground](https://pietercolpaert.github.io/rdf-tss-ts/)**: pick a dataset from the drop-down (months of Telraam traffic counts and speeds, and a day of weather in every format), see charts, convert units with QUDT, and see the RDF Messages. The Telraam data is read from the [Telraam LDES](https://ldes.telraam-api.net/measurements) as RDF Messages and turned into binary snippets, see [Telraam](#telraam).
+**Try the [playground](https://pietercolpaert.github.io/rdf-tss-ts/)**: pick a dataset from the drop-down (months of Telraam traffic counts and speeds, and a day of weather in every format), see charts (large series are downsampled to an average per day, with a min–max band; drag to zoom in on the raw values), convert units with QUDT, and see the RDF Messages. The Telraam data is read from the [Telraam LDES](https://ldes.telraam-api.net/measurements) as RDF Messages and turned into binary snippets, see [Telraam](#telraam).
 
 ## What is a snippet?
 
@@ -81,8 +81,18 @@ for await (const r of snippet.read({
 ```ts
 snippet.read();                          // unit: 'source' (default), exact text as published
 snippet.read({ unit: 'qudt' });          // converted to the QUDT normalized unit
-snippet.read({ unit: 'http://qudt.org/vocab/unit/DEG_F' });  // converted to a unit you choose
+snippet.read({ unit: 'http://qudt.org/vocab/unit/DEG_F' });  // every field with a unit, converted to a unit you choose
+
+// a snippet has fields of several dimensions: choose per field (local name or IRI);
+// fields that are left out stay as published
+snippet.read({ unit: {
+  temperature: 'http://qudt.org/vocab/unit/DEG_F',
+  windspeed: 'http://qudt.org/vocab/unit/M-PER-SEC',
+  pressure: 'qudt',
+} });
 ```
+
+A single unit IRI is for a snippet whose fields share a dimension: it throws `UnitConversionError` for a field of another dimension (use the per-field form, or `fields` to pick the fields it applies to).
 
 Conversion only applies to fields with a `tss:unit`. Converted values are numbers computed with the [QUDT](https://qudt.org/) unit catalog of [eyemind](https://github.com/eyereasoner/eyemind), so they are `xsd:double`s rounded to 12 significant digits; only `'source'` keeps the published text exactly. Converting to a unit of a different dimension throws `UnitConversionError`, and so does a unit that is not in the catalog.
 
@@ -248,7 +258,7 @@ In the future, writing could also target a remote location that supports POST (e
 | `from` | snippet start | included |
 | `until` | snippet end | excluded |
 | `fields` | all | fields to include, by local name or IRI |
-| `unit` | `'source'` | `'source'`, `'qudt'`, or a unit IRI |
+| `unit` | `'source'` | `'source'`, `'qudt'`, or a unit IRI for every field with a unit; or `{ [field]: 'source' \| 'qudt' \| unitIRI }` per field |
 | `follow` | `false` | `true` or `{ interval }` (an `xsd:duration`) |
 | `signal` | none | `AbortSignal` to stop |
 

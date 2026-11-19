@@ -21,6 +21,7 @@ export type {
   FieldSummary,
   RDFMessage,
   ReadOptions,
+  UnitChoice,
   ReadingInput,
   SnippetKind,
   SnippetMetadata,

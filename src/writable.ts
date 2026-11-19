@@ -2,16 +2,18 @@ import type { Store } from 'n3';
 import { Decimal } from './decimal.js';
 import { LockError, NotWritableError, ValidationError, makeReport, type ReportEntry } from './errors.js';
 import { isValidLexical, numberToLexical } from './lexical.js';
-import type { ParsedSnippet } from './metadata.js';
+import type { ParsedSource } from './metadata.js';
+import { pointFields } from './formats/embedded.js';
 import { RDF, tss, xsd } from './ns.js';
 import { acquireLock, appendLocal, localChunks, readHead, writeFileAtomic } from './platform.js';
 import type { Quad, Term } from './rdf.js';
 import { blankNode, literal, namedNode, objectOf, quad, serializeMessages, serializeMessagesTail, serializeRdf } from './rdf.js';
-import { ReadableSnippet, type Origin, type SnippetContext } from './readable.js';
-import { decodeChunks } from './sources/access.js';
-import { parseCsv } from './sources/csv.js';
+import type { NamedNode } from './rdf.js';
+import { ReadableSource, type Origin, type SourceContext } from './readable.js';
+import { decodeChunks } from './formats/access.js';
+import { parseCsv } from './formats/csv.js';
 import { formatInstant, formatTime, gridTime, instantOf, parseDuration, parseTime, toInstant, type Instant } from './time.js';
-import type { FieldMetadata, ReadingInput } from './types.js';
+import type { FieldMetadata, RowInput } from './types.js';
 import { csvLine } from './writers/csv.js';
 import { FieldStats } from './writers/summary.js';
 import { EOS_BYTES, arrowStreamBytes, endsWithEos, parquetBytes, recordBatchMessages, tableColumns } from './writers/tables.js';
@@ -27,24 +29,24 @@ interface NormalizedRow {
 }
 
 export interface WriterSetup {
-  /** The metadata file: written when the snippet is created, and where the specification allows a change. */
+  /** The metadata file: written when the source is created, and where the specification allows a change. */
   metadataFile?: string;
-  /** The local file with the points of an external snippet. */
+  /** The local file with the rows of an external source. */
   dataPath?: string;
-  /** A new snippet: its data file does not exist yet. */
+  /** A new source: its data file does not exist yet. */
   fresh: boolean;
   /** Prefixes for the Turtle of the metadata. */
   prefixes?: Record<string, string>;
-  /** Add a stored summary of every field when the snippet is ended. Default `true`. */
+  /** Add a stored summary of every field when the source is ended. Default `true`. */
   summaries?: boolean;
 }
 
 /**
- * A growing snippet that points can be appended to. Following the specification, a write
- * only adds points: the time window and the description do not change while the snippet
+ * A growing source that rows can be appended to. Following the specification, a write
+ * only adds rows: the time window and the description do not change while the source
  * grows, and the stored summaries and `tss:immutable true` are added when it is ended.
  */
-export class WritableSnippet extends ReadableSnippet {
+export class WritableSource extends ReadableSource {
   private setup: WriterSetup = { fresh: false };
   private release?: () => Promise<void>;
   private closed = false;
@@ -55,34 +57,34 @@ export class WritableSnippet extends ReadableSnippet {
   /** The column of a CSV file by position. */
   private csvColumns: (FieldMetadata | undefined)[] = [];
 
-  /** @internal Use `Snippet.open` or `Snippet.create`. */
+  /** @internal Use `Source.open` or `Source.create`. */
   static async start(
     store: Store,
-    parsed: ParsedSnippet,
+    parsed: ParsedSource,
     origin: Origin,
-    ctx: SnippetContext,
+    ctx: SourceContext,
     setup: WriterSetup,
     messages: Quad[][] = [],
-  ): Promise<WritableSnippet> {
-    const snippet = new WritableSnippet(store, parsed, origin, ctx, messages);
-    snippet.setup = setup;
+  ): Promise<WritableSource> {
+    const source = new WritableSource(store, parsed, origin, ctx, messages);
+    source.setup = setup;
     try {
-      await snippet.init();
+      await source.init();
     } catch (error) {
-      await snippet.release?.();
+      await source.release?.();
       throw error;
     }
-    return snippet;
+    return source;
   }
 
   private assertWritable(): void {
     const meta = this.metadata;
     if (meta.kind === 'Parquet' && !this.setup.fresh) throw new NotWritableError('a Parquet file is written once and cannot be appended to');
-    if (this.endedSnippet()) throw new NotWritableError(`snippet ${this.id} is immutable (tss:immutable true)`);
+    if (this.endedSource()) throw new NotWritableError(`source ${this.id} is immutable (tss:immutable true)`);
   }
 
-  /** A Parquet snippet is immutable by definition, but its writer still collects rows until it is closed. */
-  private endedSnippet(): boolean {
+  /** A Parquet source is immutable by definition, but its writer still collects rows until it is closed. */
+  private endedSource(): boolean {
     if (this.metadata.kind === 'Parquet' && this.setup.fresh) return this.closed;
     return this.metadata.immutable;
   }
@@ -92,22 +94,22 @@ export class WritableSnippet extends ReadableSnippet {
     const { metadataFile, dataPath, fresh } = this.setup;
     const meta = this.metadata;
     if (meta.kind === 'EmbeddedRDF' && metadataFile && !fresh && this.messages.length === 0) {
-      throw new NotWritableError('the metadata document of a growing embedded RDF snippet is an RDF Message Log: this document is not one');
+      throw new NotWritableError('the metadata document of a growing embedded RDF source is an RDF Message Log: this document is not one');
     }
     const lockTarget = metadataFile ?? dataPath;
     if (lockTarget) this.release = await acquireLock(lockTarget, (message) => new LockError(message));
 
-    for (const f of this.valueFields()) this.stats.set(f.id, new FieldStats(f));
+    for (const f of this.rowFields()) this.stats.set(f.id, new FieldStats(f));
 
     if (meta.kind !== 'EmbeddedRDF' && meta.kind !== 'EmbeddedJSON' && !dataPath) {
       throw new NotWritableError(`cannot write to ${this.dataFileIri()}: only local data files can be written`);
     }
-    if (meta.stepField && meta.kind !== 'CSV') throw new NotWritableError('time grids can only be written to CSV snippets');
+    if (meta.stepField && meta.kind !== 'CSV') throw new NotWritableError('time grids can only be written to CSV sources');
 
     if (meta.kind === 'EmbeddedRDF' && this.messages.length === 0) this.messages = [[...this.store]];
     if (meta.kind === 'CSV') await this.initCsv(fresh);
     if (meta.kind === 'Arrow' && fresh) {
-      // the schema message: the end-of-stream marker is only written when the snippet is ended
+      // the schema message: the end-of-stream marker is only written when the source is ended
       const stream = await arrowStreamBytes(this.columnsFor([]));
       await writeFileAtomic(dataPath!, endsWithEos(stream) ? stream.subarray(0, stream.length - EOS_BYTES.length) : stream);
     }
@@ -115,7 +117,8 @@ export class WritableSnippet extends ReadableSnippet {
     if (!fresh) await this.loadExisting();
   }
 
-  private valueFields(): FieldMetadata[] {
+  /** The fields with a value in a row: all but the time field and the step field. */
+  private rowFields(): FieldMetadata[] {
     const meta = this.metadata;
     return meta.fields.filter((f) => f.id !== meta.timeField && f.id !== meta.stepField);
   }
@@ -170,7 +173,7 @@ export class WritableSnippet extends ReadableSnippet {
     const meta = this.metadata;
     const timeField = meta.fields.find((f) => f.id === meta.timeField)!;
     const encoded = rows.map((r) => ({ time: r.time, values: this.encodeValues(r.values) }));
-    return tableColumns(timeField, this.valueFields(), encoded);
+    return tableColumns(timeField, this.rowFields(), encoded);
   }
 
   private encodeValues(values: Map<string, string>): Map<string, string> {
@@ -189,12 +192,12 @@ export class WritableSnippet extends ReadableSnippet {
     return out;
   }
 
-  /** Read the points that are already there: for the latest time and the stored summaries. */
+  /** Read the rows that are already there: for the latest time and the stored summaries. */
   private async loadExisting(): Promise<void> {
     const meta = this.metadata;
     const from = meta.from ? toInstant(meta.from) : undefined;
     const until = meta.until ? toInstant(meta.until) : undefined;
-    for await (const raw of this.points()) {
+    for await (const raw of this.rows()) {
       const instant = instantOf(raw.time);
       if (this.lastInstant === undefined || instant > this.lastInstant) this.lastInstant = instant;
       if ((from !== undefined && instant < from) || (until !== undefined && instant >= until)) continue;
@@ -211,9 +214,9 @@ export class WritableSnippet extends ReadableSnippet {
     return baseline && value ? baseline.add(value).toString() : text;
   }
 
-  private normalize(input: ReadingInput, index: number): NormalizedRow {
+  private normalize(input: RowInput, index: number): NormalizedRow {
     const problems: ReportEntry[] = [];
-    const where = `reading ${index + 1}`;
+    const where = `row ${index + 1}`;
     let time: string;
     if (input.time instanceof Date) {
       if (Number.isNaN(input.time.getTime())) throw new ValidationError(`${where} has an invalid Date as time`);
@@ -243,6 +246,18 @@ export class WritableSnippet extends ReadableSnippet {
       }
       values.set(field.id, text);
     }
+    if (this.metadata.kind === 'EmbeddedRDF') {
+      // a point states the time, its reading and the values of the describing fields of its field
+      for (const id of values.keys()) {
+        const f = this.metadata.fields.find((x) => x.id === id)!;
+        if (f.kind !== 'meta') continue;
+        if (f.describesField.length === 0) {
+          problems.push({ rule: 'not-stated', node: f.id, message: `${where}: the points of an embedded RDF source cannot state the values of ${f.localName}, a meta field that describes no value field` });
+        } else if (!f.describesField.some((target) => values.has(target))) {
+          problems.push({ rule: 'not-stated', node: f.id, message: `${where}: ${f.localName} describes a value field that has no value in this row, so there is no point to state it on` });
+        }
+      }
+    }
     if (problems.length) throw new ValidationError(problems[0].message, makeReport(problems));
     return { time, instant: instantOf(time), values };
   }
@@ -264,13 +279,13 @@ export class WritableSnippet extends ReadableSnippet {
   }
 
   /**
-   * Add one or more readings: all of them, or none. Checks the datatypes, the unique and
-   * increasing times and the time window, which is fixed while the snippet grows, and adds the
-   * points at the end of the data. The description of the snippet does not change.
+   * Add one or more rows: all of them, or none. Checks the datatypes, the unique and
+   * increasing times and the time window, which is fixed while the source grows, and adds the
+   * rows at the end of the data. The description of the source does not change.
    */
-  async append(input: ReadingInput | ReadingInput[]): Promise<void> {
-    if (this.closed) throw new NotWritableError('the snippet is closed');
-    if (this.endedSnippet()) throw new NotWritableError(`snippet ${this.id} is immutable (tss:immutable true)`);
+  async append(input: RowInput | RowInput[]): Promise<void> {
+    if (this.closed) throw new NotWritableError('the source is closed');
+    if (this.endedSource()) throw new NotWritableError(`source ${this.id} is immutable (tss:immutable true)`);
     const readings = Array.isArray(input) ? input : [input];
     if (readings.length === 0) return;
     const rows = readings.map((r, i) => this.normalize(r, i));
@@ -284,13 +299,13 @@ export class WritableSnippet extends ReadableSnippet {
       if (previous !== undefined && row.instant <= previous) {
         problems.push({
           rule: previous === row.instant ? 'unique-time' : 'time-order',
-          message: `reading ${i + 1} (${row.time}) is not after the previous point (${formatInstant(previous)}): times are unique and increase`,
+          message: `row ${i + 1} (${row.time}) is not after the previous row (${formatInstant(previous)}): times are unique and increase`,
         });
       }
       if ((from !== undefined && row.instant < from) || (until !== undefined && row.instant >= until)) {
         problems.push({
           rule: 'window',
-          message: `reading ${i + 1} (${row.time}) lies outside the time window of the snippet [${meta.from ?? ''}, ${meta.until ?? ''}): the window of a growing snippet is fixed, so start a new snippet`,
+          message: `row ${i + 1} (${row.time}) lies outside the time window of the source [${meta.from ?? ''}, ${meta.until ?? ''}): the window of a growing source is fixed, so start a new source`,
         });
       }
       previous = row.instant;
@@ -304,7 +319,7 @@ export class WritableSnippet extends ReadableSnippet {
       for (const [id, text] of row.values) this.stats.get(id)?.add(row.instant, text);
     }
     this.lastInstant = rows[rows.length - 1].instant;
-    // the description does not change, but the metadata document of an embedded JSON snippet holds the points
+    // the description does not change, but the metadata document of an embedded JSON source holds the rows
     if (meta.kind === 'EmbeddedJSON') await this.persist();
   }
 
@@ -336,7 +351,7 @@ export class WritableSnippet extends ReadableSnippet {
         return;
       }
       case 'Arrow': {
-        // complete record batches only, and no end-of-stream marker while the snippet grows
+        // complete record batches only, and no end-of-stream marker while the source grows
         const stream = await arrowStreamBytes(this.columnsFor(rows));
         await appendLocal(dataPath!, recordBatchMessages(stream));
         return;
@@ -347,38 +362,66 @@ export class WritableSnippet extends ReadableSnippet {
     }
   }
 
-  /** One message for each point, appended to the RDF Message Log. */
+  /**
+   * One message for each row, appended to the RDF Message Log: the source links with
+   * `tss:hasPoint` to one point for each value field with a value, which states the time, the
+   * value, and the values of the describing fields that describe its field.
+   */
   private async appendMessages(rows: NormalizedRow[]): Promise<void> {
-    const meta = this.metadata;
-    const snippet = this.parsed.term;
-    const timeTerm = this.parsed.fieldTerms.get(meta.timeField)!;
+    const { time, fields } = pointFields(this.parsed);
+    const source = this.parsed.term;
+    const valueFields = fields.filter((f) => f.kind === 'value');
+    const describers = (id: string) => fields.filter((f) => f.kind === 'meta' && f.describesField.includes(id));
     const added: Quad[][] = [];
     for (const row of rows) {
-      const point = blankNode();
-      const quads: Quad[] = [
-        quad(snippet as never, namedNode(tss('hasPoint')), point),
-        quad(point, namedNode(timeTerm.value), literal(row.time, namedNode(xsd('dateTimeStamp')))),
-      ];
-      for (const [id, text] of row.values) {
-        const f = meta.fields.find((x) => x.id === id)!;
-        const term = this.parsed.fieldTerms.get(id)!;
-        const value = f.language ? literal(text, f.language) : literal(text, namedNode(f.datatype));
-        quads.push(quad(point, namedNode(term.value), value));
+      const quads: Quad[] = [];
+      for (const f of valueFields) {
+        const text = row.values.get(f.id);
+        if (text === undefined) continue;
+        const point = blankNode();
+        quads.push(
+          quad(source as NamedNode, namedNode(tss('hasPoint')), point),
+          quad(point, namedNode(time.property), literal(row.time, namedNode(xsd('dateTimeStamp')))),
+          quad(point, namedNode(f.property), this.literalOf(f, text)),
+        );
+        for (const d of describers(f.id)) {
+          const described = row.values.get(d.id);
+          if (described !== undefined) quads.push(quad(point, namedNode(d.property), this.literalOf(d, described)));
+        }
       }
       added.push(quads);
     }
     const { metadataFile } = this.setup;
-    if (metadataFile) await appendLocal(metadataFile, await serializeMessagesTail(added, this.prefixes()));
+    if (metadataFile) await appendLocal(metadataFile, await serializeMessagesTail(added.map((m) => this.relative(m)), this.prefixes()));
     for (const quads of added) {
       this.store.addQuads(quads);
       this.messages.push(quads);
     }
   }
 
+  private literalOf(f: FieldMetadata, text: string) {
+    return f.language ? literal(text, f.language) : literal(text, namedNode(f.datatype));
+  }
+
+  /**
+   * The quads with the default field properties of an embedded source as relative IRIs
+   * (`<#columnName>`): they are made from the IRI of the metadata document, so they stay right
+   * wherever the document is published.
+   */
+  private relative(quads: Iterable<Quad>): Quad[] {
+    const base = this.baseIRI?.replace(/#.*$/, '');
+    const own = new Set(this.metadata.fields.filter((f) => f.defaultProperty && f.property && f.id !== this.metadata.timeField).map((f) => f.property!));
+    const list = [...quads];
+    if (!base || own.size === 0 || (this.metadata.kind !== 'EmbeddedRDF' && this.metadata.kind !== 'EmbeddedJSON')) return list;
+    const map = <T extends Quad['predicate'] | Quad['object']>(term: T): T =>
+      (term.termType === 'NamedNode' && own.has(term.value) && term.value.startsWith(base + '#') ? namedNode(term.value.slice(base.length)) : term) as T;
+    return list.map((q) => quad(q.subject, map(q.predicate), map(q.object), q.graph));
+  }
+
   private addJsonPoints(rows: NormalizedRow[]): void {
     const meta = this.metadata;
-    const snippet = this.parsed.term;
-    const existing = objectOf(this.store, snippet, tss('points'));
+    const source = this.parsed.term;
+    const existing = objectOf(this.store, source, tss('points'));
     const points: Record<string, string>[] = existing ? JSON.parse(existing.value) : [];
     const timeField = meta.fields.find((f) => f.id === meta.timeField)!;
     for (const row of rows) {
@@ -386,7 +429,7 @@ export class WritableSnippet extends ReadableSnippet {
       for (const [id, text] of row.values) object[meta.fields.find((x) => x.id === id)!.columnName!] = text;
       points.push(object);
     }
-    this.setObject(snippet, tss('points'), literal(JSON.stringify(points), namedNode(RDF + 'JSON')));
+    this.setObject(source, tss('points'), literal(JSON.stringify(points), namedNode(RDF + 'JSON')));
   }
 
   private setObject(subject: Term, predicate: string, object: Term | undefined): void {
@@ -394,10 +437,10 @@ export class WritableSnippet extends ReadableSnippet {
     if (object) this.store.addQuad(quad(subject as never, namedNode(predicate), object as never));
   }
 
-  /** The statements that end the snippet: `tss:immutable true` and the stored summaries. */
+  /** The statements that end the source: `tss:immutable true` and the stored summaries. */
   private endingQuads(): Quad[] {
-    const snippet = this.parsed.term;
-    const out: Quad[] = [quad(snippet as never, namedNode(tss('immutable')), literal('true', namedNode(xsd('boolean'))))];
+    const source = this.parsed.term;
+    const out: Quad[] = [quad(source as never, namedNode(tss('immutable')), literal('true', namedNode(xsd('boolean'))))];
     if (this.setup.summaries === false) return out;
     const now = BigInt(Date.now()) * 1_000_000n;
     const stamp = (text: string) => literal(text, namedNode(xsd('dateTimeStamp')));
@@ -436,16 +479,18 @@ export class WritableSnippet extends ReadableSnippet {
   }
 
   /**
-   * The metadata (and the embedded points) as Turtle, TriG, N-Triples, N-Quads or JSON-LD. A
-   * growing embedded RDF snippet is an RDF Message Log in Turtle: one message for the
-   * description, and one for each point.
+   * The metadata (and the embedded rows) as Turtle, TriG, N-Triples, N-Quads or JSON-LD. A
+   * growing embedded RDF source is an RDF Message Log in Turtle: one message for the
+   * description, and one for each row.
    */
   async serialize(mediaType = 'text/turtle', prefixes: Record<string, string> = {}): Promise<string> {
     const all = { ...this.prefixes(), ...prefixes };
     if (this.metadata.kind === 'EmbeddedRDF' && mediaType.split(';')[0].trim() === 'text/turtle' && this.messages.length > 0) {
-      return serializeMessages(this.messages, all);
+      return serializeMessages(this.messages.map((m) => this.relative(m)), all);
     }
-    return serializeRdf(this.store, mediaType, all);
+    // only Turtle and TriG can write the IRIs relative to the document
+    const turtle = /^(text\/turtle|application\/x-turtle|application\/trig)$/.test(mediaType.split(';')[0].trim());
+    return serializeRdf(turtle ? this.relative(this.store) : this.store, mediaType, all);
   }
 
   private async persist(): Promise<void> {
@@ -454,15 +499,15 @@ export class WritableSnippet extends ReadableSnippet {
     await writeFileAtomic(file, await this.serialize('text/turtle'));
   }
 
-  /** The metadata file, written for the first time. Used by `Snippet.create`. */
+  /** The metadata file, written for the first time. Used by `Source.create`. */
   async persistNow(): Promise<void> {
     await this.persist();
   }
 
   /**
-   * Release the lock. With `freeze`, the snippet is ended first: its last points are written,
+   * Release the lock. With `freeze`, the source is ended first: its last rows are written,
    * and `tss:immutable true` and the stored summaries are added, so that followers stop. A
-   * Parquet snippet is written here, and is always ended.
+   * Parquet source is written here, and is always ended.
    */
   async close(options: { freeze?: boolean } = {}): Promise<void> {
     if (this.closed) return;
@@ -475,7 +520,7 @@ export class WritableSnippet extends ReadableSnippet {
         const ending = this.endingQuads();
         if (this.metadata.kind === 'EmbeddedRDF') {
           const { metadataFile } = this.setup;
-          if (metadataFile) await appendLocal(metadataFile, await serializeMessagesTail([ending], this.prefixes()));
+          if (metadataFile) await appendLocal(metadataFile, await serializeMessagesTail([this.relative(ending)], this.prefixes()));
           this.messages.push(ending);
           this.store.addQuads(ending);
         } else {

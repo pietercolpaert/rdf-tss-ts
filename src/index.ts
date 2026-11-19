@@ -1,8 +1,8 @@
-export { Snippet, type FetchOptions, type OpenOptions } from './snippet.js';
-export { ReadableSnippet } from './readable.js';
-export { WritableSnippet } from './writable.js';
-export { Reading, Value } from './reading.js';
-export { toRDFMessages, sosaMapper, type ObservationMapper, type ObservationContext, type ToRDFMessagesOptions } from './messages.js';
+export { Source, type FetchOptions, type OpenOptions } from './source.js';
+export { ReadableSource } from './readable.js';
+export { WritableSource } from './writable.js';
+export { Row, Value } from './row.js';
+export { toRDFMessages, expansionHead, pointsOfRow, type Alignment, type ExpandOptions } from './expand.js';
 export {
   convertUnit,
   createEyemindUnitConverter,
@@ -17,14 +17,16 @@ export { ValidationError, NotWritableError, LockError, UnitConversionError, type
 export type {
   CreateField,
   CreateOptions,
+  FieldKind,
   FieldMetadata,
   FieldSummary,
   RDFMessage,
   ReadOptions,
   UnitChoice,
-  ReadingInput,
-  SnippetKind,
-  SnippetMetadata,
+  RowInput,
+  SourceKind,
+  SourceMetadata,
 } from './types.js';
 export type { Dataset } from './rdf.js';
 export { parseRdf, serializeRdf } from './rdf.js';
+export { expandTemplate } from './iri.js';

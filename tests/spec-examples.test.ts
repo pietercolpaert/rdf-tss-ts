@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Snippet, parseRdf, toRDFMessages, type Reading } from '../src/index.js';
+import { Source, parseRdf, toRDFMessages, type RDFMessage, type Row } from '../src/index.js';
 import { startServer, type MockServer } from './helpers/server.js';
 import { tempDir } from './helpers/fixtures.js';
 
@@ -15,54 +15,11 @@ const PREFIXES = `
 @prefix ex: <https://example.org/ex#> .
 `;
 
-const EXAMPLE_1 = `${PREFIXES}
-ex:snippet
-    a tss:EmbeddedRDFSnippet ;
-    rdfs:label "Conductivity readings"@en ;
-    tss:immutable true ;
-    tss:producedBy ex:producer ;
-    tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
-    tss:until "2024-05-13T00:00:00Z"^^xsd:dateTimeStamp ;
-    tss:timeField ex:time-field ;
-    tss:key ex:time-field ;
-    tss:hasField ex:time-field, ex:value-field .
+const TSS = 'https://w3id.org/tss#';
+const EX = 'https://example.org/ex#';
 
-ex:time-field a tss:Field ; rdfs:label "Observation time"@en ; tss:datatype xsd:dateTimeStamp .
-
-ex:value-field
-    a tss:Field ;
-    rdfs:label "Electrical conductivity"@en ;
-    tss:datatype xsd:double ;
-    tss:minimum "0"^^xsd:double ;
-    tss:maximum "10000"^^xsd:double ;
-    tss:observedProperty quantitykind:ElectricConductivity ;
-    tss:unit unit:MicroS-PER-CentiM ;
-    tss:sensor ex:sensor-1 ;
-    tss:featureOfInterest ex:feature-1 ;
-    tss:summary [
-        tss:missingValuePolicy tss:ExcludeEmptyValues ;
-        tss:count "5"^^xsd:integer ;
-        tss:missing "0"^^xsd:integer ;
-        tss:firstTime "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
-        tss:lastTime "2024-05-12T09:45:00Z"^^xsd:dateTimeStamp ;
-        tss:observedMinimum "4719.3"^^xsd:double ;
-        tss:observedMaximum "4810.5"^^xsd:double ;
-        tss:mean "4757.54"^^xsd:double ;
-        tss:median "4751.9"^^xsd:double ;
-        tss:generatedAtTime "2024-05-12T09:46:10Z"^^xsd:dateTimeStamp
-    ] .
-
-ex:sensor-1 rdfs:label "Conductivity sensor" .
-
-ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T09:15:00Z"^^xsd:dateTimeStamp ; ex:value-field "4719.3"^^xsd:double ] .
-ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ; ex:value-field "4810.5"^^xsd:double ] .
-ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T08:15:00Z"^^xsd:dateTimeStamp ; ex:value-field "4722.4"^^xsd:double ] .
-ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T08:30:00Z"^^xsd:dateTimeStamp ; ex:value-field "4751.9"^^xsd:double ] .
-ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T09:45:00Z"^^xsd:dateTimeStamp ; ex:value-field "4783.6"^^xsd:double ] .
-`;
-
-// the embedded example of the specification: a growing snippet is an RDF Message Log
-const EXAMPLE_LOG = `VERSION "1.2-messages"
+// The embedded example of the specification: a growing source, written as an RDF Message Log.
+const EMBEDDED_EXAMPLE = `VERSION "1.2-messages"
 PREFIX tss: <https://w3id.org/tss#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -71,67 +28,229 @@ PREFIX quantitykind: <http://qudt.org/vocab/quantitykind/>
 PREFIX unit: <http://qudt.org/vocab/unit/>
 PREFIX ex: <https://example.org/ex#>
 
-ex:snippet
-    a tss:EmbeddedRDFSnippet ;
+ex:source
+    a tss:EmbeddedRDFSource ;
     rdfs:label "Conductivity readings"@en ;
+    tss:producedBy ex:producer ;
     tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
     tss:until "2024-05-13T00:00:00Z"^^xsd:dateTimeStamp ;
     tss:timeField ex:time-field ;
-    tss:hasField ex:time-field, ex:value-field .
-ex:time-field a tss:Field ; tss:datatype xsd:dateTimeStamp .
-ex:value-field a tss:Field ; tss:datatype xsd:double ;
-    tss:observedProperty quantitykind:ElectricConductivity ; tss:unit unit:MicroS-PER-CentiM .
+    tss:key ex:time-field ;
+    tss:hasField ex:time-field,
+        ex:value-field .
+
+ex:time-field
+    a tss:MetaField ;
+    rdfs:label "Observation time"@en ;
+    tss:datatype xsd:dateTimeStamp .
+
+ex:value-field
+    a tss:ValueField ;
+    rdfs:label "Electrical conductivity"@en ;
+    tss:property ex:conductivity ;
+    tss:datatype xsd:double ;
+    tss:minimum "0"^^xsd:double ;
+    tss:maximum "10000"^^xsd:double ;
+    tss:observedProperty quantitykind:ElectricConductivity ;
+    tss:unit unit:MicroS-PER-CentiM ;
+    tss:sensor ex:sensor-1 ;
+    tss:featureOfInterest ex:feature-1 .
+
+ex:conductivity
+    rdfs:subPropertyOf tss:value .
 MESSAGE
-ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ; ex:value-field "4810.5"^^xsd:double ] .
+ex:source tss:hasPoint [
+    tss:time "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
+    ex:conductivity "4810.5"^^xsd:double
+] .
 MESSAGE
-ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T08:15:00Z"^^xsd:dateTimeStamp ; ex:value-field "4722.4"^^xsd:double ] .
+ex:source tss:hasPoint [
+    tss:time "2024-05-12T08:15:00Z"^^xsd:dateTimeStamp ;
+    ex:conductivity "4722.4"^^xsd:double
+] .
 MESSAGE
-ex:snippet tss:hasPoint [ ex:time-field "2024-05-12T08:30:00Z"^^xsd:dateTimeStamp ; ex:value-field "4751.9"^^xsd:double ] .
+ex:source tss:hasPoint [
+    tss:time "2024-05-12T08:30:00Z"^^xsd:dateTimeStamp ;
+    ex:conductivity "4751.9"^^xsd:double
+] .
+MESSAGE
+ex:source tss:hasPoint [
+    tss:time "2024-05-12T09:15:00Z"^^xsd:dateTimeStamp ;
+    ex:conductivity "4719.3"^^xsd:double
+] .
+MESSAGE
+ex:source tss:hasPoint [
+    tss:time "2024-05-12T09:45:00Z"^^xsd:dateTimeStamp ;
+    ex:conductivity "4783.6"^^xsd:double
+] .
 MESSAGE
 `;
 
-const EXAMPLE_4 = `${PREFIXES}
-ex:weather-snippet
-    a tss:EmbeddedRDFSnippet ;
+// The last message of the embedded example: it ends the source and adds the summary.
+const ENDING_MESSAGE = `ex:source tss:immutable true .
+
+ex:value-field tss:summary [
+    tss:missingValuePolicy tss:ExcludeEmptyValues ;
+    tss:count "5"^^xsd:integer ;
+    tss:missing "0"^^xsd:integer ;
+    tss:firstTime "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
+    tss:lastTime "2024-05-12T09:45:00Z"^^xsd:dateTimeStamp ;
+    tss:observedMinimum "4719.3"^^xsd:double ;
+    tss:observedMaximum "4810.5"^^xsd:double ;
+    tss:mean "4757.54"^^xsd:double ;
+    tss:median "4751.9"^^xsd:double ;
+    tss:generatedAtTime "2024-05-12T09:46:10Z"^^xsd:dateTimeStamp
+] .
+MESSAGE
+`;
+
+const MULTI_SENSOR = `${PREFIXES}
+ex:weather-source
+    a tss:EmbeddedRDFSource ;
     rdfs:label "Weather station readings"@en ;
     tss:immutable true ;
     tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
     tss:until "2024-05-12T09:00:00Z"^^xsd:dateTimeStamp ;
     tss:timeField ex:weather-time-field ;
-    tss:hasField ex:weather-time-field, ex:temperature-field, ex:humidity-field .
-ex:weather-time-field a tss:Field ; tss:datatype xsd:dateTimeStamp .
-ex:temperature-field a tss:Field ; tss:datatype xsd:double ;
-    tss:observedProperty quantitykind:Temperature ; tss:unit unit:DEG_C ;
-    tss:sensor ex:thermometer ; tss:featureOfInterest ex:outside-air .
-ex:humidity-field a tss:Field ; tss:datatype xsd:double ; tss:minimum "0"^^xsd:double ; tss:maximum "100"^^xsd:double ;
-    tss:observedProperty quantitykind:RelativeHumidity ; tss:unit unit:PERCENT_RH ;
-    tss:sensor ex:hygrometer ; tss:featureOfInterest ex:outside-air .
-ex:weather-snippet tss:hasPoint [ ex:weather-time-field "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ; ex:temperature-field "18.2"^^xsd:double ; ex:humidity-field "61.0"^^xsd:double ] .
-ex:weather-snippet tss:hasPoint [ ex:weather-time-field "2024-05-12T08:10:00Z"^^xsd:dateTimeStamp ; ex:temperature-field "18.4"^^xsd:double ] .
-ex:weather-snippet tss:hasPoint [ ex:weather-time-field "2024-05-12T08:20:00Z"^^xsd:dateTimeStamp ; ex:temperature-field "18.9"^^xsd:double ; ex:humidity-field "59.5"^^xsd:double ] .
+    tss:hasField ex:weather-time-field,
+        ex:temperature-field,
+        ex:humidity-field .
+
+ex:weather-time-field
+    a tss:MetaField ;
+    tss:datatype xsd:dateTimeStamp .
+
+ex:temperature-field
+    a tss:ValueField ;
+    tss:property ex:temperature ;
+    tss:datatype xsd:double ;
+    tss:observedProperty quantitykind:Temperature ;
+    tss:unit unit:DEG_C ;
+    tss:sensor ex:thermometer ;
+    tss:featureOfInterest ex:outside-air .
+
+ex:humidity-field
+    a tss:ValueField ;
+    tss:property ex:humidity ;
+    tss:datatype xsd:double ;
+    tss:minimum "0"^^xsd:double ;
+    tss:maximum "100"^^xsd:double ;
+    tss:observedProperty quantitykind:RelativeHumidity ;
+    tss:unit unit:PERCENT_RH ;
+    tss:sensor ex:hygrometer ;
+    tss:featureOfInterest ex:outside-air .
+
+ex:weather-source tss:hasPoint [
+    tss:time "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
+    ex:temperature "18.2"^^xsd:double
+], [
+    tss:time "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
+    ex:humidity "61.0"^^xsd:double
+] .
+
+ex:weather-source tss:hasPoint [
+    tss:time "2024-05-12T08:10:00Z"^^xsd:dateTimeStamp ;
+    ex:temperature "18.4"^^xsd:double
+] .
+
+ex:weather-source tss:hasPoint [
+    tss:time "2024-05-12T08:20:00Z"^^xsd:dateTimeStamp ;
+    ex:temperature "18.9"^^xsd:double
+], [
+    tss:time "2024-05-12T08:20:00Z"^^xsd:dateTimeStamp ;
+    ex:humidity "59.5"^^xsd:double
+] .
 `;
 
-const EXAMPLE_7 = `${PREFIXES}
-ex:json-snippet
-    a tss:EmbeddedJSONSnippet ;
+const DESCRIBING = `${PREFIXES}
+ex:two-series-source
+    a tss:EmbeddedRDFSource ;
+    tss:immutable true ;
+    tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
+    tss:until "2024-05-13T00:00:00Z"^^xsd:dateTimeStamp ;
+    tss:timeField ex:two-series-time-field ;
+    tss:key ex:two-series-time-field ;
+    tss:hasField ex:two-series-time-field,
+        ex:two-series-value-field,
+        ex:two-series-status-field .
+
+ex:two-series-time-field
+    a tss:MetaField ;
+    tss:datatype xsd:dateTimeStamp .
+
+ex:two-series-value-field
+    a tss:ValueField ;
+    tss:property ex:conductivity ;
+    tss:datatype xsd:double ;
+    tss:observedProperty quantitykind:ElectricConductivity ;
+    tss:unit unit:MicroS-PER-CentiM .
+
+ex:two-series-status-field
+    a tss:MetaField ;
+    tss:property ex:status ;
+    tss:datatype xsd:string ;
+    tss:describesField ex:two-series-value-field .
+
+ex:two-series-source tss:hasPoint [
+    tss:time "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
+    ex:conductivity "4810.5"^^xsd:double ;
+    ex:status "ok"^^xsd:string
+] .
+
+ex:two-series-source tss:hasPoint [
+    tss:time "2024-05-12T08:15:00Z"^^xsd:dateTimeStamp ;
+    ex:conductivity "4722.4"^^xsd:double ;
+    ex:status "estimated"^^xsd:string
+] .
+`;
+
+const JSON_ROWS = (rows: string) => `${PREFIXES}
+ex:json-source
+    a tss:EmbeddedJSONSource ;
+    tss:immutable false ;
     tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
     tss:until "2024-05-13T00:00:00Z"^^xsd:dateTimeStamp ;
     tss:timeField ex:json-time-field ;
-    tss:hasField ex:json-time-field, ex:json-value-field ;
-    tss:points """[
-        { "time": "2024-05-12T08:00:00Z", "value": "4810.5" },
-        { "time": "2024-05-12T08:15:00Z", "value": "4722.4" },
-        { "time": "2024-05-12T08:30:00Z", "value": 4751.9 },
-        { "time": "2024-05-12T09:15:00Z", "value": null },
-        { "time": "2024-05-12T09:45:00Z", "value": "4783.6" }
-      ]"""^^rdf:JSON .
-ex:json-time-field a tss:Field ; tss:columnName "time" ; tss:datatype xsd:dateTimeStamp .
-ex:json-value-field a tss:Field ; tss:columnName "value" ; tss:datatype xsd:double .
+    tss:hasField ex:json-time-field,
+        ex:json-value-field ;
+    tss:points """${rows}"""^^rdf:JSON .
+
+ex:json-time-field
+    a tss:MetaField ;
+    tss:columnName "time" ;
+    tss:datatype xsd:dateTimeStamp .
+
+ex:json-value-field
+    a tss:ValueField ;
+    tss:columnName "value" ;
+    tss:datatype xsd:double .
 `;
 
 const external = (cls: string, body: string) => `${PREFIXES}
-ex:snippet a tss:${cls} ; tss:immutable true ;
+ex:source a tss:${cls} ; tss:immutable true ;
 ${body}
+`;
+
+const CSV_EXAMPLE = `${PREFIXES}
+ex:csv-source
+    a tss:CSVSource ;
+    tss:immutable true ;
+    tss:from "2024-05-01T00:00:00Z"^^xsd:dateTimeStamp ;
+    tss:dataFile <data.csv> ;
+    tss:delimiter ";" ;
+    tss:timeField ex:csv-time-field ;
+    tss:hasField ex:csv-time-field,
+        ex:csv-value-field .
+
+ex:csv-time-field
+    a tss:MetaField ;
+    tss:columnName "time" ;
+    tss:datatype xsd:dateTimeStamp .
+
+ex:csv-value-field
+    a tss:ValueField ;
+    tss:columnName "value" ;
+    tss:datatype xsd:double .
 `;
 
 describe('examples of the specification', () => {
@@ -140,14 +259,15 @@ describe('examples of the specification', () => {
   let cleanup: () => Promise<void>;
   const open = async (name: string, turtle: string) => {
     await writeFile(join(dir, name), turtle);
-    return Snippet.fetch(`${server.url}/${name}`);
+    return Source.fetch(`${server.url}/${name}`);
   };
-  const values = (readings: Reading[], field = 'value') => readings.map((r) => r.get(field)?.value);
-  const all = async (it: AsyncIterable<Reading>) => {
-    const out: Reading[] = [];
+  const values = (rows: Row[], field = 'value') => rows.map((r) => r.get(field)?.value);
+  const all = async <T>(it: AsyncIterable<T>) => {
+    const out: T[] = [];
     for await (const r of it) out.push(r);
     return out;
   };
+  const ntriples = async (messages: RDFMessage[]) => Promise.all(messages.map((m) => m.serialize('application/n-triples')));
 
   beforeAll(async () => {
     ({ dir, cleanup } = await tempDir());
@@ -163,196 +283,288 @@ describe('examples of the specification', () => {
     await cleanup();
   });
 
-  it('example 1: an embedded snippet is read in time order, with its metadata', async () => {
-    const snippet = await open('example1.ttl', EXAMPLE_1);
-    expect(snippet.id).toBe('https://example.org/ex#snippet');
-    expect(snippet.metadata.fields.map((f) => f.localName)).toEqual(['time-field', 'value-field']);
-    expect(snippet.metadata.labels).toEqual(['Conductivity readings']);
-    const readings = await all(snippet.read());
-    expect(readings.map((r) => r.time)).toEqual([
+  it('the embedded example: an RDF Message Log of points, read in time order with the field property', async () => {
+    const source = await open('embedded.ttl', EMBEDDED_EXAMPLE);
+    expect(source.id).toBe(`${EX}source`);
+    expect(source.metadata.immutable).toBe(false);
+    expect(source.metadata.labels).toEqual(['Conductivity readings']);
+    expect(source.metadata.fields.map((f) => [f.localName, f.kind, f.property, f.defaultProperty])).toEqual([
+      ['time-field', 'meta', `${TSS}time`, true],
+      ['value-field', 'value', `${EX}conductivity`, false],
+    ]);
+    const rows = await all(source.read());
+    expect(rows.map((r) => r.time)).toEqual([
       '2024-05-12T08:00:00Z',
       '2024-05-12T08:15:00Z',
       '2024-05-12T08:30:00Z',
       '2024-05-12T09:15:00Z',
       '2024-05-12T09:45:00Z',
     ]);
-    expect(values(readings, 'value-field')).toEqual(['4810.5', '4722.4', '4751.9', '4719.3', '4783.6']);
-    expect(snippet.summary('value-field')).toMatchObject({ count: 5, observedMinimum: '4719.3', mean: '4757.54' });
-    expect((await snippet.validate()).results).toEqual([]);
+    expect(values(rows, 'value-field')).toEqual(['4810.5', '4722.4', '4751.9', '4719.3', '4783.6']);
+    expect((await source.validate()).results).toEqual([]);
   });
 
-  it('example 1 as a growing snippet: an RDF Message Log is read as the merge of its messages', async () => {
-    const snippet = await open('example1-log.ttl', EXAMPLE_LOG);
-    expect(snippet.metadata.immutable).toBe(false);
-    expect(snippet.metadata.fields.map((f) => f.localName)).toEqual(['time-field', 'value-field']);
-    const readings = await all(snippet.read());
-    expect(values(readings, 'value-field')).toEqual(['4810.5', '4722.4', '4751.9']);
-    expect((await snippet.validate()).results).toEqual([]);
+  it('the ending message makes the source immutable and adds the summary', async () => {
+    const source = await open('ended.ttl', EMBEDDED_EXAMPLE + ENDING_MESSAGE);
+    expect(source.metadata.immutable).toBe(true);
+    expect(source.summary('value-field')).toMatchObject({ count: 5, observedMinimum: '4719.3', mean: '4757.54' });
+    expect((await source.validate()).results).toEqual([]);
   });
 
-  it('example 2: expands into SOSA observations', async () => {
-    const snippet = await open('example2.ttl', EXAMPLE_1);
-    const messages = [];
-    for await (const message of toRDFMessages(snippet.read())) messages.push(message);
-    expect(messages).toHaveLength(5);
-    const turtle = await messages[0].serialize('application/n-triples');
-    expect(turtle).toContain('<http://www.w3.org/ns/sosa/observedProperty> <http://qudt.org/vocab/quantitykind/ElectricConductivity>');
-    expect(turtle).toContain('<http://www.w3.org/ns/sosa/madeBySensor> <https://example.org/ex#sensor-1>');
-    expect(turtle).toContain('<http://www.w3.org/ns/sosa/hasFeatureOfInterest> <https://example.org/ex#feature-1>');
-    expect(turtle).toContain('<http://qudt.org/schema/qudt/hasUnit> <http://qudt.org/vocab/unit/MicroS-PER-CentiM>');
-    expect(turtle).toContain('<http://purl.org/dc/terms/source> <https://example.org/ex#snippet>');
-    expect(turtle).toContain('"2024-05-12T08:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime>');
-    expect(turtle).toContain('"4810.5"^^<http://www.w3.org/2001/XMLSchema#double>');
-    // the description of the IRIs used comes once, with the first message, and has no TSS terms
-    expect(turtle).toContain('<https://example.org/ex#sensor-1> <http://www.w3.org/2000/01/rdf-schema#label> "Conductivity sensor"');
-    expect(turtle).not.toContain('w3id.org/tss');
-    expect(await messages[1].serialize('application/n-triples')).not.toContain('Conductivity sensor');
+  it('the expanded point: each point links to its field, and the time field gets its default property', async () => {
+    const source = await open('expanded.ttl', EMBEDDED_EXAMPLE);
+    const messages = await all(source.expand());
+    expect(messages).toHaveLength(6);
+    const [head, first] = await ntriples(messages.slice(0, 2));
+    expect(head).toContain(`<${EX}time-field> <${TSS}property> <${TSS}time>`);
+    // ex:conductivity is the publisher's own property: the expansion does not align it, the metadata does
+    expect(head.match(/<https:\/\/example.org\/ex#value-field> <https:\/\/w3id.org\/tss#property>/g)).toHaveLength(1);
+    expect(head).toContain(`<${EX}conductivity> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <${TSS}value>`);
+    expect(head).not.toContain(`<${TSS}hasPoint>`);
+    expect(first).toContain(`<${EX}source> <${TSS}hasPoint> _:`);
+    expect(first).toContain(`<${TSS}field> <${EX}value-field>`);
+    expect(first).toContain(`<${TSS}time> "2024-05-12T08:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTimeStamp>`);
+    expect(first).toContain(`<${EX}conductivity> "4810.5"^^<http://www.w3.org/2001/XMLSchema#double>`);
+    expect(first).not.toContain('sosa');
   });
 
-  it('example 2: can repeat or leave out the description', async () => {
-    const snippet = await open('example2b.ttl', EXAMPLE_1);
-    const every = [];
-    for await (const m of toRDFMessages(snippet.read(), { description: 'every' })) every.push(await m.serialize('application/n-triples'));
-    expect(every.every((m) => m.includes('Conductivity sensor'))).toBe(true);
-    const none = [];
-    for await (const m of toRDFMessages(snippet.read(), { description: 'none' })) none.push(await m.serialize('application/n-triples'));
-    expect(none.some((m) => m.includes('Conductivity sensor'))).toBe(false);
+  it('the derived observation: with align, the expansion also writes what a reasoner derives', async () => {
+    const source = await open('derived.ttl', EMBEDDED_EXAMPLE);
+    const [, first] = await ntriples(await all(source.expand({ align: ['sosa', 'saref'] })));
+    const SOSA = 'http://www.w3.org/ns/sosa/';
+    expect(first).toContain(`<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <${SOSA}Observation>`);
+    expect(first).toContain(`<${SOSA}resultTime> "2024-05-12T08:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTimeStamp>`);
+    expect(first).toContain(`<${SOSA}hasSimpleResult> "4810.5"^^<http://www.w3.org/2001/XMLSchema#double>`);
+    expect(first).toContain(`<${SOSA}observedProperty> <http://qudt.org/vocab/quantitykind/ElectricConductivity>`);
+    expect(first).toContain(`<${SOSA}madeBySensor> <${EX}sensor-1>`);
+    expect(first).toContain(`<${SOSA}hasFeatureOfInterest> <${EX}feature-1>`);
+    expect(first).toContain('<http://qudt.org/schema/qudt/hasUnit> <http://qudt.org/vocab/unit/MicroS-PER-CentiM>');
+    expect(first).toContain('<https://saref.etsi.org/core/hasValue> "4810.5"');
+    expect(first).toContain('<https://saref.etsi.org/core/isMeasuredIn> <http://qudt.org/vocab/unit/MicroS-PER-CentiM>');
   });
 
-  it('example 2: takes the unit and value as read, after a conversion', async () => {
-    const snippet = await open('example2c.ttl', EXAMPLE_4);
-    const messages = [];
-    for await (const m of toRDFMessages(snippet.read({ unit: 'http://qudt.org/vocab/unit/DEG_F', fields: ['temperature-field'] }))) messages.push(m);
-    const text = await messages[0].serialize('application/n-triples');
-    expect(text).toContain('<http://qudt.org/schema/qudt/hasUnit> <http://qudt.org/vocab/unit/DEG_F>');
-    expect(text).toContain('"64.76"^^<http://www.w3.org/2001/XMLSchema#double>');
-    expect(text).not.toContain('DEG_C');
+  it('a property the publisher does not align is not a result', async () => {
+    const source = await open('unaligned.ttl', EMBEDDED_EXAMPLE.replace('ex:conductivity\n    rdfs:subPropertyOf tss:value .\n', ''));
+    const [, first] = await ntriples(await all(source.expand({ align: 'sosa' })));
+    expect(first).toContain('<http://www.w3.org/ns/sosa/resultTime>');
+    expect(first).not.toContain('hasSimpleResult');
   });
 
-  it('example 4: a point without a value gives no observation for that field', async () => {
-    const snippet = await open('example4.ttl', EXAMPLE_4);
-    const messages = [];
-    for await (const m of toRDFMessages(snippet.read())) messages.push(m);
-    expect(messages.map((m) => m.quads.filter((q) => q.predicate.value.endsWith('observedProperty')).length)).toEqual([2, 1, 2]);
-    const readings = await all(snippet.read());
-    expect(readings[1].get('humidity-field')).toBeUndefined();
+  it('the multi-sensor example: three rows of five points, one row without humidity', async () => {
+    const source = await open('multi.ttl', MULTI_SENSOR);
+    const rows = await all(source.read());
+    expect(rows.map((r) => r.time)).toEqual(['2024-05-12T08:00:00Z', '2024-05-12T08:10:00Z', '2024-05-12T08:20:00Z']);
+    expect(values(rows, 'temperature-field')).toEqual(['18.2', '18.4', '18.9']);
+    expect(values(rows, 'humidity-field')).toEqual(['61.0', undefined, '59.5']);
+    const messages = await all(toRDFMessages(source.read(), { metadata: false }));
+    expect(messages.map((m) => m.quads.filter((q) => q.predicate.value === `${TSS}hasPoint`).length)).toEqual([2, 1, 2]);
+    expect((await source.validate()).results).toEqual([]);
   });
 
-  it('example 7: reads JSON points, where a missing key and null are empty values', async () => {
-    const snippet = await open('example7.ttl', EXAMPLE_7);
-    const readings = await all(snippet.read());
-    expect(values(readings, 'json-value-field')).toEqual(['4810.5', '4722.4', '4751.9', undefined, '4783.6']);
+  it('the describing field: the status is read with its row, and stated on the point of the value', async () => {
+    const source = await open('describing.ttl', DESCRIBING);
+    expect(source.metadata.fields.map((f) => f.kind)).toEqual(['meta', 'value', 'meta']);
+    const rows = await all(source.read());
+    expect(values(rows, 'two-series-status-field')).toEqual(['ok', 'estimated']);
+    const [, first] = await ntriples(await all(source.expand()));
+    expect(first).toMatch(/_:(\S+) <https:\/\/example.org\/ex#status> "ok"/);
+    expect(first.match(/<https:\/\/w3id.org\/tss#hasPoint>/g)).toHaveLength(1);
+    expect((await source.validate()).results).toEqual([]);
   });
 
-  it('example 8: reads CSV with another delimiter, and an empty cell is an empty value', async () => {
-    const snippet = await open(
-      'example8.ttl',
-      external(
-        'CSVSnippet',
-        `    tss:from "2024-05-01T00:00:00Z"^^xsd:dateTimeStamp ; tss:dataFile <data.csv> ; tss:delimiter ";" ;
-    tss:timeField ex:t ; tss:hasField ex:t, ex:v .
-ex:t a tss:Field ; tss:columnName "time" ; tss:datatype xsd:dateTimeStamp .
-ex:v a tss:Field ; tss:columnName "value" ; tss:datatype xsd:double .`,
-      ),
+  it('the JSON rows: the default field property is made from the metadata document and its column name', async () => {
+    const source = await open(
+      'json.ttl',
+      JSON_ROWS(`[
+        { "time": "2024-05-12T08:00:00Z", "value": "4810.5" },
+        { "time": "2024-05-12T08:15:00Z", "value": "4722.4" },
+        { "time": "2024-05-12T08:30:00Z", "value": "4751.9" },
+        { "time": "2024-05-12T09:15:00Z", "value": "4719.3" },
+        { "time": "2024-05-12T09:45:00Z", "value": "4783.6" }
+      ]`),
     );
-    const readings = await all(snippet.read());
-    expect(readings.map((r) => r.time)).toEqual(['2024-05-01T00:00:00Z', '2024-05-01T00:15:00Z', '2024-05-01T00:30:00Z']);
-    expect(values(readings, 'v')).toEqual(['12.5', undefined, '12.7']);
+    const property = `${server.url}/json.ttl#value`;
+    expect(source.resolveField('json-value-field').property).toBe(property);
+    expect(values(await all(source.read()), 'json-value-field')).toEqual(['4810.5', '4722.4', '4751.9', '4719.3', '4783.6']);
+    const [head, first] = await ntriples(await all(source.expand()));
+    expect(head).not.toContain(`<${TSS}points>`);
+    expect(head).toContain(`<${EX}json-value-field> <${TSS}property> <${property}>`);
+    expect(head).toContain(`<${property}> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <${TSS}value>`);
+    expect(first).toContain(`<${property}> "4810.5"^^<http://www.w3.org/2001/XMLSchema#double>`);
+    expect((await source.validate()).results).toEqual([]);
   });
 
-  it('example 9: finds the columns by index when there is no header line', async () => {
-    const snippet = await open(
-      'example9.ttl',
+  it('JSON rows where a missing key and null are empty values', async () => {
+    const source = await open(
+      'json-empty.ttl',
+      JSON_ROWS(`[
+        { "time": "2024-05-12T08:00:00Z", "value": "4810.5" },
+        { "time": "2024-05-12T08:30:00Z", "value": 4751.9 },
+        { "time": "2024-05-12T09:15:00Z", "value": null },
+        { "time": "2024-05-12T09:45:00Z" }
+      ]`),
+    );
+    expect(values(await all(source.read()), 'json-value-field')).toEqual(['4810.5', '4751.9', undefined, undefined]);
+  });
+
+  it('the CSV example and its expansion, with the data file as base of the default property', async () => {
+    const source = await open('csv.ttl', CSV_EXAMPLE);
+    const rows = await all(source.read());
+    expect(rows.map((r) => r.time)).toEqual(['2024-05-01T00:00:00Z', '2024-05-01T00:15:00Z', '2024-05-01T00:30:00Z']);
+    expect(values(rows, 'csv-value-field')).toEqual(['12.5', undefined, '12.7']);
+    const property = `${server.url}/data.csv#value`;
+    const [head, first, second] = await ntriples(await all(source.expand()));
+    expect(head).toContain(`<${EX}csv-time-field> <${TSS}property> <${TSS}time>`);
+    expect(head).toContain(`<${EX}csv-value-field> <${TSS}property> <${property}>`);
+    expect(head).toContain(`<${property}> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <${TSS}value>`);
+    expect(first).toContain(`<${EX}csv-source> <${TSS}hasPoint>`);
+    expect(first).toContain(`<${TSS}field> <${EX}csv-value-field>`);
+    expect(first).toContain(`<${property}> "12.5"^^<http://www.w3.org/2001/XMLSchema#double>`);
+    // the empty cell is no point
+    expect(second).toContain('"12.7"');
+    expect((await source.validate()).results).toEqual([]);
+  });
+
+  it('the point IRIs of tss:aboutUrl', async () => {
+    const source = await open('about.ttl', CSV_EXAMPLE.replace('tss:columnName "value" ;', 'tss:columnName "value" ;\n    tss:aboutUrl "https://example.org/obs/value/{time}" ;'));
+    const [, first] = await ntriples(await all(source.expand()));
+    expect(first).toContain(`<${EX}csv-source> <${TSS}hasPoint> <https://example.org/obs/value/2024-05-01T00%3A00%3A00Z>`);
+    expect((await source.validate()).results).toEqual([]);
+
+    const clash = await open('about-clash.ttl', CSV_EXAMPLE.replace('tss:columnName "value" ;', 'tss:columnName "value" ;\n    tss:aboutUrl "obs/value" ;'));
+    const report = await clash.validate();
+    expect(report.results.map((r) => r.rule)).toContain('about-url');
+  });
+
+  it('finds the columns by index when there is no header line', async () => {
+    const source = await open(
+      'headerless.ttl',
       external(
-        'CSVSnippet',
+        'CSVSource',
         `    tss:dataFile <data-no-header.csv> ; tss:header false ; tss:timeField ex:t ; tss:hasField ex:t, ex:v .
-ex:t a tss:Field ; tss:columnName "time" ; tss:columnIndex 0 ; tss:datatype xsd:dateTimeStamp .
-ex:v a tss:Field ; tss:columnName "value" ; tss:columnIndex 1 ; tss:datatype xsd:double .`,
+ex:t a tss:MetaField ; tss:columnName "time" ; tss:columnIndex 0 ; tss:datatype xsd:dateTimeStamp .
+ex:v a tss:ValueField ; tss:columnName "value" ; tss:columnIndex 1 ; tss:datatype xsd:double .`,
       ),
     );
-    expect(values(await all(snippet.read()), 'v')).toEqual(['12.5', '12.7']);
+    expect(values(await all(source.read()), 'v')).toEqual(['12.5', '12.7']);
   });
 
-  it('example 12: computes the times of a time grid; steps without a row have no reading', async () => {
-    const snippet = await open(
-      'example12.ttl',
+  it('computes the times of a time grid; steps without a row have no row', async () => {
+    const source = await open(
+      'grid.ttl',
       external(
-        'CSVSnippet',
+        'CSVSource',
         `    tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ; tss:until "2024-05-13T00:00:00Z"^^xsd:dateTimeStamp ;
     tss:dataFile <grid.csv> ; tss:timeBase "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ; tss:timeStep "PT15M"^^xsd:duration ;
     tss:timeField ex:t ; tss:stepField ex:s ; tss:key ex:t ; tss:hasField ex:t, ex:s, ex:v .
-ex:t a tss:Field ; tss:datatype xsd:dateTimeStamp .
-ex:s a tss:Field ; tss:columnName "step" ; tss:datatype xsd:integer .
-ex:v a tss:Field ; tss:columnName "value" ; tss:datatype xsd:double .`,
+ex:t a tss:MetaField ; tss:datatype xsd:dateTimeStamp .
+ex:s a tss:MetaField ; tss:columnName "step" ; tss:datatype xsd:integer .
+ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double .`,
       ),
     );
-    const readings = await all(snippet.read());
-    expect(readings.map((r) => r.time)).toEqual([
+    const rows = await all(source.read());
+    expect(rows.map((r) => r.time)).toEqual([
       '2024-05-12T08:00:00Z',
       '2024-05-12T08:15:00Z',
       '2024-05-12T08:30:00Z',
       '2024-05-12T09:15:00Z',
       '2024-05-12T09:45:00Z',
     ]);
-    expect([...readings[0].fields()].map(([id]) => id)).toEqual(['https://example.org/ex#v']);
-    expect((await snippet.validate()).results).toEqual([]);
+    expect([...rows[0].fields()].map(([id]) => id)).toEqual(['https://example.org/ex#v']);
+    // the step is a meta field: it is not stated on the points
+    const [, first] = await ntriples(await all(source.expand()));
+    expect(first).not.toContain('#step');
+    expect((await source.validate()).results).toEqual([]);
   });
 
-  it('example 13: decodes values stated as differences from a baseline, exactly', async () => {
-    const snippet = await open(
-      'example13.ttl',
+  it('decodes values stated as differences from a baseline, exactly', async () => {
+    const source = await open(
+      'delta.ttl',
       external(
-        'CSVSnippet',
+        'CSVSource',
         `    tss:dataFile <delta.csv> ; tss:timeField ex:t ; tss:key ex:t ; tss:hasField ex:t, ex:v .
-ex:t a tss:Field ; tss:columnName "time" ; tss:datatype xsd:dateTimeStamp .
-ex:v a tss:Field ; tss:columnName "value" ; tss:datatype xsd:double ;
+ex:t a tss:MetaField ; tss:columnName "time" ; tss:datatype xsd:dateTimeStamp .
+ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double ;
     tss:valueEncoding tss:DeltaFromBaseline ; tss:baseline "4750"^^xsd:double .`,
       ),
     );
-    expect(values(await all(snippet.read()), 'v')).toEqual(['4810.5', '4722.4']);
+    expect(values(await all(source.read()), 'v')).toEqual(['4810.5', '4722.4']);
+    // the points state the decoded values
+    const [, first] = await ntriples(await all(source.expand()));
+    expect(first).toContain('"4810.5"^^<http://www.w3.org/2001/XMLSchema#double>');
   });
 
-  it('only reads the rows in the time window of an external snippet', async () => {
-    const snippet = await open(
+  it('only reads the rows in the time window of an external source', async () => {
+    const source = await open(
       'window.ttl',
       external(
-        'CSVSnippet',
+        'CSVSource',
         `    tss:from "2024-05-01T00:10:00Z"^^xsd:dateTimeStamp ; tss:until "2024-05-01T00:30:00Z"^^xsd:dateTimeStamp ;
     tss:dataFile <data.csv> ; tss:delimiter ";" ; tss:timeField ex:t ; tss:hasField ex:t, ex:v .
-ex:t a tss:Field ; tss:columnName "time" ; tss:datatype xsd:dateTimeStamp .
-ex:v a tss:Field ; tss:columnName "value" ; tss:datatype xsd:double .`,
+ex:t a tss:MetaField ; tss:columnName "time" ; tss:datatype xsd:dateTimeStamp .
+ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double .`,
       ),
     );
-    expect((await all(snippet.read())).map((r) => r.time)).toEqual(['2024-05-01T00:15:00Z']);
+    expect((await all(source.read())).map((r) => r.time)).toEqual(['2024-05-01T00:15:00Z']);
   });
 
   it('refuses a local data file in a fetched document unless localFiles is set', async () => {
     const turtle = external(
-      'CSVSnippet',
+      'CSVSource',
       `    tss:dataFile <file:///etc/hostname> ; tss:timeField ex:t ; tss:hasField ex:t .
-ex:t a tss:Field ; tss:columnName "time" ; tss:datatype xsd:dateTimeStamp .`,
+ex:t a tss:MetaField ; tss:columnName "time" ; tss:datatype xsd:dateTimeStamp .`,
     );
     await writeFile(join(dir, 'local.ttl'), turtle);
-    const snippet = await Snippet.fetch(`${server.url}/local.ttl`);
-    await expect(snippet.read().next()).rejects.toThrow(/local file/);
+    const source = await Source.fetch(`${server.url}/local.ttl`);
+    await expect(source.read().next()).rejects.toThrow(/local file/);
+  });
+
+  it('expands the values as published: a converted unit is refused', async () => {
+    const source = await open('converted.ttl', MULTI_SENSOR);
+    await expect(all(toRDFMessages(source.read({ unit: 'http://qudt.org/vocab/unit/DEG_F', fields: ['temperature-field'] })))).rejects.toThrow(/unit: 'source'/);
+  });
+
+  it('points out the class names of RDF Time Series Snippets', async () => {
+    const ds = await parseRdf(`${PREFIXES}\nex:s a tss:EmbeddedRDFSnippet ; tss:timeField ex:t ; tss:hasField ex:t .`);
+    await expect(Source.open(ds)).rejects.toThrow(/tss:EmbeddedRDFSnippet|EmbeddedRDFSnippet is an RDF Time Series Snippets class/);
   });
 
   it('reports what does not conform', async () => {
-    const snippet = await Snippet.open(
+    const source = await Source.open(
       await parseRdf(
         `${PREFIXES}
-ex:s a tss:EmbeddedRDFSnippet ; tss:mutable true ; tss:committedUntil "2024-05-12T09:00:00Z"^^xsd:dateTimeStamp ; tss:timeField ex:t ; tss:hasField ex:t, ex:v ; tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
-  tss:until "2024-05-12T09:00:00Z"^^xsd:dateTimeStamp ; tss:dataFile <x.csv> .
-ex:t a tss:Field ; tss:datatype xsd:dateTimeStamp .
-ex:v a tss:Field ; tss:datatype xsd:double .
-ex:s tss:hasPoint [ ex:t "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ; ex:v "twelve"^^xsd:double ] .
-ex:s tss:hasPoint [ ex:t "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ] .
-ex:s tss:hasPoint [ ex:t "2024-05-12T10:00:00Z"^^xsd:dateTimeStamp ; ex:v "1"^^xsd:integer ] .`,
+ex:s a tss:EmbeddedRDFSource ; tss:mutable true ; tss:committedUntil "2024-05-12T09:00:00Z"^^xsd:dateTimeStamp ; tss:timeField ex:t ; tss:hasField ex:t, ex:v, ex:w, ex:q ; tss:from "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
+  tss:until "2024-05-12T09:00:00Z"^^xsd:dateTimeStamp ; tss:dataFile <x.csv> ; tss:snippetDescription [] .
+ex:t a tss:ValueField ; tss:datatype xsd:dateTimeStamp .
+ex:v a tss:ValueField ; tss:property ex:v-value ; tss:datatype xsd:double .
+ex:w a tss:Field ; tss:property ex:w-value ; tss:datatype xsd:double ; tss:aboutUrl "w/{t}" .
+ex:q a tss:MetaField ; tss:property tss:value ; tss:datatype xsd:string ; tss:sensor ex:sensor ; tss:describesField ex:nothing .
+ex:s tss:hasPoint [ tss:time "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ; ex:v-value "twelve"^^xsd:double ] .
+ex:s tss:hasPoint [ tss:time "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ; ex:v-value "12"^^xsd:double ] .
+ex:s tss:hasPoint [ tss:time "2024-05-12T08:10:00Z"^^xsd:dateTimeStamp ; ex:v-value "1"^^xsd:double ; ex:w-value "2"^^xsd:double ] .
+ex:s tss:hasPoint [ tss:time "2024-05-12T10:00:00Z"^^xsd:dateTimeStamp ; ex:v-value "1"^^xsd:integer ] .
+ex:s tss:hasPoint [ tss:time "2024-05-12T08:20:00Z"^^xsd:dateTimeStamp ; ex:v "3"^^xsd:double ] .`,
       ),
     );
-    const report = await snippet.validate();
+    const report = await source.validate();
     expect(report.conforms).toBe(false);
     const rules = report.results.map((r) => r.rule);
-    expect(rules).toEqual(expect.arrayContaining(['removed-term', 'not-allowed', 'lexical-form', 'unique-time', 'window', 'value-datatype']));
+    expect(rules).toEqual(
+      expect.arrayContaining([
+        'removed-term',
+        'not-allowed',
+        'lexical-form',
+        'window',
+        'value-datatype',
+        'field-kind',
+        'meta-field',
+        'property',
+        'describes-field',
+        'about-url',
+        'point-value',
+        'unique-point',
+        'field-as-property',
+      ]),
+    );
   });
 });

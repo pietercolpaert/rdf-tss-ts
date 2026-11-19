@@ -1,5 +1,5 @@
 /**
- * Writes the example snippets of the playground, with the library's own writer:
+ * Writes the example sources of the playground, with the library's own writer:
  *
  *   - a weather day in every format (embedded RDF, embedded JSON, CSV, Arrow, Parquet),
  *   - a time grid, written by hand because the writer states each time,
@@ -12,8 +12,8 @@ import { existsSync } from 'node:fs';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Snippet, type CreateOptions, type ReadingInput, type SnippetKind } from '../src/index.js';
-import { convertLocation, ldesSize, readMembers, snippetSize, type Member } from './telraam.js';
+import { Source, type CreateOptions, type RowInput, type SourceKind } from '../src/index.js';
+import { convertLocation, ldesSize, readMembers, sourceSize, type Member } from './telraam.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = resolve(process.argv[2] ?? join(root, '_site', 'examples'));
@@ -31,14 +31,14 @@ export interface Example {
   description: string;
   /** Path of the metadata document, relative to the examples directory. */
   metadata: string;
-  kind: SnippetKind | 'CSV (time grid)';
+  kind: SourceKind | 'CSV (time grid)';
   /** Files of the example with their size in bytes, for display. */
   files?: string[];
 }
 
 /** Hourly readings of a day in Ghent: made up, but smooth and deterministic. */
-function weatherReadings(): ReadingInput[] {
-  const readings: ReadingInput[] = [];
+function weatherReadings(): RowInput[] {
+  const readings: RowInput[] = [];
   for (let hour = 0; hour < 24; hour++) {
     const phase = ((hour - 9) / 24) * 2 * Math.PI;
     readings.push({
@@ -75,9 +75,9 @@ function weatherOptions(kind: CreateOptions['kind'], name: string, extension?: s
 }
 
 async function weather(kind: CreateOptions['kind'], name: string, extension?: string): Promise<void> {
-  const snippet = await Snippet.create(weatherOptions(kind, name, extension));
-  await snippet.append(weatherReadings());
-  await snippet.close({ freeze: true });
+  const source = await Source.create(weatherOptions(kind, name, extension));
+  await source.append(weatherReadings());
+  await source.close({ freeze: true });
 }
 
 /** A time grid: the hours are steps from a base, so the file has no times. */
@@ -95,7 +95,7 @@ async function timeGrid(): Promise<void> {
 @prefix ex: <${ex}> .
 
 # The times of the rows are not in the file: row n is at timeBase + n × timeStep.
-ex:weather-grid a tss:CSVSnippet ;
+ex:weather-grid a tss:CSVSource ;
     rdfs:label "Weather in Ghent, ${day}, on a time grid" ;
     tss:immutable true ;
     tss:from "${day}T00:00:00Z"^^xsd:dateTimeStamp ;
@@ -107,11 +107,11 @@ ex:weather-grid a tss:CSVSnippet ;
     tss:stepField ex:step ;
     tss:hasField ex:time, ex:step, ex:temperature, ex:humidity .
 
-ex:time a tss:Field ; tss:datatype xsd:dateTimeStamp .
-ex:step a tss:Field ; tss:columnName "step" ; tss:datatype xsd:integer .
-ex:temperature a tss:Field ; rdfs:label "Air temperature" ; tss:columnName "temp" ; tss:datatype xsd:double ;
+ex:time a tss:MetaField ; tss:datatype xsd:dateTimeStamp .
+ex:step a tss:MetaField ; tss:columnName "step" ; tss:datatype xsd:integer .
+ex:temperature a tss:ValueField ; rdfs:label "Air temperature" ; tss:columnName "temp" ; tss:datatype xsd:double ;
     tss:observedProperty qk:Temperature ; tss:unit unit:DEG_C .
-ex:humidity a tss:Field ; rdfs:label "Relative humidity" ; tss:columnName "hum" ; tss:datatype xsd:integer ;
+ex:humidity a tss:ValueField ; rdfs:label "Relative humidity" ; tss:columnName "hum" ; tss:datatype xsd:integer ;
     tss:observedProperty qk:RelativeHumidity ; tss:unit unit:PERCENT .
 `,
   );
@@ -134,12 +134,12 @@ async function telraam(): Promise<void> {
     const id = location.split('/').pop()!;
     const own: Member[] = members.filter((m) => m.location === location);
     const ldes = await ldesSize(own);
-    const sizes: Record<string, Awaited<ReturnType<typeof snippetSize>>> = {};
+    const sizes: Record<string, Awaited<ReturnType<typeof sourceSize>>> = {};
     for (const [kind, suffix] of [['CSV', ''], ['Parquet', '-parquet'], ['Arrow', '-arrow']] as const) {
       const conversion = await convertLocation(members, location, { dir: directory, kind, name: `${id}${suffix}`, day });
-      sizes[kind] = await snippetSize(conversion);
+      sizes[kind] = await sourceSize(conversion);
     }
-    report.push({ id, location, series: 8, hours: 24, ldes, snippet: sizes });
+    report.push({ id, location, series: 8, hours: 24, ldes, source: sizes });
     add({
       id: `telraam-${id}`,
       title: `Telraam ${id}`,

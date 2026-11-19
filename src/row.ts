@@ -1,7 +1,8 @@
 import { toNativeValue } from './lexical.js';
-import type { ReadableSnippet } from './readable.js';
+import type { Term } from './rdf.js';
+import type { ReadableSource } from './readable.js';
 
-/** One value of a reading: its text, datatype and unit. */
+/** One value of a row: its text, datatype and unit. */
 export class Value {
   constructor(
     /** The lexical form. The exact published text when the unit is `'source'`. */
@@ -22,22 +23,27 @@ export class Value {
   }
 }
 
-/** One point of a snippet: its time and the values of its fields. */
-export class Reading {
+/**
+ * One row of a source: its time and the values of its fields. Each value of a value field
+ * is one reading, a point; the values of meta fields say something about the row or its points.
+ */
+export class Row {
   constructor(
-    /** The snippet this reading comes from. */
-    readonly snippet: ReadableSnippet,
+    /** The source this row comes from. */
+    readonly source: ReadableSource,
     /** The time as published: an `xsd:dateTimeStamp`. */
     readonly time: string,
     private readonly values: Map<string, Value>,
+    /** @internal The RDF node of the point of each value field, in an embedded RDF source. */
+    readonly nodes?: Map<string, Term>,
   ) {}
 
   /** The value of a field, by local name or IRI. `undefined` means there is no value. */
   get(field: string): Value | undefined {
-    return this.values.get(this.snippet.resolveField(field).id);
+    return this.values.get(this.source.resolveField(field).id);
   }
 
-  /** The values of this reading, by field IRI. */
+  /** The values of this row, by field IRI. */
   fields(): Iterable<[string, Value]> {
     return this.values.entries();
   }

@@ -12,26 +12,27 @@ import {
 } from './follow.js';
 import { isNumericDatatype } from './lexical.js';
 import { loadDocument, type RdfLoader } from './loader.js';
-import { parseSnippet, type ParsedSnippet } from './metadata.js';
+import { parseSource, type ParsedSource } from './metadata.js';
 import { tss, xsd } from './ns.js';
 import type { Dataset, Quad, Term } from './rdf.js';
-import { Reading, Value } from './reading.js';
-import { arrowPoints, parquetPoints } from './sources/table.js';
-import { collect, openData, type DataContext } from './sources/access.js';
-import { csvPoints } from './sources/csv.js';
-import { embeddedJsonPoints, embeddedRdfPoints } from './sources/embedded.js';
-import type { RawPoint } from './sources/rows.js';
+import { Row, Value } from './row.js';
+import { expansionHead, toRDFMessages, type ExpandOptions } from './expand.js';
+import { arrowRows, parquetRows } from './formats/table.js';
+import { collect, openData, type DataContext } from './formats/access.js';
+import { csvRows } from './formats/csv.js';
+import { embeddedJsonRows, embeddedRdfRows } from './formats/embedded.js';
+import type { RawRow } from './formats/rows.js';
 import { durationToMs, toInstant, tryInstantOf, type Instant } from './time.js';
 import { defaultUnitConverter, type UnitConversion, type UnitConverter } from './units.js';
-import type { FieldMetadata, FieldSummary, ReadOptions, SnippetMetadata, SnippetKind } from './types.js';
+import type { FieldMetadata, FieldSummary, RDFMessage, ReadOptions, SourceMetadata, SourceKind } from './types.js';
 
 export type Origin = { type: 'http'; url: string } | { type: 'file'; url: string; path: string } | { type: 'dataset' };
 
-export interface SnippetContext extends DataContext {
+export interface SourceContext extends DataContext {
   /** Base IRI to resolve a relative `tss:dataFile` against. */
   baseIRI?: string;
-  /** The snippet IRI to pick when the document has several. */
-  snippet?: string;
+  /** The source IRI to pick when the document has several. */
+  source?: string;
   converter?: UnitConverter;
   /** Reads the metadata document: ldfetch. */
   loader?: RdfLoader;
@@ -66,17 +67,17 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 
 const isTrue = (value: string | undefined) => value === 'true' || value === '1';
 
-/** A snippet that can be read. */
-export class ReadableSnippet {
+/** A source that can be read. */
+export class ReadableSource {
   protected store: Store;
-  protected parsed: ParsedSnippet;
+  protected parsed: ParsedSource;
   protected origin: Origin;
-  protected ctx: SnippetContext;
+  protected ctx: SourceContext;
   /** The messages of the metadata document when it is an RDF Message Log. */
   protected messages: Quad[][];
   private fieldIndex?: Map<string, FieldMetadata[]>;
 
-  constructor(store: Store, parsed: ParsedSnippet, origin: Origin, ctx: SnippetContext, messages: Quad[][] = []) {
+  constructor(store: Store, parsed: ParsedSource, origin: Origin, ctx: SourceContext, messages: Quad[][] = []) {
     this.store = store;
     this.parsed = parsed;
     this.origin = origin;
@@ -84,26 +85,31 @@ export class ReadableSnippet {
     this.messages = messages;
   }
 
-  /** IRI of the snippet. */
+  /** IRI of the source. */
   get id(): string {
     return this.parsed.metadata.id;
   }
 
-  get kind(): SnippetKind {
+  get kind(): SourceKind {
     return this.parsed.metadata.kind;
   }
 
   /** The time field, the fields, the time window, `immutable` and labels. */
-  get metadata(): SnippetMetadata {
+  get metadata(): SourceMetadata {
     return this.parsed.metadata;
   }
 
-  /** The RDF of the metadata document (and the embedded points). */
+  /** The RDF of the metadata document (and the embedded rows). */
   get dataset(): Dataset {
     return this.store;
   }
 
-  /** The RDF term of the snippet. */
+  /** The IRI of the metadata document: the base of a relative data file and of the default field properties of an embedded source. */
+  get baseIRI(): string | undefined {
+    return this.ctx.baseIRI;
+  }
+
+  /** The RDF term of the source. */
   get node(): Term {
     return this.parsed.term;
   }
@@ -125,27 +131,27 @@ export class ReadableSnippet {
     throw new Error(`unknown field ${JSON.stringify(key)}; the fields are ${fields.map((f) => f.localName).join(', ')}`);
   }
 
-  /** The summary stored in the snippet for a field (only an immutable snippet has one). */
+  /** The summary stored in the source for a field (only an immutable source has one). */
   summary(field: string): FieldSummary | undefined {
     return this.resolveField(field).summary;
   }
 
-  /** A report listing every rule that fails and where. */
+  /** A report listing every rule of the specification that fails, and where. */
   async validate(): Promise<Report> {
-    const { validateSnippet } = await import('./validate.js');
-    return validateSnippet(this);
+    const { validateSource } = await import('./validate.js');
+    return validateSource(this);
   }
 
-  /** The IRI of the data file of an external snippet, resolved against the metadata document. */
+  /** The IRI of the data file of an external source, resolved against the metadata document. */
   dataFileIri(): string {
     const dataFile = this.metadata.dataFile;
-    if (!dataFile) throw new ValidationError(`snippet ${this.id} has no tss:dataFile`);
+    if (!dataFile) throw new ValidationError(`source ${this.id} has no tss:dataFile`);
     if (/^[a-z][a-z0-9+.-]*:/i.test(dataFile)) return dataFile;
     if (!this.ctx.baseIRI) throw new ValidationError(`the data file ${JSON.stringify(dataFile)} is relative and there is no base IRI`);
     return new URL(dataFile, this.ctx.baseIRI).href;
   }
 
-  /** Read the metadata document again (ldfetch follows HTTP caching): the description of a growing snippet only gains `tss:immutable true` and summaries. */
+  /** Read the metadata document again (ldfetch follows HTTP caching): the description of a growing source only gains `tss:immutable true` and summaries. */
   async refresh(): Promise<void> {
     if (this.origin.type === 'dataset') return;
     const document = await loadDocument(this.origin.url, {
@@ -159,30 +165,30 @@ export class ReadableSnippet {
   protected replace(store: Store, messages?: Quad[][]): void {
     this.store = store;
     if (messages) this.messages = messages;
-    this.parsed = parseSnippet(store, this.ctx.snippet ?? this.parsed.metadata.id);
+    this.parsed = parseSource(store, { source: this.ctx.source ?? this.parsed.metadata.id, baseIRI: this.ctx.baseIRI });
     this.fieldIndex = undefined;
   }
 
-  /** All the points of the snippet, as stored. */
-  async *points(options: { skip?: number; strict?: boolean; signal?: AbortSignal } = {}): AsyncIterable<RawPoint> {
+  /** All the rows of the source, as stored: before the time window, value encodings and units are applied. */
+  async *rows(options: { skip?: number; strict?: boolean; signal?: AbortSignal } = {}): AsyncIterable<RawRow> {
     const meta = this.metadata;
     const skip = options.skip ?? 0;
     switch (meta.kind) {
       case 'EmbeddedRDF':
-        yield* embeddedRdfPoints(this.store, this.parsed).slice(skip);
+        yield* embeddedRdfRows(this.store, this.parsed).slice(skip);
         return;
       case 'EmbeddedJSON':
-        yield* embeddedJsonPoints(this.store, this.parsed).slice(skip);
+        yield* embeddedJsonRows(this.store, this.parsed).slice(skip);
         return;
       default: {
         const response = await openData(this.dataFileIri(), this.ctx, { signal: options.signal });
         const params = { skip, strict: options.strict ?? false };
         if (meta.kind === 'CSV') {
-          yield* csvPoints(meta, response.chunks(), params);
+          yield* csvRows(meta, response.chunks(), params);
         } else if (meta.kind === 'Arrow') {
-          yield* arrowPoints(meta, await collect(response.chunks()), params);
+          yield* arrowRows(meta, await collect(response.chunks()), params);
         } else {
-          yield* parquetPoints(meta, await collect(response.chunks()), params);
+          yield* parquetRows(meta, await collect(response.chunks()), params);
         }
       }
     }
@@ -212,7 +218,7 @@ export class ReadableSnippet {
     return plan;
   }
 
-  private decode(field: FieldMetadata, text: string, row: RawPoint): string {
+  private decode(field: FieldMetadata, text: string, row: RawRow): string {
     if (field.valueEncoding !== DELTA) return text;
     const baseline = field.baseline !== undefined ? Decimal.parse(field.baseline) : null;
     const delta = Decimal.parse(text);
@@ -222,7 +228,7 @@ export class ReadableSnippet {
     return baseline.add(delta).toString();
   }
 
-  private toReading(plan: Plan, raw: RawPoint, state: PassState): Reading | null {
+  private toRow(plan: Plan, raw: RawRow, state: PassState): Row | null {
     const instant = tryInstantOf(raw.time);
     if (instant === null) throw new ValidationError(`the time ${JSON.stringify(raw.time)} is not an xsd:dateTimeStamp`);
     const meta = this.metadata;
@@ -250,10 +256,10 @@ export class ReadableSnippet {
         values.set(f.id, new Value(decoded, f.datatype, f.unit));
       }
     }
-    return new Reading(this, raw.time, values);
+    return new Row(this, raw.time, values, raw.nodes);
   }
 
-  /** The follower of a growing snippet, or nothing when it cannot be followed (it is in memory). */
+  /** The follower of a growing source, or nothing when it cannot be followed (it is in memory). */
   private createFollower(): Follower | undefined {
     if (this.origin.type === 'dataset') return undefined;
     const meta = this.metadata;
@@ -267,7 +273,7 @@ export class ReadableSnippet {
         return new RdfLogFollower(
           new ByteSource(this.origin.url, this.ctx),
           this.ctx.baseIRI,
-          (quads) => embeddedRdfPoints(new Store(quads), this.parsed),
+          (quads) => embeddedRdfRows(new Store(quads), this.parsed),
           (quads) =>
             quads.some(
               (q) =>
@@ -281,7 +287,7 @@ export class ReadableSnippet {
         return {
           poll: async (): Promise<PollResult> => {
             await this.refresh();
-            return { points: seen.fresh(embeddedJsonPoints(this.store, this.parsed)), ended: this.metadata.immutable };
+            return { rows: seen.fresh(embeddedJsonRows(this.store, this.parsed)), ended: this.metadata.immutable };
           },
         };
       }
@@ -291,17 +297,17 @@ export class ReadableSnippet {
   }
 
   /**
-   * Read the points as readings, in the order they are stored (embedded points are ordered
-   * by time). With `follow`, the existing points come first, and then new points as they are
-   * added, until the snippet is immutable, the `until` is reached or the signal aborts.
+   * Read the rows, in the order they are stored (embedded rows are ordered by time). With
+   * `follow`, the existing rows come first, and then new rows as they are added, until the
+   * source is immutable, the `until` is reached or the signal aborts.
    */
-  async *read(options: ReadOptions = {}): AsyncGenerator<Reading> {
+  async *read(options: ReadOptions = {}): AsyncGenerator<Row> {
     const plan = await this.plan(options);
     const state: PassState = { reachedUntil: false };
     const follower = options.follow && !this.metadata.immutable ? this.createFollower() : undefined;
     if (!follower) {
-      for await (const raw of this.points({ signal: options.signal })) {
-        const reading = this.toReading(plan, raw, state);
+      for await (const raw of this.rows({ signal: options.signal })) {
+        const reading = this.toRow(plan, raw, state);
         if (reading) yield reading;
       }
       return;
@@ -313,7 +319,7 @@ export class ReadableSnippet {
     for (let round = 0; ; round++) {
       if (options.signal?.aborted) return;
       let ended = false;
-      // an external snippet states in its metadata that it is immutable: read the data once more, and stop
+      // an external source states in its metadata that it is immutable: read the data once more, and stop
       if (round > 0 && !embedded) {
         await this.refresh();
         ended = this.metadata.immutable;
@@ -328,8 +334,8 @@ export class ReadableSnippet {
       }
       if (embedded) ended = result.ended || this.metadata.immutable;
       else if (result.ended) ended = true;
-      for (const raw of seen.fresh(result.points)) {
-        const reading = this.toReading(plan, raw, state);
+      for (const raw of seen.fresh(result.rows)) {
+        const reading = this.toRow(plan, raw, state);
         if (reading) yield reading;
       }
       if (ended || state.reachedUntil || options.signal?.aborted) return;
@@ -337,8 +343,20 @@ export class ReadableSnippet {
     }
   }
 
+  /**
+   * Expand the source into its points as RDF (spec: "Expanding a source into points"): a first
+   * message with the metadata, without `tss:points`, and the default field properties, and
+   * then one message per row with the points of its value fields. With `follow`, the rows that
+   * are added later follow, as with `read`.
+   */
+  async *expand(options: ExpandOptions & Pick<ReadOptions, 'from' | 'until' | 'follow' | 'signal'> = {}): AsyncGenerator<RDFMessage> {
+    const { from, until, follow, signal, ...rest } = options;
+    if (rest.metadata !== false) yield expansionHead(this, rest);
+    yield* toRDFMessages(this.read({ from, until, follow, signal }), { ...rest, metadata: false });
+  }
+
   /** A short description, for logs. */
   toString(): string {
-    return `${this.kind} snippet ${this.id} (${this.metadata.fields.length} fields)`;
+    return `${this.kind} source ${this.id} (${this.metadata.fields.length} fields)`;
   }
 }

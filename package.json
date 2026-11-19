@@ -1,7 +1,7 @@
 {
   "name": "rdf-tss",
   "version": "0.1.0",
-  "description": "Read, follow and write RDF Time Series Snippets (RDF-TSS) in Node and the browser",
+  "description": "Read, follow, write and expand RDF Time Series Sources (RDF-TSS) in Node and the browser",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

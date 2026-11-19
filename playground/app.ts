@@ -1,12 +1,11 @@
 import {
-  Snippet,
+  Source,
   UnitConversionError,
   createEyemindUnitConverter,
   serializeRdf,
-  toRDFMessages,
   type FieldMetadata,
-  type ReadableSnippet,
-  type Reading,
+  type ReadableSource,
+  type Row,
   type UnitConverter,
 } from '../src/index.js';
 import { ZoomGroup, renderChart, type Series } from './chart.js';
@@ -30,7 +29,7 @@ interface Compaction {
     id: string;
     location: string;
     ldes: { members: number; bytes: number; gzip: number };
-    snippet: Record<string, { metadata: number; data: number; total: number; gzip: number }>;
+    source: Record<string, { metadata: number; data: number; total: number; gzip: number }>;
   }[];
 }
 
@@ -85,7 +84,7 @@ const lazyConverter: UnitConverter = {
 interface State {
   url: string;
   example?: Example;
-  snippet: ReadableSnippet;
+  source: ReadableSource;
   times: string[];
   /** The values shown for every field, aligned with `times`, and their unit. */
   values: Map<string, (string | undefined)[]>;
@@ -112,19 +111,19 @@ function setStatus(message: string, error = false): void {
   status.hidden = message === '';
 }
 
-async function readAll(snippet: ReadableSnippet, options: { fields?: string[]; unit?: string } = {}): Promise<Reading[]> {
-  const out: Reading[] = [];
-  for await (const reading of snippet.read(options)) out.push(reading);
+async function readAll(source: ReadableSource, options: { fields?: string[]; unit?: string } = {}): Promise<Row[]> {
+  const out: Row[] = [];
+  for await (const reading of source.read(options)) out.push(reading);
   return out;
 }
 
 const isNumeric = (f: FieldMetadata) => /#(double|float|decimal|integer|long|int|short|byte|nonNegativeInteger|positiveInteger|unsigned\w+)$/.test(f.datatype);
 
 /** Fields with the same property and unit share a chart. */
-function groups(snippet: ReadableSnippet): Map<string, FieldMetadata[]> {
-  const { timeField, stepField } = snippet.metadata;
+function groups(source: ReadableSource): Map<string, FieldMetadata[]> {
+  const { timeField, stepField } = source.metadata;
   const out = new Map<string, FieldMetadata[]>();
-  for (const f of snippet.metadata.fields) {
+  for (const f of source.metadata.fields) {
     if (f.id === timeField || f.id === stepField || !isNumeric(f)) continue;
     const key = f.observedProperty || f.unit ? `${f.observedProperty ?? ''}|${f.unit ?? ''}` : f.id;
     out.set(key, [...(out.get(key) ?? []), f]);
@@ -142,15 +141,15 @@ async function open(url: string, example?: Example): Promise<void> {
   $('result').hidden = true;
   for (const stop of state?.stopCharts ?? []) stop();
   try {
-    const snippet = await Snippet.fetch(url, { unitConverter: lazyConverter });
-    const readings = await readAll(snippet);
+    const source = await Source.fetch(url, { unitConverter: lazyConverter });
+    const readings = await readAll(source);
     const values = new Map<string, (string | undefined)[]>();
     const unit = new Map<string, string | undefined>();
-    for (const f of snippet.metadata.fields) {
+    for (const f of source.metadata.fields) {
       values.set(f.id, readings.map((r) => r.get(f.id)?.value));
       unit.set(f.id, f.unit);
     }
-    state = { url, example, snippet, times: readings.map((r) => r.time), values, unit, selectedUnit: new Map(), rendered: new Set(), stopCharts: [] };
+    state = { url, example, source, times: readings.map((r) => r.time), values, unit, selectedUnit: new Map(), rendered: new Set(), stopCharts: [] };
     history.replaceState(null, '', `#${example ? example.id : encodeURIComponent(url)}`);
     $<HTMLInputElement>('url').value = url;
     selectDataset(example);
@@ -167,13 +166,13 @@ async function open(url: string, example?: Example): Promise<void> {
 }
 
 function renderSummary(): void {
-  const { snippet, example, times } = state!;
-  const m = snippet.metadata;
+  const { source, example, times } = state!;
+  const m = source.metadata;
   $('title').textContent = m.labels[0] ?? example?.title ?? m.id;
-  const bits = [`${m.kind} snippet`, `${times.length} readings`, `${m.fields.length - 1 - (m.stepField ? 1 : 0)} fields`];
+  const bits = [`${m.kind} source`, `${times.length} rows`, `${m.fields.length - 1 - (m.stepField ? 1 : 0)} fields`];
   if (m.from) bits.push(`from ${m.from}`);
   if (m.until) bits.push(`until ${m.until}`);
-  bits.push(m.immutable ? 'immutable' : 'growing: new readings may still arrive');
+  bits.push(m.immutable ? 'immutable' : 'growing: new rows may still arrive');
   $('subtitle').textContent = bits.join(' · ');
   $('description').textContent = example?.description ?? '';
 }
@@ -208,9 +207,9 @@ function seriesOf(fields: FieldMetadata[]): Series[] {
 async function renderCharts(): Promise<void> {
   const panel = $('panel-chart');
   panel.replaceChildren();
-  const { snippet } = state!;
-  const all = groups(snippet);
-  if (all.size === 0) panel.textContent = 'This snippet has no numeric fields to chart.';
+  const { source } = state!;
+  const all = groups(source);
+  if (all.size === 0) panel.textContent = 'This source has no numeric fields to chart.';
   let index = 0;
   // zooming in on one chart zooms the others to the same times
   const zoom = new ZoomGroup();
@@ -252,7 +251,7 @@ async function renderCharts(): Promise<void> {
         note.textContent = 'Converting with QUDT, by eyemind …';
         note.style.color = '';
         try {
-          const readings = await readAll(snippet, { fields: fields.map((f) => f.id), unit: unit === fields[0].unit ? 'source' : unit });
+          const readings = await readAll(source, { fields: fields.map((f) => f.id), unit: unit === fields[0].unit ? 'source' : unit });
           for (const f of fields) {
             state!.values.set(f.id, readings.map((r) => r.get(f.id)?.value));
             state!.unit.set(f.id, readings.find((r) => r.get(f.id))?.get(f.id)?.unit ?? f.unit);
@@ -292,8 +291,8 @@ async function renderCharts(): Promise<void> {
 
 async function renderPatternsTab(): Promise<void> {
   const current = state!;
-  const { timeField, stepField } = current.snippet.metadata;
-  const fields = current.snippet.metadata.fields
+  const { timeField, stepField } = current.source.metadata;
+  const fields = current.source.metadata.fields
     .filter((f) => f.id !== timeField && f.id !== stepField && isNumeric(f))
     .map((f) => ({ id: f.id, label: label(f), unit: current.unit.get(f.id) }));
   current.stopCharts.push(renderPatterns($('panel-patterns'), { fields, times: current.times, values: (id) => current.values.get(id)!, symbol }));
@@ -302,8 +301,8 @@ async function renderPatternsTab(): Promise<void> {
 /* ---------- table ---------- */
 
 async function renderTable(): Promise<void> {
-  const { snippet, times, values, unit } = state!;
-  const m = snippet.metadata;
+  const { source, times, values, unit } = state!;
+  const m = source.metadata;
   const fields = m.fields.filter((f) => f.id !== m.timeField && f.id !== m.stepField);
   const panel = $('panel-table');
   const limit = 500;
@@ -314,17 +313,17 @@ async function renderTable(): Promise<void> {
       return v === undefined ? '<td class="empty">–</td>' : `<td>${esc(v)}</td>`;
     }).join('')}</tr>`,
   );
-  panel.innerHTML = `<p class="muted">${times.length} readings${times.length > limit ? `, the first ${limit} shown` : ''}. A dash is no value. Values are the exact published text, unless you chose another unit.</p>
+  panel.innerHTML = `<p class="muted">${times.length} rows${times.length > limit ? `, the first ${limit} shown` : ''}. A dash is no value. Values are the exact published text, unless you chose another unit.</p>
     <div style="max-height:32rem;overflow:auto"><table><thead><tr><th>time</th>${head}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
 }
 
 /* ---------- metadata ---------- */
 
 async function renderMetadata(): Promise<void> {
-  const { snippet } = state!;
-  const turtle = await serializeRdf([...snippet.dataset], 'text/turtle', PREFIXES);
+  const { source } = state!;
+  const turtle = await serializeRdf([...source.dataset], 'text/turtle', PREFIXES);
   const panel = $('panel-metadata');
-  panel.innerHTML = `<p class="muted">The RDF that describes the snippet${snippet.kind.startsWith('Embedded') ? ', with the embedded points' : ''}: ${new TextEncoder().encode(turtle).length} bytes as Turtle.</p><pre>${esc(turtle)}</pre>`;
+  panel.innerHTML = `<p class="muted">The RDF that describes the source${source.kind.startsWith('Embedded') ? ', with the embedded points' : ''}: ${new TextEncoder().encode(turtle).length} bytes as Turtle.</p><pre>${esc(turtle)}</pre>`;
 }
 
 /* ---------- RDF messages ---------- */
@@ -332,40 +331,31 @@ async function renderMetadata(): Promise<void> {
 async function renderMessages(): Promise<void> {
   const panel = $('panel-messages');
   panel.innerHTML = `<div class="toolbar">
-    <label>Readings <input id="msg-count" type="number" min="1" max="50" value="3" style="width:4rem"></label>
-    <label>Unit <select id="msg-unit"><option value="source">as published</option><option value="qudt">QUDT normalized (SI)</option></select></label>
-    <label>Description of sensors, properties, … <select id="msg-description"><option value="first">in the first message</option><option value="every">in every message</option><option value="none">left out</option></select></label>
+    <label>Rows <input id="msg-count" type="number" min="1" max="50" value="3" style="width:4rem"></label>
+    <label>Also write what a reasoner derives <select id="msg-align"><option value="">nothing</option><option value="sosa">SOSA observations</option><option value="saref">SAREF measurements</option></select></label>
   </div><div id="msg-out"></div>`;
   const run = async () => {
     const count = Number($<HTMLInputElement>('msg-count').value) || 3;
-    const unit = $<HTMLSelectElement>('msg-unit').value;
-    const description = $<HTMLSelectElement>('msg-description').value as 'first' | 'every' | 'none';
+    const align = $<HTMLSelectElement>('msg-align').value as '' | 'sosa' | 'saref';
     const out = $('msg-out');
     out.textContent = 'Working …';
     try {
-      const readings: Reading[] = [];
-      for await (const r of state!.snippet.read({ unit })) {
-        readings.push(r);
-        if (readings.length >= count) break;
-      }
       const parts: string[] = [];
-      let observations = 0;
+      let points = 0;
       let index = 0;
-      async function* limited() {
-        yield* readings;
-      }
-      for await (const message of toRDFMessages(limited(), { description })) {
+      for await (const message of state!.source.expand(align ? { align } : {})) {
         index++;
-        observations += message.quads.filter((q) => q.predicate.value.endsWith('observedProperty')).length;
+        points += message.quads.filter((q) => q.predicate.value === 'https://w3id.org/tss#hasPoint').length;
         const text = await message.serialize('text/turtle', PREFIXES);
-        parts.push(`<div class="message"><h4>Message ${index}</h4><pre>${esc(text)}</pre></div>`);
+        parts.push(`<div class="message"><h4>${index === 1 ? 'Message 1: the metadata' : `Message ${index}: row ${index - 1}`}</h4><pre>${esc(text)}</pre></div>`);
+        if (index > count) break;
       }
-      out.innerHTML = `<p class="muted">${readings.length} readings give ${observations} observations in ${index} messages: one observation for every value of a field that has an <code>tss:observedProperty</code>. A snippet is a table; an RDF Message log is a stream of small RDF documents: this turns one into the other.</p>${parts.join('') || '<p>No field of this snippet has a tss:observedProperty, so there are no observations.</p>'}`;
+      out.innerHTML = `<p class="muted">The expansion of the source into points: the first message is the metadata, with the default property of each field that states no <code>tss:property</code>; each next message holds one row, with a point for every value of a value field (${points} points in ${index - 1} rows here). Each point links to its field with <code>tss:field</code>, and the TSS vocabulary is aligned with SOSA and SAREF, so a reasoner derives observations from it. A source is a table; an RDF Message Log is a stream of small RDF documents: this turns one into the other.</p>${parts.join('')}`;
     } catch (error) {
       out.textContent = (error as Error).message;
     }
   };
-  for (const id of ['msg-count', 'msg-unit', 'msg-description']) $(id).addEventListener('change', () => void run());
+  for (const id of ['msg-count', 'msg-align']) $(id).addEventListener('change', () => void run());
   await run();
 }
 
@@ -374,7 +364,7 @@ async function renderMessages(): Promise<void> {
 async function renderValidate(): Promise<void> {
   const panel = $('panel-validate');
   panel.textContent = 'Checking …';
-  const report = await state!.snippet.validate();
+  const report = await state!.source.validate();
   if (report.conforms) {
     panel.innerHTML = '<p><span class="badge good">conforms</span> The metadata and the data meet every rule of the specification this library checks.</p>';
     return;
@@ -395,7 +385,7 @@ async function gzipSize(data: Uint8Array): Promise<number | undefined> {
 async function renderCompare(): Promise<void> {
   const panel = $('panel-compare');
   panel.textContent = 'Measuring …';
-  const { snippet, url, times } = state!;
+  const { source, url, times } = state!;
   const id = url.match(/telraam\/(\d+)/)?.[1];
   const entry = compaction!.locations.find((l) => l.id === id);
   if (!entry) {
@@ -403,7 +393,7 @@ async function renderCompare(): Promise<void> {
     return;
   }
   const metadataBytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
-  const dataIri = snippet.dataFileIri();
+  const dataIri = source.dataFileIri();
   const dataBytes = new Uint8Array(await (await fetch(dataIri)).arrayBuffer());
   const total = metadataBytes.length + dataBytes.length;
   const metadataGz = (await gzipSize(metadataBytes)) ?? 0;
@@ -423,13 +413,13 @@ async function renderCompare(): Promise<void> {
 
   const sample = await (await fetch(new URL('examples/telraam/sample-members.ttl', location.href))).text();
   const csvText = new TextDecoder().decode(dataBytes);
-  const csvHead = snippet.kind === 'CSV' ? csvText.split('\n').slice(0, 4).join('\n') : '(a binary file: open the CSV example to see its rows)';
+  const csvHead = source.kind === 'CSV' ? csvText.split('\n').slice(0, 4).join('\n') : '(a binary file: open the CSV example to see its rows)';
   const memberLines = sample.split('\n').filter((l) => !l.startsWith('@prefix')).join('\n').trim();
 
   panel.innerHTML = `
     <p>The <a href="https://ldes.telraam-api.net/measurements">Telraam LDES</a> publishes every hourly count of every series as a member of about 25 triples.
        In RDF-TSS the counts of one location share a time, so they fit one table, described once.
-       Below, the <strong>${ldes.members} members</strong> of location ${esc(entry.id)} on ${esc(compaction!.day)} next to the one snippet that holds the same ${times.length} × 8 counts
+       Below, the <strong>${ldes.members} members</strong> of location ${esc(entry.id)} on ${esc(compaction!.day)} next to the one source that holds the same ${times.length} × 8 counts
        (<a href="examples/telraam/ldes-members.ttl">download all ${compaction!.members} LDES members of the sample</a>, to check).</p>
     <div class="facts">
       <div><div class="big">${fmtRatio(ldes.bytes / total)}×<small> smaller</small></div>as Turtle + CSV</div>
@@ -444,37 +434,37 @@ async function renderCompare(): Promise<void> {
       ${row('Turtle', projectedLdes, projectedTss, projectedLdes)}
       ${row('gzipped', projectedLdesGz, projectedTssGz, projectedLdesGz)}
     </div>
-    <p class="muted">RDF-TSS here is ${fmtBytes(metadataBytes.length)} of metadata (with a stored summary of every series) plus ${fmtBytes(dataBytes.length)} of ${esc(snippet.kind)} data, as served to this page.
+    <p class="muted">RDF-TSS here is ${fmtBytes(metadataBytes.length)} of metadata (with a stored summary of every series) plus ${fmtBytes(dataBytes.length)} of ${esc(source.kind)} data, as served to this page.
        The LDES figure is the members alone, as compact Turtle: the real pages repeat prefixes and add hypermedia controls. A time grid (<code>tss:timeBase</code>, <code>tss:timeStep</code>) would also drop the time column.</p>
     <div class="compare-grid">
       <div><h3>Two LDES members</h3><pre>${esc(memberLines)}</pre></div>
-      <div><h3>The same information in the snippet's data file</h3><pre>${esc(csvHead)}</pre>
-        <p class="muted">Each column says what it observes in the metadata: <code>tss:observedProperty</code>, the feature of interest, the sensor, the vehicle type and the direction. The RDF Messages tab turns every cell back into a SOSA observation.</p></div>
+      <div><h3>The same information in the source's data file</h3><pre>${esc(csvHead)}</pre>
+        <p class="muted">Each column says what it observes in the metadata: <code>tss:observedProperty</code>, the feature of interest, the sensor, the vehicle type and the direction. The RDF Messages tab turns every cell back into a point, which a reasoner reads as a SOSA observation.</p></div>
     </div>`;
 }
 
 /* ---------- code ---------- */
 
 function renderCode(): void {
-  const { url, snippet, selectedUnit } = state!;
-  const fields = snippet.metadata.fields;
-  const first = fields.find((f) => f.id !== snippet.metadata.timeField && f.id !== snippet.metadata.stepField);
+  const { url, source, selectedUnit } = state!;
+  const fields = source.metadata.fields;
+  const first = fields.find((f) => f.id !== source.metadata.timeField && f.id !== source.metadata.stepField);
   // the units chosen in the charts, per field: fields have different dimensions
   const chosen = fields.filter((f) => selectedUnit.get(f.id) && selectedUnit.get(f.id) !== f.unit);
   const quote = (unit: string) => (unit === 'qudt' ? "'qudt'" : unit.startsWith(QUDT_UNIT) ? `unit('${unit.slice(QUDT_UNIT.length)}')` : `'${unit}'`);
   const options = chosen.length ? `{ unit: { ${chosen.map((f) => `${/^[A-Za-z_]\w*$/.test(f.localName) ? f.localName : `'${f.localName}'`}: ${quote(selectedUnit.get(f.id)!)}`).join(', ')} } }` : '';
   const helper = chosen.some((f) => selectedUnit.get(f.id)!.startsWith(QUDT_UNIT)) ? `const unit = (name: string) => '${QUDT_UNIT}' + name;\n\n` : '';
   const shown = chosen[0] ?? first;
-  $('code').textContent = `import { Snippet, toRDFMessages } from 'rdf-tss';
+  $('code').textContent = `import { Source } from 'rdf-tss';
 
-${helper}const snippet = await Snippet.fetch('${url}');
+${helper}const source = await Source.fetch('${url}');
 
-for await (const reading of snippet.read(${options})) {
-  console.log(reading.time, reading.get('${shown?.localName ?? 'field'}')?.value);
+for await (const row of source.read(${options})) {
+  console.log(row.time, row.get('${shown?.localName ?? 'field'}')?.value);
 }
 
-// and as RDF Messages
-for await (const message of toRDFMessages(snippet.read(${options}))) {
+// and expanded into points, as RDF Messages: the metadata, then one message per row
+for await (const message of source.expand()) {
   publish(message);
 }`;
 }
@@ -516,7 +506,7 @@ function renderExamples(): void {
 
 function showCustom(visible: boolean): void {
   $('url-form').hidden = !visible;
-  if (visible) $('dataset-note').textContent = 'Paste the URL of the metadata of a snippet, in any RDF syntax. A server on another site needs CORS headers (Access-Control-Allow-Origin: *).';
+  if (visible) $('dataset-note').textContent = 'Paste the URL of the metadata of a source, in any RDF syntax. A server on another site needs CORS headers (Access-Control-Allow-Origin: *).';
 }
 
 /** Show the example, or the custom URL, in the drop-down. */
@@ -541,7 +531,7 @@ async function start(): Promise<void> {
     examples = await (await fetch('examples/index.json')).json();
     compaction = await (await fetch('examples/telraam/compaction.json')).json();
   } catch {
-    setStatus('The examples are not available; paste the URL of a snippet above.');
+    setStatus('The examples are not available; paste the URL of a source above.');
   }
   renderExamples();
   const hash = decodeURIComponent(location.hash.slice(1));

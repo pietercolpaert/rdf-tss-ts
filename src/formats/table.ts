@@ -1,8 +1,8 @@
 import { ValidationError } from '../errors.js';
 import { isFloatDatatype, isIntegerDatatype, numberToLexical } from '../lexical.js';
 import { formatInstant } from '../time.js';
-import type { FieldMetadata, SnippetMetadata } from '../types.js';
-import { makeRowConverter, type RawPoint } from './rows.js';
+import type { FieldMetadata, SourceMetadata } from '../types.js';
+import { makeRowConverter, type RawRow } from './rows.js';
 
 /** A `Date` as `YYYY-MM-DDThh:mm:ss[.fraction]Z`; `utc: false` leaves out the `Z`. */
 export function dateToLexical(date: Date, utc = true): string {
@@ -59,12 +59,12 @@ export function arrowCellToLexical(arrow: typeof import('apache-arrow'), vector:
   return String(value);
 }
 
-/** The points of an Arrow data file in the IPC streaming or the IPC file format. */
-export async function* arrowPoints(
-  meta: SnippetMetadata,
+/** The rows of an Arrow data file in the IPC streaming or the IPC file format. */
+export async function* arrowRows(
+  meta: SourceMetadata,
   bytes: Uint8Array,
   options: { skip: number; strict: boolean },
-): AsyncIterable<RawPoint> {
+): AsyncIterable<RawRow> {
   const arrow = await import('apache-arrow');
   const convert = makeRowConverter(meta);
   const reader = arrow.RecordBatchReader.from(bytes);
@@ -110,12 +110,12 @@ export function parquetCellToLexical(value: unknown, datatype: string): string |
   return String(value);
 }
 
-/** The points of a Parquet data file. */
-export async function* parquetPoints(
-  meta: SnippetMetadata,
+/** The rows of a Parquet data file. */
+export async function* parquetRows(
+  meta: SourceMetadata,
   bytes: Uint8Array,
   options: { skip: number },
-): AsyncIterable<RawPoint> {
+): AsyncIterable<RawRow> {
   const { parquetReadObjects } = await import('hyparquet');
   const convert = makeRowConverter(meta);
   const file = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;

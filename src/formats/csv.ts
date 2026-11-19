@@ -1,7 +1,7 @@
 import { ValidationError } from '../errors.js';
-import type { FieldMetadata, SnippetMetadata } from '../types.js';
+import type { FieldMetadata, SourceMetadata } from '../types.js';
 import { decodeChunks } from './access.js';
-import { makeRowConverter, type RawPoint } from './rows.js';
+import { makeRowConverter, type RawRow } from './rows.js';
 
 export interface CsvRow {
   cells: string[];
@@ -89,7 +89,7 @@ export async function* parseCsv(chunks: AsyncIterable<string>, delimiter = ','):
 /** The columns of the fields in a CSV file: the position of each field's cells. */
 export type CsvColumns = Map<string, number>;
 
-function columnsOfHeader(meta: SnippetMetadata, header: string[]): CsvColumns {
+function columnsOfHeader(meta: SourceMetadata, header: string[]): CsvColumns {
   const columns: CsvColumns = new Map();
   for (const f of meta.fields) {
     if (f.columnName === undefined) continue;
@@ -102,21 +102,21 @@ function columnsOfHeader(meta: SnippetMetadata, header: string[]): CsvColumns {
 
 /**
  * Read the complete records of (a part of) a CSV file that start at a record. `columns` are
- * those of the header, when the text does not start with it. Returns the points, the columns
+ * those of the header, when the text does not start with it. Returns the rows, the columns
  * and the number of characters of the complete records: the next part starts there.
  */
 export async function parseCsvText(
-  meta: SnippetMetadata,
+  meta: SourceMetadata,
   text: string,
   columns?: CsvColumns,
-): Promise<{ points: RawPoint[]; columns?: CsvColumns; consumed: number }> {
+): Promise<{ rows: RawRow[]; columns?: CsvColumns; consumed: number }> {
   const convert = makeRowConverter(meta);
   let known = columns;
   if (!meta.header && !known) {
     known = new Map();
     for (const f of meta.fields) if (f.columnIndex !== undefined) known.set(f.id, f.columnIndex);
   }
-  const points: RawPoint[] = [];
+  const rows: RawRow[] = [];
   let consumed = 0;
   async function* one() {
     yield text;
@@ -137,17 +137,17 @@ export async function parseCsvText(
       const cell = row.cells[at];
       return cell === undefined || cell === '' ? undefined : cell;
     };
-    points.push(convert(access, rowNumber));
+    rows.push(convert(access, rowNumber));
   }
-  return { points, columns: known, consumed };
+  return { rows, columns: known, consumed };
 }
 
-/** The points of a CSV data file, after skipping the first `skip` data rows. */
-export async function* csvPoints(
-  meta: SnippetMetadata,
+/** The rows of a CSV data file, after skipping the first `skip` data rows. */
+export async function* csvRows(
+  meta: SourceMetadata,
   bytes: AsyncIterable<Uint8Array>,
   options: { skip: number; strict: boolean },
-): AsyncIterable<RawPoint> {
+): AsyncIterable<RawRow> {
   const convert = makeRowConverter(meta);
   const columns = new Map<string, number>();
   let headerSeen = !meta.header;

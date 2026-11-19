@@ -375,7 +375,7 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
   windowInput.addEventListener('input', schedule);
   shiftInput.addEventListener('input', schedule);
 
-  if (input.fields.length === 0) status.textContent = 'This snippet has no numeric fields.';
+  if (input.fields.length === 0) status.textContent = 'This source has no numeric fields.';
   else {
     reset();
     void run();

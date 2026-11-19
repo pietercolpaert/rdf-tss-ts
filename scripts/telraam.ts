@@ -1,17 +1,17 @@
 /**
- * Turns members of the Telraam LDES into RDF-TSS snippets, and measures how much smaller
+ * Turns members of the Telraam LDES into RDF-TSS sources, and measures how much smaller
  * they are.
  *
  * Every LDES member is one hourly traffic count of one series (e.g. `bike-lft`) at one
  * location, described with ~25 triples. The counts of one location share their time, so
- * they fit one table: one snippet per location, one column per series, one row per hour.
+ * they fit one table: one source per location, one column per series, one row per hour.
  */
 import { gzipSync } from 'node:zlib';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DataFactory, Parser, Writer } from 'n3';
 import type { Quad } from '@rdfjs/types';
-import { Snippet, type CreateField, type SnippetKind } from '../src/index.js';
+import { Source, type CreateField, type SourceKind } from '../src/index.js';
 
 const { namedNode, blankNode, quad } = DataFactory;
 
@@ -108,15 +108,15 @@ export async function ldesSize(members: Member[]): Promise<{ members: number; by
 export interface Conversion {
   location: string;
   id: string;
-  snippet: string;
+  source: string;
   metadataFile: string;
   dataFile: string;
-  kind: SnippetKind;
+  kind: SourceKind;
   readings: number;
   series: string[];
 }
 
-/** One snippet with the counts of one location: a column per series, a row per hour. */
+/** One source with the counts of one location: a column per series, a row per hour. */
 export async function convertLocation(
   members: Member[],
   location: string,
@@ -139,8 +139,8 @@ export async function convertLocation(
   }));
 
   const times = [...new Set(own.map((m) => m.time))].sort();
-  const snippet = await Snippet.create({
-    id: `${location}#snippet-${options.day}`,
+  const source = await Source.create({
+    id: `${location}#source-${options.day}`,
     kind: options.kind,
     label: `Traffic counts at Telraam location ${id}, ${options.day}`,
     dataFile: join(options.dir, `${options.name}.${extension}`),
@@ -155,25 +155,25 @@ export async function convertLocation(
   // What the LDES says about each series, kept as a description of the field.
   const description = (iri: string, m: Member): void => {
     const node = blankNode();
-    snippet.dataset.add(quad(namedNode(iri), namedNode(`${TSS}fieldDescription`), node));
-    snippet.dataset.add(quad(node, namedNode(`${VERKEER}voertuigType`), namedNode(m.vehicleType)));
-    snippet.dataset.add(quad(node, namedNode(`${IMPL}Verkeerstellingkenmerk.kenmerktype`), namedNode(AANTAL)));
-    snippet.dataset.add(quad(node, namedNode(`${IMPL}Verkeerstellingkenmerk.rijrichting`), namedNode(m.direction)));
+    source.dataset.add(quad(namedNode(iri), namedNode(`${TSS}fieldDescription`), node));
+    source.dataset.add(quad(node, namedNode(`${VERKEER}voertuigType`), namedNode(m.vehicleType)));
+    source.dataset.add(quad(node, namedNode(`${IMPL}Verkeerstellingkenmerk.kenmerktype`), namedNode(AANTAL)));
+    source.dataset.add(quad(node, namedNode(`${IMPL}Verkeerstellingkenmerk.rijrichting`), namedNode(m.direction)));
   };
   for (const [iri, m] of series) description(iri, m);
   const sensor = namedNode(`${location}#sensor`);
-  snippet.dataset.add(quad(sensor, namedNode(RDF_TYPE), namedNode('http://www.w3.org/ns/sosa/Sensor')));
-  snippet.dataset.add(quad(sensor, namedNode(`${TERMS}type`), namedNode(SENSOR_TYPE)));
+  source.dataset.add(quad(sensor, namedNode(RDF_TYPE), namedNode('http://www.w3.org/ns/sosa/Sensor')));
+  source.dataset.add(quad(sensor, namedNode(`${TERMS}type`), namedNode(SENSOR_TYPE)));
 
   const byTime = new Map<string, Record<string, string>>();
   for (const m of own) byTime.set(m.time, { ...byTime.get(m.time), [m.series.split('#')[1]]: m.value });
-  await snippet.append(times.map((time) => ({ time, values: byTime.get(time)! })));
-  await snippet.close({ freeze: true });
+  await source.append(times.map((time) => ({ time, values: byTime.get(time)! })));
+  await source.close({ freeze: true });
 
   return {
     location,
     id,
-    snippet: `${location}#snippet-${options.day}`,
+    source: `${location}#source-${options.day}`,
     metadataFile: join(options.dir, `${options.name}.ttl`),
     dataFile: join(options.dir, `${options.name}.${extension}`),
     kind: options.kind,
@@ -189,7 +189,7 @@ export interface SizeReport {
   gzip: number;
 }
 
-export async function snippetSize(conversion: Conversion): Promise<SizeReport> {
+export async function sourceSize(conversion: Conversion): Promise<SizeReport> {
   const [metadata, data] = await Promise.all([readFile(conversion.metadataFile), readFile(conversion.dataFile)]);
   return {
     metadata: metadata.length,

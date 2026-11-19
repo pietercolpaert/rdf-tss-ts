@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Snippet, type Reading } from '../src/index.js';
+import { Source, type Row } from '../src/index.js';
 import { convertLog, observationsOf, openLog } from '../scripts/telraam-log.js';
 import { MessageParser } from 'n3.js-messages';
 import { tempDir } from './helpers/fixtures.js';
@@ -61,8 +61,8 @@ function log(): string {
   return `VERSION "1.1-messages"\n${parts.join('MESSAGE\n')}`;
 }
 
-async function all(it: AsyncIterable<Reading>): Promise<Reading[]> {
-  const out: Reading[] = [];
+async function all(it: AsyncIterable<Row>): Promise<Row[]> {
+  const out: Row[] = [];
   for await (const r of it) out.push(r);
   return out;
 }
@@ -78,7 +78,7 @@ describe('the Telraam message log', () => {
     expect(speed).toMatchObject({ series: 'v85', value: '31.5', kind: 'speed', unit: 'http://qudt.org/vocab/unit/KiloM-PER-HR' });
   });
 
-  it('turns the log into a snippet per location and format, with a column for the speed in km/h', async () => {
+  it('turns the log into a source per location and format, with a column for the speed in km/h', async () => {
     const path = join(dir, 'log.trig.gz');
     await writeFile(path, gzipSync(log()));
     const result = await convertLog(path, { out: dir, kinds: ['Parquet', 'Arrow', 'CSV'], locations: ['9000000001'] });
@@ -89,25 +89,25 @@ describe('the Telraam message log', () => {
       ['9000000001', 'CSV', 73],
     ]);
     for (const name of ['9000000001', '9000000001-arrow', '9000000001-csv']) {
-      const snippet = await Snippet.open(join(dir, `${name}.ttl`));
-      expect(snippet.metadata.immutable).toBe(true);
-      const readings = await all(snippet.read());
+      const source = await Source.open(join(dir, `${name}.ttl`));
+      expect(source.metadata.immutable).toBe(true);
+      const readings = await all(source.read());
       expect(readings).toHaveLength(73);
       // sorted by time, although the last measurement of the log was late
       expect(readings[0].time).toBe('2026-01-06T23:00:00Z');
       expect(readings[0].get('car-lft')?.value).toBe('4');
       expect(readings[0].get('v85')).toBeUndefined();
       expect(readings[1].get('v85')?.value).toBe('30');
-      expect(snippet.summary('v85')).toMatchObject({ count: 72, missing: 1 });
-      expect((await snippet.validate()).results).toEqual([]);
+      expect(source.summary('v85')).toMatchObject({ count: 72, missing: 1 });
+      expect((await source.validate()).results).toEqual([]);
     }
   });
 
   it('converts the speed from km/h to m/s while reading', async () => {
     await writeFile(join(dir, 'log.trig'), log());
     await convertLog(join(dir, 'log.trig'), { out: dir, kinds: ['Arrow'], locations: ['9000000002'] });
-    const snippet = await Snippet.open(join(dir, '9000000002.ttl'));
-    const [reading] = await all(snippet.read({ fields: ['v85'], unit: 'http://qudt.org/vocab/unit/M-PER-SEC' }));
+    const source = await Source.open(join(dir, '9000000002.ttl'));
+    const [reading] = await all(source.read({ fields: ['v85'], unit: 'http://qudt.org/vocab/unit/M-PER-SEC' }));
     // 30 km/h is 8.3333... m/s
     expect(reading.get('v85')).toMatchObject({ unit: 'http://qudt.org/vocab/unit/M-PER-SEC' });
     expect(Number(reading.get('v85')!.value)).toBeCloseTo(30 / 3.6, 6);
@@ -117,10 +117,10 @@ describe('the Telraam message log', () => {
     const text = `VERSION "1.1-messages"\n${message('9000000003', 'car-lft', '2026-01-07T08:00:00+00:00', 3.169014084507042)}MESSAGE\n${message('9000000003', 'car-rgt', '2026-01-07T08:00:00+00:00', 2)}`;
     await writeFile(join(dir, 'x.trig'), text);
     await convertLog(join(dir, 'x.trig'), { out: dir, kinds: ['CSV'], locations: ['9000000003'] });
-    const snippet = await Snippet.open(join(dir, '9000000003.ttl'));
-    expect(snippet.metadata.fields.find((f) => f.localName === 'car-lft')!.datatype).toBe('http://www.w3.org/2001/XMLSchema#double');
-    expect(snippet.metadata.fields.find((f) => f.localName === 'car-rgt')!.datatype).toBe('http://www.w3.org/2001/XMLSchema#integer');
-    const [reading] = await all(snippet.read());
+    const source = await Source.open(join(dir, '9000000003.ttl'));
+    expect(source.metadata.fields.find((f) => f.localName === 'car-lft')!.datatype).toBe('http://www.w3.org/2001/XMLSchema#double');
+    expect(source.metadata.fields.find((f) => f.localName === 'car-rgt')!.datatype).toBe('http://www.w3.org/2001/XMLSchema#integer');
+    const [reading] = await all(source.read());
     expect(reading.get('car-lft')?.value).toBe('3.169014084507042');
   });
 

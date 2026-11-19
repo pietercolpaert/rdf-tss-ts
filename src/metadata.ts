@@ -1,12 +1,13 @@
-import { KIND_BY_CLASS, RDF, RDFS, SNIPPET_CLASSES, tss, xsd } from './ns.js';
+import { KIND_BY_CLASS, LEGACY_SOURCE_CLASSES, META_FIELD, RDF, RDFS, SOURCE_CLASSES, VALUE_FIELD, isExternalKind, tss, xsd } from './ns.js';
 import type { Dataset, Term } from './rdf.js';
 import { namedNode, objectOf, objectsOf, subjectsOf, termId } from './rdf.js';
 import { ValidationError } from './errors.js';
-import type { FieldMetadata, FieldSummary, SnippetKind, SnippetMetadata } from './types.js';
+import { defaultPropertyIri, resolveIri } from './iri.js';
+import type { FieldKind, FieldMetadata, FieldSummary, SourceKind, SourceMetadata } from './types.js';
 
-export interface ParsedSnippet {
+export interface ParsedSource {
   term: Term;
-  metadata: SnippetMetadata;
+  metadata: SourceMetadata;
   /** The RDF term of each field, by field id. */
   fieldTerms: Map<string, Term>;
 }
@@ -19,10 +20,10 @@ export function localNameOf(iri: string): string {
   return name || iri;
 }
 
-/** The snippets a document describes: nodes with a snippet class as type. */
-export function findSnippets(ds: Dataset): { term: Term; kind: SnippetKind }[] {
-  const found = new Map<string, { term: Term; kind: SnippetKind }>();
-  for (const iri of Object.values(SNIPPET_CLASSES)) {
+/** The sources a document describes: nodes with a source class as type. */
+export function findSources(ds: Dataset): { term: Term; kind: SourceKind }[] {
+  const found = new Map<string, { term: Term; kind: SourceKind }>();
+  for (const iri of Object.values(SOURCE_CLASSES)) {
     for (const subject of subjectsOf(ds, RDF + 'type', namedNode(iri))) {
       found.set(termId(subject), { term: subject, kind: KIND_BY_CLASS[iri] });
     }
@@ -55,14 +56,27 @@ function parseSummary(ds: Dataset, node: Term): FieldSummary {
   return summary;
 }
 
-function parseField(ds: Dataset, term: Term): FieldMetadata {
+/** Whether a field states `tss:ValueField` or `tss:MetaField`, and which. */
+export function statedFieldKinds(ds: Dataset, term: Term): FieldKind[] {
+  const kinds: FieldKind[] = [];
+  for (const type of objectsOf(ds, term, RDF + 'type')) {
+    if (type.value === VALUE_FIELD) kinds.push('value');
+    if (type.value === META_FIELD) kinds.push('meta');
+  }
+  return kinds;
+}
+
+function parseField(ds: Dataset, term: Term, inferredKind: FieldKind): FieldMetadata {
   const id = termId(term);
   const columnName = text(ds, term, tss('columnName'));
+  const stated = statedFieldKinds(ds, term);
   const field: FieldMetadata = {
     id,
     localName: term.termType === 'NamedNode' ? localNameOf(term.value) : (columnName ?? id),
+    kind: stated.length === 1 ? stated[0] : inferredKind,
     labels: objectsOf(ds, term, RDFS + 'label').map((o) => o.value),
     datatype: iriOrUndefined(ds, term, tss('datatype')) ?? xsd('string'),
+    defaultProperty: true,
     describesField: objectsOf(ds, term, tss('describesField')).map(termId),
   };
   const set = <K extends keyof FieldMetadata>(key: K, value: FieldMetadata[K]) => {
@@ -71,6 +85,12 @@ function parseField(ds: Dataset, term: Term): FieldMetadata {
   set('language', text(ds, term, tss('language')));
   set('columnName', columnName);
   set('columnIndex', number(text(ds, term, tss('columnIndex'))));
+  const property = objectOf(ds, term, tss('property'));
+  if (property?.termType === 'NamedNode') {
+    field.property = property.value;
+    field.defaultProperty = false;
+  }
+  set('aboutUrl', text(ds, term, tss('aboutUrl')));
   set('observedProperty', iriOrUndefined(ds, term, tss('observedProperty')));
   set('unit', iriOrUndefined(ds, term, tss('unit')));
   set('sensor', iriOrUndefined(ds, term, tss('sensor')));
@@ -85,41 +105,74 @@ function parseField(ds: Dataset, term: Term): FieldMetadata {
 }
 
 /**
- * Read the description of one snippet from a metadata document. When the document has
- * several snippets, `snippetIri` says which one.
+ * The base IRI of the default field properties and the point IRIs of a source: its data file
+ * (external), or the metadata document (embedded).
  */
-export function parseSnippet(ds: Dataset, snippetIri?: string): ParsedSnippet {
-  const snippets = findSnippets(ds);
-  if (snippets.length === 0) throw new ValidationError('the document describes no snippet (no node has a snippet class as type)');
-  let chosen = snippets[0];
-  if (snippetIri) {
-    const match = snippets.find((s) => termId(s.term) === snippetIri);
-    if (!match) throw new ValidationError(`the document has no snippet ${snippetIri}`);
+export function propertyBase(metadata: Pick<SourceMetadata, 'kind' | 'dataFile'>, documentIri?: string): string | undefined {
+  if (!isExternalKind(metadata.kind)) return documentIri;
+  if (!metadata.dataFile) return undefined;
+  try {
+    return resolveIri(metadata.dataFile, documentIri);
+  } catch {
+    return undefined;
+  }
+}
+
+/** The error to give for a document without sources: it may use the class names of earlier drafts. */
+function noSourceError(ds: Dataset): ValidationError {
+  for (const [legacy, current] of Object.entries(LEGACY_SOURCE_CLASSES)) {
+    if (subjectsOf(ds, RDF + 'type', namedNode(legacy)).length > 0) {
+      return new ValidationError(`the document describes no source: ${legacy} is an RDF Time Series Snippets class of an earlier draft, now ${current}`);
+    }
+  }
+  return new ValidationError('the document describes no source (no node has a source class as type)');
+}
+
+export interface ParseOptions {
+  /** The IRI of the source, when the document has several. */
+  source?: string;
+  /** The IRI of the metadata document: the base of a relative data file and of the default field properties. */
+  baseIRI?: string;
+}
+
+/** Read the description of one source from a metadata document. */
+export function parseSource(ds: Dataset, options: ParseOptions = {}): ParsedSource {
+  const sources = findSources(ds);
+  if (sources.length === 0) throw noSourceError(ds);
+  let chosen = sources[0];
+  if (options.source) {
+    const match = sources.find((s) => termId(s.term) === options.source);
+    if (!match) throw new ValidationError(`the document has no source ${options.source}`);
     chosen = match;
-  } else if (snippets.length > 1) {
-    const ids = snippets.map((s) => termId(s.term)).join(', ');
-    throw new ValidationError(`the document describes several snippets (${ids}); pass { snippet } to choose one`);
+  } else if (sources.length > 1) {
+    const ids = sources.map((s) => termId(s.term)).join(', ');
+    throw new ValidationError(`the document describes several sources (${ids}); pass { source } to choose one`);
   }
   const { term, kind } = chosen;
 
+  const timeField = iriOrUndefined(ds, term, tss('timeField'));
+  if (!timeField) throw new ValidationError(`source ${termId(term)} has no tss:timeField`);
+  const stepField = iriOrUndefined(ds, term, tss('stepField'));
+  const fieldTermList = objectsOf(ds, term, tss('hasField'));
+  const describing = new Set(fieldTermList.filter((t) => objectsOf(ds, t, tss('describesField')).length > 0).map(termId));
+
   const fieldTerms = new Map<string, Term>();
   const fields: FieldMetadata[] = [];
-  for (const fieldTerm of objectsOf(ds, term, tss('hasField'))) {
-    const field = parseField(ds, fieldTerm);
-    if (fieldTerms.has(field.id)) continue;
-    fieldTerms.set(field.id, fieldTerm);
-    fields.push(field);
+  for (const fieldTerm of fieldTermList) {
+    const id = termId(fieldTerm);
+    if (fieldTerms.has(id)) continue;
+    const inferred: FieldKind = id === timeField || id === stepField || describing.has(id) ? 'meta' : 'value';
+    fieldTerms.set(id, fieldTerm);
+    fields.push(parseField(ds, fieldTerm, inferred));
   }
-  const timeField = iriOrUndefined(ds, term, tss('timeField'));
-  if (!timeField) throw new ValidationError(`snippet ${termId(term)} has no tss:timeField`);
   if (!fieldTerms.has(timeField)) throw new ValidationError(`the time field ${timeField} of ${termId(term)} is not one of its fields`);
 
   const isTrue = (value: string | undefined) => value === 'true' || value === '1';
-  // `tss:immutable true` ends a snippet. Earlier drafts stated `tss:mutable`: `false` is the same.
+  // `tss:immutable true` ends a source. Earlier drafts stated `tss:mutable`: `false` is the same.
   const legacyMutable = text(ds, term, tss('mutable'));
   const immutable = isTrue(text(ds, term, tss('immutable'))) || kind === 'Parquet' || legacyMutable === 'false' || legacyMutable === '0';
 
-  const metadata: SnippetMetadata = {
+  const metadata: SourceMetadata = {
     id: termId(term),
     kind,
     labels: objectsOf(ds, term, RDFS + 'label').map((o) => o.value),
@@ -130,15 +183,23 @@ export function parseSnippet(ds: Dataset, snippetIri?: string): ParsedSnippet {
     encoding: text(ds, term, tss('encoding')) ?? 'utf-8',
     header: (text(ds, term, tss('header')) ?? 'true') !== 'false' && text(ds, term, tss('header')) !== '0',
   };
-  const set = <K extends keyof SnippetMetadata>(key: K, value: SnippetMetadata[K]) => {
+  const set = <K extends keyof SourceMetadata>(key: K, value: SourceMetadata[K]) => {
     if (value !== undefined) metadata[key] = value;
   };
   set('from', text(ds, term, tss('from')));
   set('until', text(ds, term, tss('until')));
-  set('stepField', iriOrUndefined(ds, term, tss('stepField')));
+  set('stepField', stepField);
   set('timeBase', text(ds, term, tss('timeBase')));
   set('timeStep', text(ds, term, tss('timeStep')));
   set('dataFile', iriOrUndefined(ds, term, tss('dataFile')));
   set('producedBy', iriOrUndefined(ds, term, tss('producedBy')));
+
+  // the default field properties
+  const base = propertyBase(metadata, options.baseIRI);
+  for (const f of fields) {
+    if (!f.defaultProperty) continue;
+    if (f.id === timeField) f.property = tss('time');
+    else if (f.columnName !== undefined && f.columnName !== '' && base) f.property = defaultPropertyIri(base, f.columnName);
+  }
   return { term, metadata, fieldTerms };
 }

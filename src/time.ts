@@ -1,5 +1,5 @@
 /**
- * Times of a snippet: `xsd:dateTimeStamp` values, compared as moments.
+ * Times of a source: `xsd:dateTimeStamp` values, compared as moments.
  *
  * Instants are `bigint` nanoseconds since the Unix epoch, so that Parquet and Arrow
  * timestamps in nanoseconds keep their precision. Fractions beyond nanoseconds are

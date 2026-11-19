@@ -6,7 +6,7 @@
 export const isNode = typeof process !== 'undefined' && !!process.versions?.node;
 
 function requireNode(what: string): void {
-  if (!isNode) throw new Error(`${what} is only available in Node; use Snippet.fetch or an RDF/JS Dataset in the browser`);
+  if (!isNode) throw new Error(`${what} is only available in Node; use Source.fetch or an RDF/JS Dataset in the browser`);
 }
 
 export async function pathToIri(path: string): Promise<string> {

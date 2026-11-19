@@ -19,7 +19,7 @@
 @prefix unit: <http://qudt.org/vocab/unit/>.
 @prefix schema: <https://schema.org/>.
 
-ex:snippet-2026-01-07-2026-05-03 a tss:ParquetSnippet;
+ex:source-2026-01-07-2026-05-03 a tss:ParquetSource;
     rdfs:label "Traffic counts and speed at Telraam location 9000006942, 2026-01-07 to 2026-05-03";
     tss:from "2026-01-07T08:00:00Z"^^xsd:dateTimeStamp;
     tss:until "2026-05-03T07:00:00Z"^^xsd:dateTimeStamp;
@@ -27,10 +27,10 @@ ex:snippet-2026-01-07-2026-05-03 a tss:ParquetSnippet;
     tss:dataFile <9000006942.parquet>;
     tss:hasField ex:time, ex:car-lft, ex:car-rgt, ex:v85;
     tss:immutable true.
-ex:time a tss:Field;
+ex:time a tss:MetaField;
     tss:datatype xsd:dateTimeStamp;
     tss:columnName "time".
-ex:car-lft a tss:Field;
+ex:car-lft a tss:ValueField;
     rdfs:label "Car (left)";
     tss:datatype xsd:double;
     tss:columnName "car-lft";
@@ -56,7 +56,7 @@ ex:car-lft a tss:Field;
 ].
 ex:sensor a sosa:Sensor;
     terms:type cl-mit:telraam.
-ex:car-rgt a tss:Field;
+ex:car-rgt a tss:ValueField;
     rdfs:label "Car (right)";
     tss:datatype xsd:double;
     tss:columnName "car-rgt";
@@ -80,7 +80,7 @@ ex:car-rgt a tss:Field;
   tss:median "194"^^xsd:double;
   tss:generatedAtTime "2026-11-18T14:06:39.892Z"^^xsd:dateTimeStamp
 ].
-ex:v85 a tss:Field;
+ex:v85 a tss:ValueField;
     rdfs:label "Speed V85";
     tss:datatype xsd:double;
     tss:columnName "v85";

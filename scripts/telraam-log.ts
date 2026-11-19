@@ -1,6 +1,6 @@
 /**
  * Turns the Telraam measurements, published as a (compressed) RDF Message Log of TriG, into
- * RDF-TSS snippets in a binary format: one snippet per location, a column per series (the
+ * RDF-TSS sources in a binary format: one source per location, a column per series (the
  * hourly counts per vehicle type and direction, and the V85 speed in km/h), a row per hour.
  *
  *   npx tsx scripts/telraam-log.ts <log.trig[.gz] | https://…> --out <directory>
@@ -19,7 +19,7 @@ import { createGunzip } from 'node:zlib';
 import type { Quad } from '@rdfjs/types';
 import { DataFactory } from 'n3';
 import { MessageStreamParser } from 'n3.js-messages';
-import { Snippet, type CreateField } from '../src/index.js';
+import { Source, type CreateField } from '../src/index.js';
 import { PREFIXES } from './telraam.js';
 
 const { namedNode, blankNode, quad } = DataFactory;
@@ -109,7 +109,7 @@ export function observationsOf(message: Quad[]): Observation[] {
 export type LogKind = 'Parquet' | 'Arrow' | 'CSV';
 
 export interface LogOptions {
-  /** Directory for the snippets. */
+  /** Directory for the sources. */
   out: string;
   /** The binary formats to write; the first one has no suffix in its file names, the others `-arrow`, `-csv`, … */
   kinds: LogKind[];
@@ -260,8 +260,8 @@ async function writeLocation(location: string, entry: Collected, options: LogOpt
   const name = `${id}${suffix}`;
   const until = new Date(Date.parse(times[times.length - 1]) + 3_600_000).toISOString().replace('.000Z', 'Z');
   const metadataFile = join(options.out, `${name}.ttl`);
-  const snippet = await Snippet.create({
-    id: `${location}#snippet-${times[0].slice(0, 10)}-${until.slice(0, 10)}`,
+  const source = await Source.create({
+    id: `${location}#source-${times[0].slice(0, 10)}-${until.slice(0, 10)}`,
     kind,
     label: `Traffic counts and speed at Telraam location ${id}, ${times[0].slice(0, 10)} to ${until.slice(0, 10)}`,
     dataFile: join(options.out, `${name}.${extension}`),
@@ -277,17 +277,17 @@ async function writeLocation(location: string, entry: Collected, options: LogOpt
   for (const [seriesName, o] of entry.series) {
     const node = blankNode();
     const field = namedNode(`${location}#${seriesName}`);
-    snippet.dataset.add(quad(field, namedNode(`${TSS}fieldDescription`), node));
-    if (o.vehicleType) snippet.dataset.add(quad(node, namedNode(`${VERKEER}voertuigType`), namedNode(o.vehicleType)));
-    snippet.dataset.add(quad(node, namedNode(`${IMPL}${o.kind === 'speed' ? 'Verkeerssnelheidsmetingkenmerk' : 'Verkeerstellingkenmerk'}.kenmerktype`), namedNode(o.kind === 'speed' ? V85 : AANTAL)));
-    if (o.direction) snippet.dataset.add(quad(node, namedNode(o.kind === 'speed' ? `${VERKEER}meetrichting` : `${IMPL}Verkeerstellingkenmerk.rijrichting`), namedNode(o.direction)));
+    source.dataset.add(quad(field, namedNode(`${TSS}fieldDescription`), node));
+    if (o.vehicleType) source.dataset.add(quad(node, namedNode(`${VERKEER}voertuigType`), namedNode(o.vehicleType)));
+    source.dataset.add(quad(node, namedNode(`${IMPL}${o.kind === 'speed' ? 'Verkeerssnelheidsmetingkenmerk' : 'Verkeerstellingkenmerk'}.kenmerktype`), namedNode(o.kind === 'speed' ? V85 : AANTAL)));
+    if (o.direction) source.dataset.add(quad(node, namedNode(o.kind === 'speed' ? `${VERKEER}meetrichting` : `${IMPL}Verkeerstellingkenmerk.rijrichting`), namedNode(o.direction)));
   }
   const sensor = namedNode(`${location}#sensor`);
-  snippet.dataset.add(quad(sensor, namedNode(RDF_TYPE), namedNode('http://www.w3.org/ns/sosa/Sensor')));
-  snippet.dataset.add(quad(sensor, namedNode(`${TERMS}type`), namedNode(SENSOR_TYPE)));
+  source.dataset.add(quad(sensor, namedNode(RDF_TYPE), namedNode('http://www.w3.org/ns/sosa/Sensor')));
+  source.dataset.add(quad(sensor, namedNode(`${TERMS}type`), namedNode(SENSOR_TYPE)));
 
-  await snippet.append(times.map((time) => ({ time, values: entry.rows.get(time)! })));
-  await snippet.close({ freeze: true });
+  await source.append(times.map((time) => ({ time, values: entry.rows.get(time)! })));
+  await source.close({ freeze: true });
   return { id, location, kind, metadataFile, readings: times.length, from: times[0], until, series: names };
 }
 

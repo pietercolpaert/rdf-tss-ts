@@ -44,7 +44,7 @@ export async function collect(chunks: AsyncIterable<Uint8Array>): Promise<Uint8A
   return concat(parts);
 }
 
-/** Open the data file of an external snippet, over HTTP or, when allowed, from disk. */
+/** Open the data file of an external source, over HTTP or, when allowed, from disk. */
 export async function openData(
   iri: string,
   ctx: DataContext,

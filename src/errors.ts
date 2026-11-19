@@ -3,7 +3,7 @@ export interface ReportEntry {
   /** Short identifier of the rule, e.g. `time-field` or `lexical-form`. */
   rule: string;
   message: string;
-  /** IRI or label of the node (snippet, field) the finding is about. */
+  /** IRI or label of the node (source, field) the finding is about. */
   node?: string;
   /** 1-based row of the data (embedded point or file row) the finding is about. */
   row?: number;
@@ -25,7 +25,7 @@ export class ValidationError extends Error {
   }
 }
 
-/** Writing to an immutable snippet, or to one whose class cannot be appended to. */
+/** Writing to an immutable source, or to one whose class cannot be appended to. */
 export class NotWritableError extends Error {
   constructor(message: string) {
     super(message);
@@ -33,7 +33,7 @@ export class NotWritableError extends Error {
   }
 }
 
-/** Another process is writing to the snippet. */
+/** Another process is writing to the source. */
 export class LockError extends Error {
   constructor(message: string) {
     super(message);

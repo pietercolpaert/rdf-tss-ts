@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Snippet, UnitConversionError, convertUnit, type Reading } from '../src/index.js';
+import { Source, UnitConversionError, convertUnit, type Row } from '../src/index.js';
 import { DEG_C, tempDir, weatherOptions, weatherReadings } from './helpers/fixtures.js';
 
 const unit = (name: string) => `http://qudt.org/vocab/unit/${name}`;
@@ -31,16 +31,16 @@ describe('unit conversion with QUDT and eyemind', () => {
     let cleanup: () => Promise<void>;
     beforeAll(async () => {
       ({ dir, cleanup } = await tempDir());
-      const snippet = await Snippet.create({ ...weatherOptions('CSV', 'units'), dataFile: join(dir, 'units.csv'), file: join(dir, 'units.ttl') });
-      await snippet.append(weatherReadings);
-      await snippet.close();
+      const source = await Source.create({ ...weatherOptions('CSV', 'units'), dataFile: join(dir, 'units.csv'), file: join(dir, 'units.ttl') });
+      await source.append(weatherReadings);
+      await source.close();
     });
     afterAll(() => cleanup());
 
-    const read = async (options: Parameters<Awaited<ReturnType<typeof Snippet.open>>['read']>[0]) => {
-      const snippet = await Snippet.open(join(dir, 'units.ttl'));
-      const out: Reading[] = [];
-      for await (const r of snippet.read(options)) out.push(r);
+    const read = async (options: Parameters<Awaited<ReturnType<typeof Source.open>>['read']>[0]) => {
+      const source = await Source.open(join(dir, 'units.ttl'));
+      const out: Row[] = [];
+      for await (const r of source.read(options)) out.push(r);
       return out;
     };
 

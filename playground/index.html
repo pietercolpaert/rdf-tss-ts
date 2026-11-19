@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>rdf-tss playground</title>
-<meta name="description" content="Read RDF Time Series Snippets in your browser: charts, unit conversion with QUDT and eyemind, RDF Messages, and a comparison with the Telraam LDES.">
+<meta name="description" content="Read RDF Time Series Sources in your browser: charts, unit conversion with QUDT and eyemind, RDF Messages, and a comparison with the Telraam LDES.">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./style.css">
 </head>
@@ -13,7 +13,7 @@
 <header class="site-header">
   <div class="intro">
     <h1>rdf-tss playground</h1>
-    <p>Read <a href="https://knowledgeonwebscale.github.io/rdf-timeseriessnippets/">RDF Time Series Snippets</a> in your browser, in any format, with the
+    <p>Read <a href="https://knowledgeonwebscale.github.io/rdf-tss/">RDF Time Series Sources</a> in your browser, in any format, with the
       <a href="https://github.com/pietercolpaert/rdf-tss-ts">rdf-tss</a> library.</p>
   </div>
 </header>
@@ -24,9 +24,9 @@
     <select id="dataset" aria-label="Example dataset"><option>Loading the examples…</option></select>
   </div>
   <p id="dataset-note" class="muted"></p>
-  <form id="url-form" class="url-bar" role="search" aria-label="Open an RDF Time Series Snippet" hidden>
+  <form id="url-form" class="url-bar" role="search" aria-label="Open an RDF Time Series Source" hidden>
     <span class="url-bar-icon" aria-hidden="true">&#128200;</span>
-    <input id="url" type="text" spellcheck="false" autocomplete="off" placeholder="https://example.org/snippet.ttl" value="">
+    <input id="url" type="text" spellcheck="false" autocomplete="off" placeholder="https://example.org/source.ttl" value="">
     <button id="open" type="submit">Open</button>
   </form>
 </div>

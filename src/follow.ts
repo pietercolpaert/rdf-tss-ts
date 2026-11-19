@@ -1,21 +1,21 @@
 /**
- * Following a growing snippet (spec: "Following a growing snippet"): the metadata document of a
- * growing `tss:EmbeddedRDFSnippet` (an RDF Message Log), and the data file of a growing CSV or
- * Arrow snippet only grow. A follower reads them once, keeps the offset after the last complete
+ * Following a growing source (spec: "Following a growing source"): the metadata document of a
+ * growing `tss:EmbeddedRDFSource` (an RDF Message Log), and the data file of a growing CSV or
+ * Arrow source only grow. A follower reads them once, keeps the offset after the last complete
  * unit, and asks for the bytes after it with a Range request.
  */
 import { iriToPath, readFromOffset } from './platform.js';
-import type { DataContext } from './sources/access.js';
-import { parseCsvText, type CsvColumns } from './sources/csv.js';
-import type { RawPoint } from './sources/rows.js';
-import { arrowPoints } from './sources/table.js';
-import type { SnippetMetadata } from './types.js';
+import type { DataContext } from './formats/access.js';
+import { parseCsvText, type CsvColumns } from './formats/csv.js';
+import type { RawRow } from './formats/rows.js';
+import { arrowRows } from './formats/table.js';
+import type { SourceMetadata } from './types.js';
 import type { Quad } from './rdf.js';
 import { parseLogMessages } from './rdf.js';
 
 export interface PollResult {
-  points: RawPoint[];
-  /** The snippet is immutable now, and everything has been read. */
+  rows: RawRow[];
+  /** The source is immutable now, and everything has been read. */
   ended: boolean;
   /** Quads that are new in the metadata (an RDF Message Log), to add to the description. */
   quads?: Quad[];
@@ -98,12 +98,12 @@ export class ByteSource {
   }
 }
 
-/** Points whose time was not emitted yet: the key identifies a point, also after a fallback to a full read. */
+/** Rows whose time was not emitted yet: the key identifies a row, also after a fallback to a full read. */
 export class Seen {
   private readonly times = new Set<string>();
-  fresh(points: RawPoint[]): RawPoint[] {
-    const out: RawPoint[] = [];
-    for (const p of points) {
+  fresh(rows: RawRow[]): RawRow[] {
+    const out: RawRow[] = [];
+    for (const p of rows) {
       if (this.times.has(p.time)) continue;
       this.times.add(p.time);
       out.push(p);
@@ -120,7 +120,7 @@ export class CsvFollower implements Follower {
   private readonly utf8: boolean;
 
   constructor(
-    private readonly meta: SnippetMetadata,
+    private readonly meta: SourceMetadata,
     private readonly source: ByteSource,
   ) {
     this.utf8 = /^utf-?8$/i.test(meta.encoding);
@@ -132,14 +132,14 @@ export class CsvFollower implements Follower {
 
   async poll(signal?: AbortSignal): Promise<PollResult> {
     const result = await this.source.read(signal);
-    if (!result || 'gone' in result) return { points: [], ended: 'gone' in (result ?? {}) };
+    if (!result || 'gone' in result) return { rows: [], ended: 'gone' in (result ?? {}) };
     if (result.whole) this.columns = undefined;
     const text = new TextDecoder(this.meta.encoding).decode(result.bytes);
     const parsed = await parseCsvText(this.meta, text, this.columns);
     this.columns = parsed.columns;
     // another encoding than UTF-8: the offset in bytes of a character is not known, so read everything again
     this.source.offset = this.utf8 ? (result.whole ? 0 : this.source.offset) + new TextEncoder().encode(text.slice(0, parsed.consumed)).length : 0;
-    return { points: this.seen.fresh(parsed.points), ended: false };
+    return { rows: this.seen.fresh(parsed.rows), ended: false };
   }
 }
 
@@ -198,7 +198,7 @@ export class ArrowFollower implements Follower {
   private readonly seen = new Seen();
 
   constructor(
-    private readonly meta: SnippetMetadata,
+    private readonly meta: SourceMetadata,
     private readonly source: ByteSource,
   ) {}
 
@@ -208,7 +208,7 @@ export class ArrowFollower implements Follower {
 
   async poll(signal?: AbortSignal): Promise<PollResult> {
     const result = await this.source.read(signal);
-    if (!result || 'gone' in result) return { points: [], ended: 'gone' in (result ?? {}) };
+    if (!result || 'gone' in result) return { rows: [], ended: 'gone' in (result ?? {}) };
     if (result.whole) this.prefix = undefined;
     const walked = walkArrowMessages(result.bytes);
     let readable: Uint8Array;
@@ -223,12 +223,12 @@ export class ArrowFollower implements Follower {
       readable.set(this.prefix, 0);
       readable.set(part, this.prefix.length);
     }
-    const points: RawPoint[] = [];
+    const rows: RawRow[] = [];
     if (walked.end > 0 && walked.types.length > 0 && walked.types.some((t) => t === RECORD_BATCH)) {
-      for await (const point of arrowPoints(this.meta, readable, { skip: 0, strict: false })) points.push(point);
+      for await (const row of arrowRows(this.meta, readable, { skip: 0, strict: false })) rows.push(row);
     }
     this.source.offset = this.prefix ? this.source.offset + walked.end : 0;
-    return { points: this.seen.fresh(points), ended: walked.eos };
+    return { rows: this.seen.fresh(rows), ended: walked.eos };
   }
 }
 
@@ -259,8 +259,8 @@ export class RdfLogFollower implements Follower {
   constructor(
     private readonly source: ByteSource,
     private readonly baseIRI: string | undefined,
-    /** Extracts the points of the new quads. */
-    private readonly pointsOf: (quads: Quad[]) => RawPoint[],
+    /** Extracts the rows of the new quads. */
+    private readonly rowsOf: (quads: Quad[]) => RawRow[],
     private readonly immutableIn: (quads: Quad[]) => boolean,
   ) {}
 
@@ -270,11 +270,11 @@ export class RdfLogFollower implements Follower {
 
   async poll(signal?: AbortSignal): Promise<PollResult> {
     const result = await this.source.read(signal);
-    if (!result || 'gone' in result) return { points: [], ended: 'gone' in (result ?? {}) };
+    if (!result || 'gone' in result) return { rows: [], ended: 'gone' in (result ?? {}) };
     if (result.whole) this.preamble = '';
     const text = new TextDecoder().decode(result.bytes);
     const end = lastMessageEnd(text);
-    if (end === 0) return { points: [], ended: false };
+    if (end === 0) return { rows: [], ended: false };
     const complete = text.slice(0, end);
     const messages = await parseLogMessages(result.whole ? complete : this.preamble + complete, { baseIRI: this.baseIRI });
     this.preamble = addDirectives(this.preamble, complete);
@@ -283,7 +283,7 @@ export class RdfLogFollower implements Follower {
     const first = this.first;
     this.first = false;
     return {
-      points: this.pointsOf(quads),
+      rows: this.rowsOf(quads),
       ended: this.immutableIn(quads),
       // the first read is the document the description was read from
       quads: first && result.whole ? undefined : quads,

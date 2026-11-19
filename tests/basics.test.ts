@@ -11,7 +11,7 @@ import {
   parseTime,
   tryInstantOf,
 } from '../src/time.js';
-import { parseCsv } from '../src/sources/csv.js';
+import { parseCsv } from '../src/formats/csv.js';
 import { csvLine } from '../src/writers/csv.js';
 
 const XSD = 'http://www.w3.org/2001/XMLSchema#';

@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { CreateOptions, ReadingInput } from '../../src/index.js';
+import type { CreateOptions, RowInput } from '../../src/index.js';
 
 export async function tempDir(): Promise<{ dir: string; cleanup(): Promise<void> }> {
   const dir = await mkdtemp(join(tmpdir(), 'rdf-tss-'));
@@ -12,10 +12,10 @@ export const ex = 'https://example.org/';
 export const XSD = 'http://www.w3.org/2001/XMLSchema#';
 export const DEG_C = 'http://qudt.org/vocab/unit/DEG_C';
 
-/** A small weather snippet: a double with a unit, an integer, a string, and a missing value. */
+/** A small weather source: a double with a unit, an integer, a string, and a missing value. */
 export function weatherOptions(kind: CreateOptions['kind'], name: string): CreateOptions {
   return {
-    id: `${ex}${name}#snippet`,
+    id: `${ex}${name}#source`,
     kind,
     label: 'Weather',
     timeField: { id: `${ex}fields/time`, columnName: 'time' },
@@ -35,7 +35,7 @@ export function weatherOptions(kind: CreateOptions['kind'], name: string): Creat
   };
 }
 
-export const weatherReadings: ReadingInput[] = [
+export const weatherReadings: RowInput[] = [
   { time: '2026-11-17T12:00:00Z', values: { temperature: '8.4', humidity: '61', status: 'ok' } },
   { time: '2026-11-17T12:10:00Z', values: { temperature: '8.6', status: 'estimated' } },
   { time: '2026-11-17T12:20:00Z', values: { temperature: '8.5', humidity: '59' } },

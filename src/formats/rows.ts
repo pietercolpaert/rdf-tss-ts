@@ -1,23 +1,26 @@
 import { ValidationError } from '../errors.js';
+import type { Term } from '../rdf.js';
 import { formatTime, gridTime, parseDuration, parseTime, type Duration, type ParsedTime } from '../time.js';
-import type { FieldMetadata, SnippetMetadata } from '../types.js';
+import type { FieldMetadata, SourceMetadata } from '../types.js';
 
-/** A point as read from a source, before the window, the value encoding and units are applied. */
-export interface RawPoint {
-  /** The time of the point, an `xsd:dateTimeStamp`. */
+/** A row as read from a source, before the window, the value encoding and units are applied. */
+export interface RawRow {
+  /** The time of the row, an `xsd:dateTimeStamp`. */
   time: string;
-  /** The lexical value of every field the point has a value for, by field id. */
+  /** The lexical value of every field the row has a value for, by field id. */
   values: Map<string, string>;
+  /** The RDF node of the point of each value field, in an embedded RDF source. */
+  nodes?: Map<string, Term>;
 }
 
 /** Gives the lexical value a row has for a field; `undefined` for an empty value. */
 export type RowAccess = (field: FieldMetadata) => string | undefined;
 
 /**
- * Build the function that turns a row of a data file into a point: it finds the time (in
+ * Build the function that turns a row of a data file into a raw row: it finds the time (in
  * a column, or from the step on the time grid) and the values of the other fields.
  */
-export function makeRowConverter(meta: SnippetMetadata): (access: RowAccess, row: number) => RawPoint {
+export function makeRowConverter(meta: SourceMetadata): (access: RowAccess, row: number) => RawRow {
   let grid: { base: ParsedTime; step: Duration } | null = null;
   if (meta.timeBase !== undefined && meta.timeStep !== undefined) {
     const base = parseTime(meta.timeBase);

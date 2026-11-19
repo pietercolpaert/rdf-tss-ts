@@ -1,6 +1,6 @@
 name: Playground
 
-# Builds the playground with example snippets in every format, checks it in a real
+# Builds the playground with example sources in every format, checks it in a real
 # browser, and publishes it with GitHub Pages (Settings > Pages > Source: GitHub Actions).
 
 on:

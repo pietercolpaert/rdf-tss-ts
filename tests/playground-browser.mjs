@@ -102,8 +102,8 @@ try {
   if (months) {
     await choose(months.id);
     const subtitle = await text('#subtitle');
-    const readings = Number(/(\d+) readings/.exec(subtitle)?.[1]);
-    assert.ok(readings > 1500, `months of hourly rows: ${subtitle}`);
+    const rowCount = Number(/(\d+) rows/.exec(subtitle)?.[1]);
+    assert.ok(rowCount > 1500, `months of hourly rows: ${subtitle}`);
     const titles = await page.$$eval('#panel-chart .chart h3', (nodes) => nodes.map((n) => n.textContent));
     const speed = titles.findIndex((t) => t.includes('km/h'));
     assert.ok(speed >= 0, `a speed chart in km/h: ${titles}`);
@@ -130,7 +130,7 @@ try {
     await page.waitForFunction((i) => /all shown/.test(document.querySelectorAll('#panel-chart .chart .chart-status')[i].textContent), {}, counts);
     await page.$$eval('#panel-chart .chart .overlay', (nodes, i) => nodes[i].dispatchEvent(new MouseEvent('dblclick', { bubbles: true })), counts);
     await page.waitForFunction((i) => /per day/.test(document.querySelectorAll('#panel-chart .chart .chart-status')[i].textContent), {}, counts);
-    // the charts of a snippet zoom together: the speed chart follows the counts chart
+    // the charts of a source zoom together: the speed chart follows the counts chart
     await dragTo(0.5, 0.6);
     await page.waitForFunction((i) => !/per day/.test(document.querySelectorAll('#panel-chart .chart .chart-status')[i].textContent), {}, speed);
     const ticks = (i) => page.$$eval('#panel-chart .chart', (nodes, i) => [...nodes[i].querySelectorAll('.axis text[text-anchor="middle"]')].map((t) => t.textContent).join('|'), i);
@@ -179,10 +179,14 @@ try {
   assert.equal(await page.$$eval('#panel-chart .legend label', (l) => l.length), 8, 'eight series in one chart');
   await page.click('#tab-metadata');
   await page.waitForFunction(() => document.querySelector('#panel-metadata pre'));
-  assert.match(await text('#panel-metadata pre'), /tss:CSVSnippet/);
+  assert.match(await text('#panel-metadata pre'), /tss:CSVSource/);
   await page.click('#tab-messages');
   await page.waitForFunction(() => document.querySelector('#panel-messages .message'));
-  assert.match(await text('#panel-messages'), /sosa:Observation/);
+  // the expansion: the points link to their field; with the alignment, they are SOSA observations too
+  assert.match(await text('#panel-messages'), /tss:hasPoint/);
+  assert.match(await text('#panel-messages'), /tss:field/);
+  await page.select('#msg-align', 'sosa');
+  await page.waitForFunction(() => /sosa:Observation/.test(document.querySelector('#panel-messages').textContent));
   await page.click('#tab-validate');
   await page.waitForFunction(() => document.querySelector('#panel-validate .badge'));
   assert.match(await text('#panel-validate'), /conforms/);

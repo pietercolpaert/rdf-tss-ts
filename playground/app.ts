@@ -9,7 +9,7 @@ import {
   type Reading,
   type UnitConverter,
 } from '../src/index.js';
-import { renderChart, type Series } from './chart.js';
+import { ZoomGroup, renderChart, type Series } from './chart.js';
 
 interface Example {
   id: string;
@@ -211,6 +211,8 @@ async function renderCharts(): Promise<void> {
   const all = groups(snippet);
   if (all.size === 0) panel.textContent = 'This snippet has no numeric fields to chart.';
   let index = 0;
+  // zooming in on one chart zooms the others to the same times
+  const zoom = new ZoomGroup();
   for (const [, fields] of all) {
     const section = document.createElement('div');
     section.className = 'chart';
@@ -232,7 +234,7 @@ async function renderCharts(): Promise<void> {
       const counts = !fields[0].unit && lines.every((s) => s.points.every((p) => p.v === null || (p.v >= 0 && Number.isInteger(p.v))));
       const unit = state!.unit.get(fields[0].id);
       stopChart?.();
-      stopChart = renderChart(area, { series: lines, step: counts, zero: counts, unit: unit ? symbol(unit) : undefined });
+      stopChart = renderChart(area, { series: lines, step: counts, zero: counts, unit: unit ? symbol(unit) : undefined, zoom });
       state!.stopCharts.push(stopChart);
     };
     if (fields[0].unit) {

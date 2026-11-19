@@ -13,8 +13,31 @@ export interface Series {
   points: Point[];
 }
 
+/**
+ * The time range that is zoomed in on, shared by the charts that belong together: zooming in on
+ * one chart zooms the others to the same times.
+ */
+export class ZoomGroup {
+  /** `null` is the whole time range of every chart. */
+  view: [number, number] | null = null;
+  private readonly listeners = new Set<() => void>();
+
+  set(view: [number, number] | null): void {
+    this.view = view;
+    for (const listener of [...this.listeners]) listener();
+  }
+
+  /** Call `listener` when the range changes; returns the function that stops listening. */
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+}
+
 export interface ChartOptions {
   series: Series[];
+  /** Charts that share a group zoom together. Default: the chart zooms on its own. */
+  zoom?: ZoomGroup;
   /** Draw steps instead of slopes: right for counts per period. */
   step?: boolean;
   /** Start the y axis at zero. */
@@ -90,7 +113,7 @@ export function renderChart(container: HTMLElement, options: ChartOptions): () =
   const id = `chart-${charts++}`;
   const series = options.series.map((s) => ({ ...s, points: s.points.every((p, i, all) => i === 0 || all[i - 1].t <= p.t) ? s.points : [...s.points].sort((a, b) => a.t - b.t) }));
   const visible = new Set(series.map((s) => s.name));
-  let view: [number, number] | null = null;
+  const zoom = options.zoom ?? new ZoomGroup();
   let downsample = true;
 
   const tools = document.createElement('div');
@@ -110,10 +133,7 @@ export function renderChart(container: HTMLElement, options: ChartOptions): () =
   reset.type = 'button';
   reset.textContent = 'Reset zoom';
   reset.hidden = true;
-  reset.addEventListener('click', () => {
-    view = null;
-    draw();
-  });
+  reset.addEventListener('click', () => zoom.set(null));
   tools.append(status, toggle, reset);
   const wrap = document.createElement('div');
   wrap.className = 'chart-wrap';
@@ -161,8 +181,9 @@ export function renderChart(container: HTMLElement, options: ChartOptions): () =
     const shown = series.filter((s) => visible.has(s.name));
     const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, role: 'img' });
     wrap.append(svg);
-    reset.hidden = view === null;
+    reset.hidden = zoom.view === null;
 
+    const view = zoom.view;
     const [tMin, tMax] = view ?? [fullMin, fullMax];
     const slices = shown.map((s) => visiblePoints(s.points, tMin, tMax));
     const most = Math.max(0, ...slices.map((slice) => slice.filter((p) => p.t >= tMin && p.t <= tMax && p.v !== null).length));
@@ -350,22 +371,22 @@ export function renderChart(container: HTMLElement, options: ChartOptions): () =
         start = middle - 30_000;
         end = middle + 30_000;
       }
-      view = [start, end];
-      draw();
+      zoom.set([start, end]);
     });
     overlay.addEventListener('pointercancel', () => {
       from = null;
       selection.setAttribute('visibility', 'hidden');
     });
-    overlay.addEventListener('dblclick', () => {
-      view = null;
-      draw();
-    });
+    overlay.addEventListener('dblclick', () => zoom.set(null));
     overlay.addEventListener('mouseleave', hideTip);
   }
 
   draw();
+  const unsubscribe = zoom.subscribe(draw);
   const observer = new ResizeObserver(() => draw());
   observer.observe(container);
-  return () => observer.disconnect();
+  return () => {
+    unsubscribe();
+    observer.disconnect();
+  };
 }

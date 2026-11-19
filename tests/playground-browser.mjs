@@ -130,6 +130,13 @@ try {
     await page.waitForFunction((i) => /all shown/.test(document.querySelectorAll('#panel-chart .chart .chart-status')[i].textContent), {}, counts);
     await page.$$eval('#panel-chart .chart .overlay', (nodes, i) => nodes[i].dispatchEvent(new MouseEvent('dblclick', { bubbles: true })), counts);
     await page.waitForFunction((i) => /per day/.test(document.querySelectorAll('#panel-chart .chart .chart-status')[i].textContent), {}, counts);
+    // the charts of a snippet zoom together: the speed chart follows the counts chart
+    await dragTo(0.5, 0.6);
+    await page.waitForFunction((i) => !/per day/.test(document.querySelectorAll('#panel-chart .chart .chart-status')[i].textContent), {}, speed);
+    const ticks = (i) => page.$$eval('#panel-chart .chart', (nodes, i) => [...nodes[i].querySelectorAll('.axis text[text-anchor="middle"]')].map((t) => t.textContent).join('|'), i);
+    assert.equal(await ticks(speed), await ticks(counts), 'both charts show the same times');
+    await page.$$eval('#panel-chart .chart .chart-tools button', (nodes) => nodes[0].click());
+    await page.waitForFunction((i) => /per day/.test(document.querySelectorAll('#panel-chart .chart .chart-status')[i].textContent), {}, speed);
     console.log('  ok months: downsampled to days, zoom shows more, double-click zooms out');
   }
 

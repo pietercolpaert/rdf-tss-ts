@@ -111,3 +111,15 @@ pre { background: #1d2b38; color: #e6edf3; padding: .9rem 1rem; border-radius: 6
 .facts div { min-width: 8rem; }
 
 footer { max-width: 74rem; margin: 0 auto; padding: 0 1.5rem 2rem; color: #536779; font-size: .85rem; }
+
+/* patterns */
+.cmp-layout { display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: flex-start; margin-top: .5rem; }
+.cmp-figure { position: relative; flex: 0 1 34rem; min-width: 16rem; }
+canvas.cmp { display: block; width: 100%; aspect-ratio: 1; image-rendering: pixelated; border: 1px solid var(--line); cursor: crosshair; }
+.cmp-axis { display: flex; justify-content: space-between; font-size: .78rem; color: #536779; margin-top: .2rem; }
+.cmp-legend { display: flex; gap: .5rem; align-items: center; font-size: .78rem; color: #536779; margin-top: .4rem; }
+.cmp-bar { flex: 0 0 8rem; height: .6rem; border-radius: 3px; }
+.cmp-side { flex: 1 1 16rem; }
+.cmp-side h4 { margin: 0 0 .2rem; }
+.cmp-list { margin: .3rem 0 0; padding-left: 1.3rem; font-size: .9rem; }
+.cmp-match { margin-top: 1rem; }

@@ -4,7 +4,7 @@ A TypeScript library to read, follow and write [RDF Time Series Snippets](https:
 
 > **Status: first implementation of an API draft.** The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change. This version follows the proposal of [pull request #25](https://github.com/KNowledgeOnWebScale/rdf-timeseriessnippets/pull/25): a snippet *grows* until it is *ended* with `tss:immutable true`, and followers use plain HTTP (`Range`, `ETag`, `max-age`).
 
-**Try the [playground](https://pietercolpaert.github.io/rdf-tss-ts/)**: pick a dataset from the drop-down (months of Telraam traffic counts and speeds, and a day of weather in every format), see charts (large series are downsampled to an average per day, with a min–max band; drag to zoom in on the raw values), convert units with QUDT, and see the RDF Messages. The Telraam data is read from the [Telraam LDES](https://ldes.telraam-api.net/measurements) as RDF Messages and turned into binary snippets, see [Telraam](#telraam).
+**Try the [playground](https://pietercolpaert.github.io/rdf-tss-ts/)**: pick a dataset from the drop-down (months of Telraam traffic counts and speeds, and a day of weather in every format), see charts (large series are downsampled to an average per day, with a min–max band; drag to zoom in on the raw values), convert units with QUDT, find repeating patterns with the matrix profile and the contextual matrix profile, and see the RDF Messages. The Telraam data is read from the [Telraam LDES](https://ldes.telraam-api.net/measurements) as RDF Messages and turned into binary snippets, see [Telraam](#telraam).
 
 ## What is a snippet?
 

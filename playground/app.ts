@@ -10,6 +10,7 @@ import {
   type UnitConverter,
 } from '../src/index.js';
 import { ZoomGroup, renderChart, type Series } from './chart.js';
+import { renderPatterns } from './patterns.js';
 
 interface Example {
   id: string;
@@ -182,7 +183,7 @@ function selectTab(name: string): void {
   for (const panel of document.querySelectorAll<HTMLElement>('.panel')) panel.hidden = panel.id !== `panel-${name}`;
   if (state && !state.rendered.has(name)) {
     state.rendered.add(name);
-    const render = { chart: renderCharts, table: renderTable, metadata: renderMetadata, messages: renderMessages, validate: renderValidate, compare: renderCompare }[name];
+    const render = { chart: renderCharts, table: renderTable, metadata: renderMetadata, patterns: renderPatternsTab, messages: renderMessages, validate: renderValidate, compare: renderCompare }[name];
     void render?.().catch((error: Error) => {
       $(`panel-${name}`).textContent = error.message;
     });
@@ -285,6 +286,17 @@ async function renderCharts(): Promise<void> {
     hint.textContent = 'Change the unit of a chart: the readings are converted with QUDT, thanks to eyemind, while they are read.';
     panel.prepend(hint);
   }
+}
+
+/* ---------- patterns ---------- */
+
+async function renderPatternsTab(): Promise<void> {
+  const current = state!;
+  const { timeField, stepField } = current.snippet.metadata;
+  const fields = current.snippet.metadata.fields
+    .filter((f) => f.id !== timeField && f.id !== stepField && isNumeric(f))
+    .map((f) => ({ id: f.id, label: label(f), unit: current.unit.get(f.id) }));
+  current.stopCharts.push(renderPatterns($('panel-patterns'), { fields, times: current.times, values: (id) => current.values.get(id)!, symbol }));
 }
 
 /* ---------- table ---------- */

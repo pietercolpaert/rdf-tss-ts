@@ -140,6 +140,32 @@ try {
     console.log('  ok months: downsampled to days, zoom shows more, double-click zooms out');
   }
 
+  // patterns: the matrix profile and the contextual matrix profile of months of hourly values
+  if (months) {
+    await page.click('#tab-patterns');
+    await page.waitForFunction(() => document.querySelector('#panel-patterns canvas.cmp'), { timeout: 60000 });
+    const patternsStatus = await text('#panel-patterns .status');
+    assert.match(patternsStatus, /windows of 22 values compared in \d+ ms/, patternsStatus);
+    assert.equal(await page.$$eval('#panel-patterns .chart svg', (nodes) => nodes.length >= 2), true, 'the series and its matrix profile');
+    const size = await page.$eval('#panel-patterns canvas.cmp', (c) => [c.width, c.height]);
+    assert.ok(size[0] > 100 && size[0] === size[1], `a square heatmap of days: ${size}`);
+    const canvas = await page.$('#panel-patterns canvas.cmp');
+    await canvas.evaluate((c) => c.scrollIntoView({ block: 'center' }));
+    const box = await canvas.boundingBox();
+    await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.6);
+    await page.waitForFunction(() => document.querySelector('#panel-patterns .cmp-match svg path.line'));
+    assert.match(await text('#panel-patterns .cmp-match'), /the best match is the window of 22 h/);
+    assert.ok((await page.$$('#panel-patterns .cmp-list li')).length >= 3, 'the days that differ most');
+    // another window length is computed again
+    await page.$eval('#panel-patterns input[type=number]', (input) => {
+      input.value = '12';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.waitForFunction(() => /windows of 12 values compared/.test(document.querySelector('#panel-patterns .status').textContent), { timeout: 60000 });
+    console.log(`  ok patterns: ${patternsStatus}; heatmap ${size[0]} x ${size[1]} days`);
+    await page.click('#tab-chart');
+  }
+
   // your own URL
   await page.select('#dataset', '__custom__');
   assert.equal(await page.$eval('#url-form', (f) => f.hidden), false, 'the URL form appears');

@@ -13,7 +13,8 @@ const site = join(root, '_site');
 await mkdir(site, { recursive: true });
 
 await esbuild.build({
-  entryPoints: [join(root, 'playground', 'app.ts')],
+  // the worker is its own entry: the playground starts it by its file name
+  entryPoints: [join(root, 'playground', 'app.ts'), join(root, 'playground', 'matrixprofile.worker.ts')],
   outdir: site,
   bundle: true,
   splitting: true,

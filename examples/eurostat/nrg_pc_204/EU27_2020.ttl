@@ -1,0 +1,59 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+
+# Electricity price for households, European Union (27): the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.EU27_2020 of the Eurostat dataset
+# nrg_pc_204, as SDMX-CSV from the dissemination API of Eurostat. This document only
+# describes it: the rows are read from Eurostat. Written by scripts/eurostat.ts.
+#
+# The file has one row per half year, without gaps, so the time of a row is the start of its
+# half year: its step on a time grid of P6M from 2007-01-01. The TIME_PERIOD column is
+# not read as the time, and the other columns of the file are not described.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Electricity price for households, European Union (27)"@en ;
+    rdfs:comment "The price of electricity for household consumers using 2 500 to 5 000 kWh a year (band DC), all taxes and levies included, in euro per kilowatt-hour."@en ;
+    dcterms:publisher <https://ec.europa.eu/eurostat> ;
+    dcterms:source <https://ec.europa.eu/eurostat/databrowser/view/nrg_pc_204/default/table> ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    tss:from "2007-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nrg_pc_204/S.E7000.KWH2500-4999.KWH.I_TAX.EUR.EU27_2020?format=SDMX-CSV> ;
+    tss:timeBase "2007-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P6M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#period>,
+        <#value> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:ContextField ;
+    rdfs:label "Start of the period"@en ;
+    tss:datatype xsd:dateTime .
+
+<#period>
+    a tss:ContextField ;
+    rdfs:label "Period as written in the file"@en ;
+    tss:columnName "TIME_PERIOD" ;
+    tss:datatype xsd:string .
+
+<#value>
+    a tss:ValueField ;
+    rdfs:label "Electricity price for households"@en ;
+    tss:columnName "OBS_VALUE" ;
+    tss:datatype xsd:decimal ;
+    # European Union (27) (Wikidata)
+    tss:featureOfInterest <http://www.wikidata.org/entity/Q458> ;
+    tss:unit <#EUR-PER-KiloW-HR> .
+
+# QUDT has the euro and the kilowatt-hour, but not their quotient. A price is not converted to
+# another currency: an exchange rate changes over time.
+<#EUR-PER-KiloW-HR>
+    a qudt:DerivedUnit, qudt:Unit ;
+    rdfs:label "euro per kilowatt-hour"@en ;
+    qudt:symbol "€/kWh" ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit unit:CCY_EUR ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:KiloW-HR ] .

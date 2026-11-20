@@ -20,6 +20,8 @@ interface Example {
   id: string;
   title: string;
   group: string;
+  /** Its place in the menu: a publisher, a dataset and, for a dataset of several series, the series. */
+  path: string[];
   description: string;
   metadata: string;
   kind: string;
@@ -677,33 +679,57 @@ const CUSTOM = '__custom__';
 const exampleUrl = (example: Example) => new URL(`examples/${example.metadata}`, location.href).href;
 
 /** A drop-down with the examples, grouped by category, and a custom URL. */
+/** The selects of the menu: a publisher (or your own URL), a dataset, and a series. */
+const levels = () => [$<HTMLSelectElement>('dataset'), $<HTMLSelectElement>('dataset-2'), $<HTMLSelectElement>('dataset-3')];
+
+/** The examples under the first `depth` choices of the menu. */
+const under = (choices: string[]) => examples.filter((e) => choices.every((c, i) => e.path[i] === c));
+const distinct = (list: string[]) => [...new Set(list)];
+
+/** Fill the select of level `depth` (1 or 2) with what lies under the choices before it, and choose `value`. */
+function fillLevel(depth: number, value?: string): void {
+  const select = levels()[depth];
+  const choices = levels().slice(0, depth).map((s) => s.value);
+  const below = under(choices).filter((e) => e.path.length > depth);
+  const names = distinct(below.map((e) => e.path[depth]));
+  select.replaceChildren(...names.map((name) => new Option(name, name)));
+  // a dataset of one series ends the menu: there is nothing to choose below it
+  select.hidden = names.length === 0 || (depth === 2 && names.length === 1 && below[0].path.length === 3 && below[0].path[2] === below[0].path[1]);
+  if (value && names.includes(value)) select.value = value;
+  for (const deeper of levels().slice(depth + 1)) deeper.hidden = true;
+}
+
+/** The example the menu points at: the first under the choices of the visible selects. */
+function chosenExample(): Example | undefined {
+  const choices = levels().filter((s) => !s.hidden).map((s) => s.value);
+  return under(choices)[0];
+}
+
 function renderExamples(): void {
-  const select = $<HTMLSelectElement>('dataset');
-  select.replaceChildren();
-  for (const group of [...new Set(examples.map((e) => e.group))]) {
-    const optgroup = document.createElement('optgroup');
-    optgroup.label = group;
-    for (const example of examples.filter((e) => e.group === group)) {
-      const option = new Option(example.title, example.id);
-      option.title = example.description;
-      optgroup.append(option);
-    }
-    select.append(optgroup);
-  }
-  const custom = document.createElement('optgroup');
-  custom.label = 'Your own data';
-  custom.append(new Option('Another URL …', CUSTOM));
-  select.append(custom);
-  select.addEventListener('change', () => {
-    if (select.value === CUSTOM) {
+  const [first, second, third] = levels();
+  first.replaceChildren(new Option('Your own URL …', CUSTOM), ...distinct(examples.map((e) => e.path[0])).map((name) => new Option(name, name)));
+  const openChosen = () => {
+    const example = chosenExample();
+    if (example) void open(exampleUrl(example), example);
+  };
+  first.addEventListener('change', () => {
+    if (first.value === CUSTOM) {
+      second.hidden = third.hidden = true;
       showCustom(true);
       $<HTMLInputElement>('url').focus();
       return;
     }
     showCustom(false);
-    const example = examples.find((e) => e.id === select.value)!;
-    void open(exampleUrl(example), example);
+    fillLevel(1);
+    if (!second.hidden && under([first.value, second.value]).some((e) => e.path.length > 2)) fillLevel(2);
+    openChosen();
   });
+  second.addEventListener('change', () => {
+    if (under([first.value, second.value]).some((e) => e.path.length > 2)) fillLevel(2);
+    else third.hidden = true;
+    openChosen();
+  });
+  third.addEventListener('change', openChosen);
 }
 
 function showCustom(visible: boolean): void {
@@ -711,12 +737,19 @@ function showCustom(visible: boolean): void {
   if (visible) $('dataset-note').textContent = 'Paste the URL of the metadata of a source, in any RDF syntax. A server on another site needs CORS headers (Access-Control-Allow-Origin: *).';
 }
 
-/** Show the example, or the custom URL, in the drop-down. */
+/** Show the example, or the custom URL, in the menu. */
 function selectDataset(example?: Example): void {
-  const select = $<HTMLSelectElement>('dataset');
-  select.value = example ? example.id : CUSTOM;
+  const [first, second, third] = levels();
   showCustom(!example);
-  if (example) $('dataset-note').textContent = example.description;
+  if (!example) {
+    first.value = CUSTOM;
+    second.hidden = third.hidden = true;
+    return;
+  }
+  first.value = example.path[0];
+  fillLevel(1, example.path[1]);
+  if (example.path.length > 2) fillLevel(2, example.path[2]);
+  $('dataset-note').textContent = example.description;
 }
 
 async function start(): Promise<void> {

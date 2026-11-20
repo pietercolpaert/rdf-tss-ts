@@ -46,7 +46,14 @@ try {
   const CO2 = 'https://raw.githubusercontent.com/datasets/co2-ppm/main/data/co2-gr-gl.csv';
   const goldMonths = Array.from({ length: 36 }, (_, n) => `${1833 + Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, '0')}-01,${(18.93 + n / 10).toFixed(3)}`);
   const co2Years = Array.from({ length: 20 }, (_, n) => `${1959 + n},${(0.9 + n / 10).toFixed(2)},${n < 10 ? '0.26' : '0.07'}`);
-  const stand = { [GOLD]: `Date,Price\n${goldMonths.join('\n')}\n`, [CO2]: `Year,Annual Increase,Uncertainty\n${co2Years.join('\n')}\n` };
+  // a Eurostat series as SDMX-CSV: two years of months, the flag p on the last
+  const EUROSTAT = 'https://ec.europa.eu/eurostat/api/';
+  const eurostatMonths = Array.from({ length: 24 }, (_, n) => `ESTAT:X(1.0),M,${2000 + Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, '0')},${(2 + Math.sin(n / 3)).toFixed(1)},${n === 23 ? 'p' : ''}`);
+  const stand = {
+    [GOLD]: `Date,Price\n${goldMonths.join('\n')}\n`,
+    [CO2]: `Year,Annual Increase,Uncertainty\n${co2Years.join('\n')}\n`,
+    [EUROSTAT]: `DATAFLOW,freq,TIME_PERIOD,OBS_VALUE,OBS_FLAG\n${eurostatMonths.join('\n')}\n`,
+  };
   await page.setRequestInterception(true);
   page.on('request', (request) => {
     const url = Object.keys(stand).find((prefix) => request.url().startsWith(prefix));
@@ -56,12 +63,14 @@ try {
 
   const ready = () => page.waitForFunction(() => !document.getElementById('result').hidden && document.querySelector('#panel-chart svg'), { timeout: 20000 });
   const text = (selector) => page.$eval(selector, (e) => e.textContent);
-  /** Pick a dataset in the drop-down and wait until it is shown. */
+  /** Open a dataset by its link, and wait until it is shown. */
   const choose = async (id) => {
-    await page.select('#dataset', id);
+    await page.evaluate((id) => (location.hash = id), id);
     await page.waitForFunction((id) => decodeURIComponent(location.hash.slice(1)) === id && !document.getElementById('result').hidden, { timeout: 30000 }, id);
     await ready();
   };
+  /** The choices of the menu: publisher, dataset and series, and `-` for a hidden select. */
+  const menu = () => page.evaluate(() => ['dataset', 'dataset-2', 'dataset-3'].map((id) => (document.getElementById(id).hidden ? '-' : document.getElementById(id).value)));
 
   await page.goto(base, { waitUntil: 'networkidle0' });
   await ready();
@@ -69,15 +78,41 @@ try {
   assert.ok(examples.length >= 10, 'the examples are listed');
   console.log(`first example: ${await text('#title')}`);
 
+  // the menu: your own URL, then a publisher, a dataset and a series
+  const publishers = await page.$$eval('#dataset option', (nodes) => nodes.map((n) => n.textContent));
+  assert.equal(publishers[0], 'Your own URL …');
+  assert.ok(publishers.length >= 5, `publishers: ${publishers}`);
+  console.log(`publishers: ${publishers.slice(1).join(' | ')}`);
+  assert.deepEqual((await menu()).slice(0, 2), ['Belgium · Telraam', 'Months of traffic counts and speeds']);
+  // choosing a publisher opens its first series; a dataset and a series narrow it down
+  await page.select('#dataset', 'Europe · Eurostat');
+  await page.waitForFunction(() => location.hash === '#eurostat-prc-hicp-manr-eu27-2020', { timeout: 30000 });
+  await ready();
+  await page.select('#dataset-2', 'Unemployment rate, monthly');
+  await page.waitForFunction(() => location.hash.startsWith('#eurostat-une-rt-m-'), { timeout: 30000 });
+  await page.select('#dataset-3', 'Belgium');
+  await page.waitForFunction(() => location.hash === '#eurostat-une-rt-m-be', { timeout: 30000 });
+  await ready();
+  assert.deepEqual(await menu(), ['Europe · Eurostat', 'Unemployment rate, monthly', 'Belgium']);
+  assert.match(await text('#subtitle'), /CSV source · 24 rows · 3 fields · from \d{4}-\d{2}-01T00:00:00Z/);
+  // a publisher of datasets without series hides the third select
+  await page.select('#dataset', 'Examples · a day of weather, in every format');
+  await page.waitForFunction(() => location.hash === '#weather-embedded', { timeout: 30000 });
+  assert.deepEqual(await menu(), ['Examples · a day of weather, in every format', 'Embedded RDF', '-']);
+  // a link sets the menu
+  await choose('gold-prices');
+  assert.deepEqual(await menu(), ['World · core datasets on GitHub', 'Prices and markets', 'Monthly gold prices (USD per troy ounce)']);
+  // your own URL
+  await page.select('#dataset', '__custom__');
+  assert.equal(await page.$eval('#url-form', (f) => f.hidden), false);
+  assert.deepEqual((await menu()).slice(1), ['-', '-']);
+  console.log(`  ok menu: Eurostat › Unemployment rate › Belgium, the weather, a link, your own URL`);
+
   // every example renders a chart, in every format
-  // the drop-down groups them in categories
-  const groups = await page.$$eval('#dataset optgroup', (nodes) => nodes.map((n) => n.label));
-  assert.ok(groups.length >= 3, `categories: ${groups}`);
-  console.log(`categories: ${groups.join(' | ')}`);
   // the data files of the core datasets are on GitHub: scripts/datahub.ts reads them when it writes their
   // descriptions; here only the gold prices are read, from a stand-in
   const remote = examples.filter((e) => e.remote);
-  assert.ok(remote.length >= 40, `the time series of the core datasets on GitHub: ${remote.length}`);
+  assert.ok(remote.length >= 130, `the time series of the core datasets on GitHub and of Eurostat: ${remote.length}`);
   for (const example of examples.filter((e) => !e.remote || e.id === 'gold-prices')) {
     await choose(example.id);
     const status = await text('#status');
@@ -229,7 +264,9 @@ try {
   await page.$eval('#url', (input) => (input.value = ''));
   await page.type('#url', `${base}examples/weather-csv.ttl`);
   await page.click('#open');
-  await page.waitForFunction(() => document.getElementById('dataset').value === 'weather-csv', { timeout: 20000 });
+  // the URL of an example opens that example, and the menu shows it
+  await page.waitForFunction(() => location.hash === '#weather-csv', { timeout: 20000 });
+  assert.deepEqual(await menu(), ['Examples · a day of weather, in every format', 'CSV', '-']);
 
   // every other tab, for a Telraam location
   await choose('telraam-27387');

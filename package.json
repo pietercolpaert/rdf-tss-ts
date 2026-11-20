@@ -29,6 +29,7 @@
     "examples:telraam": "node scripts/fetch-telraam.mjs",
     "examples:telraam-months": "tsx scripts/telraam-log.ts",
     "examples:datahub": "tsx scripts/datahub.ts",
+    "examples:eurostat": "tsx scripts/eurostat.ts",
     "vocabulary": "tsx scripts/vocabulary.ts",
     "build:playground": "tsx scripts/build-playground.ts",
     "build:site": "npm run examples && npm run build:playground",

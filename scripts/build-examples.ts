@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { Source, type CreateOptions, type RowInput, type SourceKind } from '../src/index.js';
 import { convertLocation, ldesSize, readMembers, sourceSize, type Member } from './telraam.js';
 import { DATAHUB_GROUPS, type DatahubExample } from './datahub.js';
+import { EUROSTAT, type EurostatExample } from './eurostat.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = resolve(process.argv[2] ?? join(root, '_site', 'examples'));
@@ -40,6 +41,11 @@ export interface Example {
   files?: string[];
   /** The data file is read from another site. */
   remote?: boolean;
+  /**
+   * The place of the example in the menu of the playground: a publisher, a dataset, and for a
+   * dataset of several series, the series. Set at the end, from the group when not given.
+   */
+  path?: string[];
 }
 
 /** Hourly readings of a day in Ghent: made up, but smooth and deterministic. */
@@ -185,6 +191,15 @@ interface MonthsEntry {
 
 const GOLD = DATAHUB_GROUPS[0];
 
+/** Time series of Eurostat, described by scripts/eurostat.ts. */
+async function eurostat(): Promise<void> {
+  const source = join(root, 'examples', 'eurostat');
+  if (!existsSync(join(source, 'manifest.json'))) return;
+  await cp(source, join(out, 'eurostat'), { recursive: true });
+  const entries: EurostatExample[] = JSON.parse(await readFile(join(source, 'manifest.json'), 'utf8'));
+  for (const entry of entries) add({ ...entry, group: EUROSTAT, metadata: `eurostat/${entry.metadata}`, kind: 'CSV (time grid)', remote: true });
+}
+
 /**
  * Monthly gold prices since 1833: only the description is published here, the CSV file is read
  * from the gold-prices data package on GitHub. A time grid of one month without a step field.
@@ -259,9 +274,25 @@ await telraam();
 await telraamMonths();
 await gold();
 await datahub();
+await eurostat();
 
-// show the groups in this order
-const order = [TELRAAM_MONTHS, ...DATAHUB_GROUPS, TELRAAM_DAY, group];
-examples.sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
+// the menu: a publisher, a dataset and, for a dataset of several series, the series
+const TELRAAM = 'Belgium · Telraam';
+const GITHUB = 'World · core datasets on GitHub';
+const WEATHER = 'Examples · a day of weather, in every format';
+for (const e of examples) {
+  e.path ??=
+    e.group === TELRAAM_MONTHS
+      ? [TELRAAM, 'Months of traffic counts and speeds', e.title]
+      : e.group === TELRAAM_DAY
+        ? [TELRAAM, 'One day, compared with the LDES', e.title]
+        : DATAHUB_GROUPS.includes(e.group)
+          ? [GITHUB, e.group.replace(/ \(core datasets on GitHub\)$/, ''), e.title]
+          : [WEATHER, e.title];
+}
+// in this order, with the months of Telraam first; within a dataset, as they were added
+const order = [TELRAAM, EUROSTAT, GITHUB, WEATHER];
+const first = (e: Example) => (e.group === TELRAAM_DAY ? 1 : 0);
+examples.sort((a, b) => order.indexOf(a.path![0]) - order.indexOf(b.path![0]) || first(a) - first(b));
 await writeFile(join(out, 'index.json'), JSON.stringify(examples, null, 2));
 console.log(`wrote ${examples.length} examples to ${out}`);

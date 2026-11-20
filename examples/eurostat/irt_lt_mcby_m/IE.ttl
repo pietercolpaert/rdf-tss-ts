@@ -1,0 +1,50 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+
+# Long-term interest rate, Ireland: the series M.MCBY.IE of the Eurostat dataset
+# irt_lt_mcby_m, as SDMX-CSV from the dissemination API of Eurostat. This document only
+# describes it: the rows are read from Eurostat. Written by scripts/eurostat.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is the start of its
+# month: its step on a time grid of P1M from 1988-08-01. The TIME_PERIOD column is
+# not read as the time, and the other columns of the file are not described.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Long-term interest rate, Ireland"@en ;
+    rdfs:comment "The yield of government bonds with a maturity of about ten years, the convergence criterion of the Economic and Monetary Union, in percent a year."@en ;
+    dcterms:publisher <https://ec.europa.eu/eurostat> ;
+    dcterms:source <https://ec.europa.eu/eurostat/databrowser/view/irt_lt_mcby_m/default/table> ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    tss:from "1988-08-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/irt_lt_mcby_m/M.MCBY.IE?format=SDMX-CSV> ;
+    tss:timeBase "1988-08-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#period>,
+        <#value> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:ContextField ;
+    rdfs:label "Start of the period"@en ;
+    tss:datatype xsd:dateTime .
+
+<#period>
+    a tss:ContextField ;
+    rdfs:label "Period as written in the file"@en ;
+    tss:columnName "TIME_PERIOD" ;
+    tss:datatype xsd:gYearMonth .
+
+<#value>
+    a tss:ValueField ;
+    rdfs:label "Long-term interest rate"@en ;
+    tss:columnName "OBS_VALUE" ;
+    tss:datatype xsd:decimal ;
+    # Ireland (Wikidata)
+    tss:featureOfInterest <http://www.wikidata.org/entity/Q27> ;
+    tss:unit unit:PERCENT .

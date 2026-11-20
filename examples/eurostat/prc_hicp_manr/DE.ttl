@@ -1,0 +1,50 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+
+# Inflation, annual rate of change, Germany: the series M.RCH_A.CP00.DE of the Eurostat dataset
+# prc_hicp_manr, as SDMX-CSV from the dissemination API of Eurostat. This document only
+# describes it: the rows are read from Eurostat. Written by scripts/eurostat.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is the start of its
+# month: its step on a time grid of P1M from 1997-01-01. The TIME_PERIOD column is
+# not read as the time, and the other columns of the file are not described.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Inflation, annual rate of change, Germany"@en ;
+    rdfs:comment "The annual rate of change of the Harmonised Index of Consumer Prices (HICP), all items: the change of the index of a month against the same month a year earlier, in percent."@en ;
+    dcterms:publisher <https://ec.europa.eu/eurostat> ;
+    dcterms:source <https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_manr/default/table> ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    tss:from "1997-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/prc_hicp_manr/M.RCH_A.CP00.DE?format=SDMX-CSV> ;
+    tss:timeBase "1997-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#period>,
+        <#value> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:ContextField ;
+    rdfs:label "Start of the period"@en ;
+    tss:datatype xsd:dateTime .
+
+<#period>
+    a tss:ContextField ;
+    rdfs:label "Period as written in the file"@en ;
+    tss:columnName "TIME_PERIOD" ;
+    tss:datatype xsd:gYearMonth .
+
+<#value>
+    a tss:ValueField ;
+    rdfs:label "Inflation, annual rate of change"@en ;
+    tss:columnName "OBS_VALUE" ;
+    tss:datatype xsd:decimal ;
+    # Germany (Wikidata)
+    tss:featureOfInterest <http://www.wikidata.org/entity/Q183> ;
+    tss:unit unit:PERCENT .

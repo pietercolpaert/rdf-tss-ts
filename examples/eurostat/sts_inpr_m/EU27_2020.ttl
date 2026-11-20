@@ -1,0 +1,59 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+
+# Industrial production index, European Union (27): the series M.PRD.B-D.SCA.I21.EU27_2020 of the Eurostat dataset
+# sts_inpr_m, as SDMX-CSV from the dissemination API of Eurostat. This document only
+# describes it: the rows are read from Eurostat. Written by scripts/eurostat.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is the start of its
+# month: its step on a time grid of P1M from 1991-01-01. The TIME_PERIOD column is
+# not read as the time, and the other columns of the file are not described.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Industrial production index, European Union (27)"@en ;
+    rdfs:comment "The volume of production of industry (mining and quarrying, manufacturing, electricity and gas), seasonally and calendar adjusted, as an index with 2021 = 100."@en ;
+    dcterms:publisher <https://ec.europa.eu/eurostat> ;
+    dcterms:source <https://ec.europa.eu/eurostat/databrowser/view/sts_inpr_m/default/table> ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    tss:from "1991-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/sts_inpr_m/M.PRD.B-D.SCA.I21.EU27_2020?format=SDMX-CSV> ;
+    tss:timeBase "1991-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#period>,
+        <#value>,
+        <#flag> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:ContextField ;
+    rdfs:label "Start of the period"@en ;
+    tss:datatype xsd:dateTime .
+
+<#period>
+    a tss:ContextField ;
+    rdfs:label "Period as written in the file"@en ;
+    tss:columnName "TIME_PERIOD" ;
+    tss:datatype xsd:gYearMonth .
+
+<#value>
+    a tss:ValueField ;
+    rdfs:label "Industrial production index"@en ;
+    tss:columnName "OBS_VALUE" ;
+    tss:datatype xsd:decimal ;
+    # European Union (27) (Wikidata)
+    tss:featureOfInterest <http://www.wikidata.org/entity/Q458> .
+
+# The flag of Eurostat on a value, such as p (provisional), e (estimated) or b (a break in the series).
+<#flag>
+    a tss:ContextField ;
+    rdfs:label "Flag"@en ;
+    rdfs:comment "The flag of Eurostat on the value: b is a break in the time series, c confidential, d a definition that differs, e estimated, p provisional, u of low reliability, z not applicable."@en ;
+    tss:columnName "OBS_FLAG" ;
+    tss:datatype xsd:string ;
+    tss:describesField <#value> .

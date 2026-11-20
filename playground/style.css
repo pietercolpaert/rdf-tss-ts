@@ -34,9 +34,9 @@ button { font: inherit; cursor: pointer; }
 .url-bar button { padding: .6rem 1.2rem; border: 0; border-radius: 6px; background: var(--primary); color: white; font-weight: bold; }
 .url-bar button:hover { background: #2f5273; }
 
-.picker { display: flex; gap: .6rem; align-items: center; max-width: 60rem; margin-bottom: .5rem; }
+.picker { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; max-width: 60rem; margin-bottom: .5rem; }
 .picker label { font-size: .8rem; font-weight: bold; color: #536779; text-transform: uppercase; letter-spacing: .03em; }
-.picker select { flex: 1; padding: .55rem .7rem; border: 1px solid var(--primary-light); border-radius: 6px; font: inherit; background: white; color: inherit; }
+.picker select { flex: 1 1 12rem; min-width: 0; padding: .55rem .7rem; border: 1px solid var(--primary-light); border-radius: 6px; font: inherit; background: white; color: inherit; }
 #dataset-note { margin: 0 0 .6rem; max-width: 60rem; font-size: .9rem; }
 
 main { max-width: 74rem; margin: 0 auto; padding: 1.2rem 1.5rem 2rem; }

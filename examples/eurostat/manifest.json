@@ -1,0 +1,1047 @@
+[
+  {
+    "id": "eurostat-prc-hicp-manr-eu27-2020",
+    "title": "Inflation, annual rate of change, European Union (27)",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "European Union (27)"
+    ],
+    "description": "301 rows of the series M.RCH_A.CP00.EU27_2020 of the Eurostat dataset prc_hicp_manr, 2000-12 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/EU27_2020.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-be",
+    "title": "Inflation, annual rate of change, Belgium",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "Belgium"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.BE of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/BE.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-nl",
+    "title": "Inflation, annual rate of change, Netherlands",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "Netherlands"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.NL of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/NL.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-lu",
+    "title": "Inflation, annual rate of change, Luxembourg",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "Luxembourg"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.LU of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/LU.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-de",
+    "title": "Inflation, annual rate of change, Germany",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "Germany"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.DE of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/DE.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-fr",
+    "title": "Inflation, annual rate of change, France",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "France"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.FR of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/FR.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-it",
+    "title": "Inflation, annual rate of change, Italy",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "Italy"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.IT of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/IT.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-es",
+    "title": "Inflation, annual rate of change, Spain",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "Spain"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.ES of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/ES.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-pl",
+    "title": "Inflation, annual rate of change, Poland",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "Poland"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.PL of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/PL.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-se",
+    "title": "Inflation, annual rate of change, Sweden",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "Sweden"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.SE of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/SE.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-ie",
+    "title": "Inflation, annual rate of change, Ireland",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "Ireland"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.IE of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/IE.ttl"
+  },
+  {
+    "id": "eurostat-prc-hicp-manr-el",
+    "title": "Inflation, annual rate of change, Greece",
+    "path": [
+      "Europe · Eurostat",
+      "Inflation (HICP), monthly",
+      "Greece"
+    ],
+    "description": "348 rows of the series M.RCH_A.CP00.EL of the Eurostat dataset prc_hicp_manr, 1997-01 to 2025-12, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "prc_hicp_manr/EL.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-eu27-2020",
+    "title": "Unemployment rate, European Union (27)",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "European Union (27)"
+    ],
+    "description": "321 rows of the series M.SA.TOTAL.PC_ACT.T.EU27_2020 of the Eurostat dataset une_rt_m, 2000-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/EU27_2020.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-be",
+    "title": "Unemployment rate, Belgium",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "Belgium"
+    ],
+    "description": "486 rows of the series M.SA.TOTAL.PC_ACT.T.BE of the Eurostat dataset une_rt_m, 1986-04 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/BE.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-nl",
+    "title": "Unemployment rate, Netherlands",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "Netherlands"
+    ],
+    "description": "526 rows of the series M.SA.TOTAL.PC_ACT.T.NL of the Eurostat dataset une_rt_m, 1983-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/NL.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-lu",
+    "title": "Unemployment rate, Luxembourg",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "Luxembourg"
+    ],
+    "description": "525 rows of the series M.SA.TOTAL.PC_ACT.T.LU of the Eurostat dataset une_rt_m, 1983-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/LU.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-de",
+    "title": "Unemployment rate, Germany",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "Germany"
+    ],
+    "description": "429 rows of the series M.SA.TOTAL.PC_ACT.T.DE of the Eurostat dataset une_rt_m, 1991-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/DE.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-fr",
+    "title": "Unemployment rate, France",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "France"
+    ],
+    "description": "525 rows of the series M.SA.TOTAL.PC_ACT.T.FR of the Eurostat dataset une_rt_m, 1983-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/FR.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-it",
+    "title": "Unemployment rate, Italy",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "Italy"
+    ],
+    "description": "525 rows of the series M.SA.TOTAL.PC_ACT.T.IT of the Eurostat dataset une_rt_m, 1983-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/IT.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-es",
+    "title": "Unemployment rate, Spain",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "Spain"
+    ],
+    "description": "486 rows of the series M.SA.TOTAL.PC_ACT.T.ES of the Eurostat dataset une_rt_m, 1986-04 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/ES.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-pl",
+    "title": "Unemployment rate, Poland",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "Poland"
+    ],
+    "description": "357 rows of the series M.SA.TOTAL.PC_ACT.T.PL of the Eurostat dataset une_rt_m, 1997-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/PL.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-se",
+    "title": "Unemployment rate, Sweden",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "Sweden"
+    ],
+    "description": "525 rows of the series M.SA.TOTAL.PC_ACT.T.SE of the Eurostat dataset une_rt_m, 1983-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/SE.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-ie",
+    "title": "Unemployment rate, Ireland",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "Ireland"
+    ],
+    "description": "526 rows of the series M.SA.TOTAL.PC_ACT.T.IE of the Eurostat dataset une_rt_m, 1983-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/IE.ttl"
+  },
+  {
+    "id": "eurostat-une-rt-m-el",
+    "title": "Unemployment rate, Greece",
+    "path": [
+      "Europe · Eurostat",
+      "Unemployment rate, monthly",
+      "Greece"
+    ],
+    "description": "342 rows of the series M.SA.TOTAL.PC_ACT.T.EL of the Eurostat dataset une_rt_m, 1998-04 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "une_rt_m/EL.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-eu27-2020",
+    "title": "Industrial production index, European Union (27)",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "European Union (27)"
+    ],
+    "description": "429 rows of the series M.PRD.B-D.SCA.I21.EU27_2020 of the Eurostat dataset sts_inpr_m, 1991-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/EU27_2020.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-be",
+    "title": "Industrial production index, Belgium",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "Belgium"
+    ],
+    "description": "320 rows of the series M.PRD.B-D.SCA.I21.BE of the Eurostat dataset sts_inpr_m, 2000-01 to 2026-08, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/BE.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-nl",
+    "title": "Industrial production index, Netherlands",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "Netherlands"
+    ],
+    "description": "321 rows of the series M.PRD.B-D.SCA.I21.NL of the Eurostat dataset sts_inpr_m, 2000-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/NL.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-lu",
+    "title": "Industrial production index, Luxembourg",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "Luxembourg"
+    ],
+    "description": "321 rows of the series M.PRD.B-D.SCA.I21.LU of the Eurostat dataset sts_inpr_m, 2000-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/LU.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-de",
+    "title": "Industrial production index, Germany",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "Germany"
+    ],
+    "description": "429 rows of the series M.PRD.B-D.SCA.I21.DE of the Eurostat dataset sts_inpr_m, 1991-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/DE.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-fr",
+    "title": "Industrial production index, France",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "France"
+    ],
+    "description": "441 rows of the series M.PRD.B-D.SCA.I21.FR of the Eurostat dataset sts_inpr_m, 1990-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/FR.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-it",
+    "title": "Industrial production index, Italy",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "Italy"
+    ],
+    "description": "441 rows of the series M.PRD.B-D.SCA.I21.IT of the Eurostat dataset sts_inpr_m, 1990-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/IT.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-es",
+    "title": "Industrial production index, Spain",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "Spain"
+    ],
+    "description": "417 rows of the series M.PRD.B-D.SCA.I21.ES of the Eurostat dataset sts_inpr_m, 1992-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/ES.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-pl",
+    "title": "Industrial production index, Poland",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "Poland"
+    ],
+    "description": "321 rows of the series M.PRD.B-D.SCA.I21.PL of the Eurostat dataset sts_inpr_m, 2000-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/PL.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-se",
+    "title": "Industrial production index, Sweden",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "Sweden"
+    ],
+    "description": "321 rows of the series M.PRD.B-D.SCA.I21.SE of the Eurostat dataset sts_inpr_m, 2000-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/SE.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-ie",
+    "title": "Industrial production index, Ireland",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "Ireland"
+    ],
+    "description": "561 rows of the series M.PRD.B-D.SCA.I21.IE of the Eurostat dataset sts_inpr_m, 1980-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/IE.ttl"
+  },
+  {
+    "id": "eurostat-sts-inpr-m-el",
+    "title": "Industrial production index, Greece",
+    "path": [
+      "Europe · Eurostat",
+      "Industrial production, monthly",
+      "Greece"
+    ],
+    "description": "321 rows of the series M.PRD.B-D.SCA.I21.EL of the Eurostat dataset sts_inpr_m, 2000-01 to 2026-09, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "sts_inpr_m/EL.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-eu27-2020",
+    "title": "Long-term interest rate, European Union (27)",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "European Union (27)"
+    ],
+    "description": "310 rows of the series M.MCBY.EU27_2020 of the Eurostat dataset irt_lt_mcby_m, 2001-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/EU27_2020.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-be",
+    "title": "Long-term interest rate, Belgium",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "Belgium"
+    ],
+    "description": "562 rows of the series M.MCBY.BE of the Eurostat dataset irt_lt_mcby_m, 1980-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/BE.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-nl",
+    "title": "Long-term interest rate, Netherlands",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "Netherlands"
+    ],
+    "description": "487 rows of the series M.MCBY.NL of the Eurostat dataset irt_lt_mcby_m, 1986-04 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/NL.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-lu",
+    "title": "Long-term interest rate, Luxembourg",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "Luxembourg"
+    ],
+    "description": "502 rows of the series M.MCBY.LU of the Eurostat dataset irt_lt_mcby_m, 1985-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/LU.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-de",
+    "title": "Long-term interest rate, Germany",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "Germany"
+    ],
+    "description": "562 rows of the series M.MCBY.DE of the Eurostat dataset irt_lt_mcby_m, 1980-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/DE.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-fr",
+    "title": "Long-term interest rate, France",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "France"
+    ],
+    "description": "562 rows of the series M.MCBY.FR of the Eurostat dataset irt_lt_mcby_m, 1980-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/FR.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-it",
+    "title": "Long-term interest rate, Italy",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "Italy"
+    ],
+    "description": "562 rows of the series M.MCBY.IT of the Eurostat dataset irt_lt_mcby_m, 1980-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/IT.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-es",
+    "title": "Long-term interest rate, Spain",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "Spain"
+    ],
+    "description": "562 rows of the series M.MCBY.ES of the Eurostat dataset irt_lt_mcby_m, 1980-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/ES.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-pl",
+    "title": "Long-term interest rate, Poland",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "Poland"
+    ],
+    "description": "310 rows of the series M.MCBY.PL of the Eurostat dataset irt_lt_mcby_m, 2001-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/PL.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-se",
+    "title": "Long-term interest rate, Sweden",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "Sweden"
+    ],
+    "description": "478 rows of the series M.MCBY.SE of the Eurostat dataset irt_lt_mcby_m, 1987-01 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/SE.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-ie",
+    "title": "Long-term interest rate, Ireland",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "Ireland"
+    ],
+    "description": "459 rows of the series M.MCBY.IE of the Eurostat dataset irt_lt_mcby_m, 1988-08 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/IE.ttl"
+  },
+  {
+    "id": "eurostat-irt-lt-mcby-m-el",
+    "title": "Long-term interest rate, Greece",
+    "path": [
+      "Europe · Eurostat",
+      "Long-term interest rate, monthly",
+      "Greece"
+    ],
+    "description": "410 rows of the series M.MCBY.EL of the Eurostat dataset irt_lt_mcby_m, 1992-09 to 2026-10, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its month, its position on a time grid of P1M.",
+    "metadata": "irt_lt_mcby_m/EL.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-eu27-2020",
+    "title": "GDP growth on the previous quarter, European Union (27)",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "European Union (27)"
+    ],
+    "description": "126 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.EU27_2020 of the Eurostat dataset namq_10_gdp, 1995-Q2 to 2026-Q3, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/EU27_2020.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-be",
+    "title": "GDP growth on the previous quarter, Belgium",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "Belgium"
+    ],
+    "description": "126 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.BE of the Eurostat dataset namq_10_gdp, 1995-Q2 to 2026-Q3, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/BE.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-nl",
+    "title": "GDP growth on the previous quarter, Netherlands",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "Netherlands"
+    ],
+    "description": "122 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.NL of the Eurostat dataset namq_10_gdp, 1996-Q2 to 2026-Q3, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/NL.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-lu",
+    "title": "GDP growth on the previous quarter, Luxembourg",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "Luxembourg"
+    ],
+    "description": "125 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.LU of the Eurostat dataset namq_10_gdp, 1995-Q2 to 2026-Q2, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/LU.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-de",
+    "title": "GDP growth on the previous quarter, Germany",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "Germany"
+    ],
+    "description": "142 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.DE of the Eurostat dataset namq_10_gdp, 1991-Q2 to 2026-Q3, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/DE.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-fr",
+    "title": "GDP growth on the previous quarter, France",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "France"
+    ],
+    "description": "186 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.FR of the Eurostat dataset namq_10_gdp, 1980-Q2 to 2026-Q3, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/FR.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-it",
+    "title": "GDP growth on the previous quarter, Italy",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "Italy"
+    ],
+    "description": "122 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.IT of the Eurostat dataset namq_10_gdp, 1996-Q2 to 2026-Q3, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/IT.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-es",
+    "title": "GDP growth on the previous quarter, Spain",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "Spain"
+    ],
+    "description": "126 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.ES of the Eurostat dataset namq_10_gdp, 1995-Q2 to 2026-Q3, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/ES.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-pl",
+    "title": "GDP growth on the previous quarter, Poland",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "Poland"
+    ],
+    "description": "126 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.PL of the Eurostat dataset namq_10_gdp, 1995-Q2 to 2026-Q3, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/PL.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-se",
+    "title": "GDP growth on the previous quarter, Sweden",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "Sweden"
+    ],
+    "description": "134 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.SE of the Eurostat dataset namq_10_gdp, 1993-Q2 to 2026-Q3, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/SE.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-ie",
+    "title": "GDP growth on the previous quarter, Ireland",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "Ireland"
+    ],
+    "description": "126 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.IE of the Eurostat dataset namq_10_gdp, 1995-Q2 to 2026-Q3, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/IE.ttl"
+  },
+  {
+    "id": "eurostat-namq-10-gdp-el",
+    "title": "GDP growth on the previous quarter, Greece",
+    "path": [
+      "Europe · Eurostat",
+      "GDP growth, quarterly",
+      "Greece"
+    ],
+    "description": "125 rows of the series Q.CLV_PCH_PRE.SCA.B1GQ.EL of the Eurostat dataset namq_10_gdp, 1995-Q2 to 2026-Q2, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its quarter, its position on a time grid of P3M.",
+    "metadata": "namq_10_gdp/EL.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-eu27-2020",
+    "title": "Electricity price for households, European Union (27)",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "European Union (27)"
+    ],
+    "description": "39 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.EU27_2020 of the Eurostat dataset nrg_pc_204, 2007-S1 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/EU27_2020.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-be",
+    "title": "Electricity price for households, Belgium",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "Belgium"
+    ],
+    "description": "38 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.BE of the Eurostat dataset nrg_pc_204, 2007-S2 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/BE.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-nl",
+    "title": "Electricity price for households, Netherlands",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "Netherlands"
+    ],
+    "description": "39 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.NL of the Eurostat dataset nrg_pc_204, 2007-S1 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/NL.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-lu",
+    "title": "Electricity price for households, Luxembourg",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "Luxembourg"
+    ],
+    "description": "39 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.LU of the Eurostat dataset nrg_pc_204, 2007-S1 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/LU.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-de",
+    "title": "Electricity price for households, Germany",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "Germany"
+    ],
+    "description": "39 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.DE of the Eurostat dataset nrg_pc_204, 2007-S1 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/DE.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-fr",
+    "title": "Electricity price for households, France",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "France"
+    ],
+    "description": "38 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.FR of the Eurostat dataset nrg_pc_204, 2007-S2 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/FR.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-it",
+    "title": "Electricity price for households, Italy",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "Italy"
+    ],
+    "description": "37 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.IT of the Eurostat dataset nrg_pc_204, 2008-S1 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/IT.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-es",
+    "title": "Electricity price for households, Spain",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "Spain"
+    ],
+    "description": "38 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.ES of the Eurostat dataset nrg_pc_204, 2007-S2 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/ES.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-pl",
+    "title": "Electricity price for households, Poland",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "Poland"
+    ],
+    "description": "38 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.PL of the Eurostat dataset nrg_pc_204, 2007-S2 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/PL.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-se",
+    "title": "Electricity price for households, Sweden",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "Sweden"
+    ],
+    "description": "39 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.SE of the Eurostat dataset nrg_pc_204, 2007-S1 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/SE.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-ie",
+    "title": "Electricity price for households, Ireland",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "Ireland"
+    ],
+    "description": "38 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.IE of the Eurostat dataset nrg_pc_204, 2007-S2 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/IE.ttl"
+  },
+  {
+    "id": "eurostat-nrg-pc-204-el",
+    "title": "Electricity price for households, Greece",
+    "path": [
+      "Europe · Eurostat",
+      "Electricity price for households, half-yearly",
+      "Greece"
+    ],
+    "description": "38 rows of the series S.E7000.KWH2500-4999.KWH.I_TAX.EUR.EL of the Eurostat dataset nrg_pc_204, 2007-S2 to 2026-S1, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its half year, its position on a time grid of P6M.",
+    "metadata": "nrg_pc_204/EL.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-eu27-2020",
+    "title": "Deaths, European Union (27)",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "European Union (27)"
+    ],
+    "description": "574 rows of the series W.T.NR.EU27_2020 of the Eurostat dataset demo_r_mwk_ts, 2015-W01 to 2025-W52, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/EU27_2020.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-be",
+    "title": "Deaths, Belgium",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "Belgium"
+    ],
+    "description": "1396 rows of the series W.T.NR.BE of the Eurostat dataset demo_r_mwk_ts, 2000-W01 to 2026-W40, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/BE.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-nl",
+    "title": "Deaths, Netherlands",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "Netherlands"
+    ],
+    "description": "1396 rows of the series W.T.NR.NL of the Eurostat dataset demo_r_mwk_ts, 2000-W01 to 2026-W40, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/NL.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-lu",
+    "title": "Deaths, Luxembourg",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "Luxembourg"
+    ],
+    "description": "1396 rows of the series W.T.NR.LU of the Eurostat dataset demo_r_mwk_ts, 2000-W01 to 2026-W40, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/LU.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-de",
+    "title": "Deaths, Germany",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "Germany"
+    ],
+    "description": "1396 rows of the series W.T.NR.DE of the Eurostat dataset demo_r_mwk_ts, 2000-W01 to 2026-W40, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/DE.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-fr",
+    "title": "Deaths, France",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "France"
+    ],
+    "description": "719 rows of the series W.T.NR.FR of the Eurostat dataset demo_r_mwk_ts, 2013-W01 to 2026-W41, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/FR.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-it",
+    "title": "Deaths, Italy",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "Italy"
+    ],
+    "description": "822 rows of the series W.T.NR.IT of the Eurostat dataset demo_r_mwk_ts, 2011-W01 to 2026-W40, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/IT.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-es",
+    "title": "Deaths, Spain",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "Spain"
+    ],
+    "description": "1400 rows of the series W.T.NR.ES of the Eurostat dataset demo_r_mwk_ts, 2000-W01 to 2026-W44, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/ES.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-pl",
+    "title": "Deaths, Poland",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "Poland"
+    ],
+    "description": "1396 rows of the series W.T.NR.PL of the Eurostat dataset demo_r_mwk_ts, 2000-W01 to 2026-W40, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/PL.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-se",
+    "title": "Deaths, Sweden",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "Sweden"
+    ],
+    "description": "1395 rows of the series W.T.NR.SE of the Eurostat dataset demo_r_mwk_ts, 2000-W01 to 2026-W39, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/SE.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-ie",
+    "title": "Deaths, Ireland",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "Ireland"
+    ],
+    "description": "668 rows of the series W.T.NR.IE of the Eurostat dataset demo_r_mwk_ts, 2014-W01 to 2026-W42, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/IE.ttl"
+  },
+  {
+    "id": "eurostat-demo-r-mwk-ts-el",
+    "title": "Deaths, Greece",
+    "path": [
+      "Europe · Eurostat",
+      "Deaths, weekly",
+      "Greece"
+    ],
+    "description": "601 rows of the series W.T.NR.EL of the Eurostat dataset demo_r_mwk_ts, 2015-W01 to 2026-W27, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its week, its position on a time grid of P7D.",
+    "metadata": "demo_r_mwk_ts/EL.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-be",
+    "title": "Population on 1 January, Belgium",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "Belgium"
+    ],
+    "description": "66 rows of the series A.NR.TOTAL.T.BE of the Eurostat dataset demo_pjan, 1960 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/BE.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-nl",
+    "title": "Population on 1 January, Netherlands",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "Netherlands"
+    ],
+    "description": "66 rows of the series A.NR.TOTAL.T.NL of the Eurostat dataset demo_pjan, 1960 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/NL.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-lu",
+    "title": "Population on 1 January, Luxembourg",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "Luxembourg"
+    ],
+    "description": "66 rows of the series A.NR.TOTAL.T.LU of the Eurostat dataset demo_pjan, 1960 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/LU.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-de",
+    "title": "Population on 1 January, Germany",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "Germany"
+    ],
+    "description": "66 rows of the series A.NR.TOTAL.T.DE of the Eurostat dataset demo_pjan, 1960 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/DE.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-fr",
+    "title": "Population on 1 January, France",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "France"
+    ],
+    "description": "35 rows of the series A.NR.TOTAL.T.FR of the Eurostat dataset demo_pjan, 1991 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/FR.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-it",
+    "title": "Population on 1 January, Italy",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "Italy"
+    ],
+    "description": "66 rows of the series A.NR.TOTAL.T.IT of the Eurostat dataset demo_pjan, 1960 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/IT.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-es",
+    "title": "Population on 1 January, Spain",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "Spain"
+    ],
+    "description": "66 rows of the series A.NR.TOTAL.T.ES of the Eurostat dataset demo_pjan, 1960 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/ES.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-pl",
+    "title": "Population on 1 January, Poland",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "Poland"
+    ],
+    "description": "66 rows of the series A.NR.TOTAL.T.PL of the Eurostat dataset demo_pjan, 1960 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/PL.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-se",
+    "title": "Population on 1 January, Sweden",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "Sweden"
+    ],
+    "description": "66 rows of the series A.NR.TOTAL.T.SE of the Eurostat dataset demo_pjan, 1960 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/SE.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-ie",
+    "title": "Population on 1 January, Ireland",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "Ireland"
+    ],
+    "description": "66 rows of the series A.NR.TOTAL.T.IE of the Eurostat dataset demo_pjan, 1960 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/IE.ttl"
+  },
+  {
+    "id": "eurostat-demo-pjan-el",
+    "title": "Population on 1 January, Greece",
+    "path": [
+      "Europe · Eurostat",
+      "Population on 1 January, yearly",
+      "Greece"
+    ],
+    "description": "66 rows of the series A.NR.TOTAL.T.EL of the Eurostat dataset demo_pjan, 1960 to 2025, read from the dissemination API of Eurostat as SDMX-CSV. The periods are no times with a timezone, so the time of a row is the start of its year, its position on a time grid of P1Y.",
+    "metadata": "demo_pjan/EL.ttl"
+  }
+]

@@ -70,7 +70,11 @@ try {
   const groups = await page.$$eval('#dataset optgroup', (nodes) => nodes.map((n) => n.label));
   assert.ok(groups.length >= 3, `categories: ${groups}`);
   console.log(`categories: ${groups.join(' | ')}`);
-  for (const example of examples) {
+  // the data files of the core datasets are on GitHub: scripts/datahub.ts reads them when it writes their
+  // descriptions; here only the gold prices are read, from a stand-in
+  const remote = examples.filter((e) => e.remote);
+  assert.ok(remote.length >= 40, `the time series of the core datasets on GitHub: ${remote.length}`);
+  for (const example of examples.filter((e) => !e.remote || e.id === 'gold-prices')) {
     await choose(example.id);
     const status = await text('#status');
     assert.equal(status, '', `${example.id}: ${status}`);

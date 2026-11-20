@@ -1,0 +1,98 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/data.csv of the data package "House Prices in the UK since 1952" on GitHub (https://github.com/datasets/house-prices-uk).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per quarter, without gaps, so the time of a row is its step on a
+# time grid of P3M from 1953-02-01: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "UK house prices, quarterly"@en ;
+    dcterms:source <https://github.com/datasets/house-prices-uk> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/house-prices-uk/main/datapackage.json> ;
+    tss:from "1953-02-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/house-prices-uk/main/data/data.csv> ;
+    tss:timeBase "1953-02-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P3M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#price-all>,
+        <#change-all>,
+        <#price-new>,
+        <#change-new>,
+        <#price-modern>,
+        <#change-modern>,
+        <#price-older>,
+        <#change-older> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:date .
+
+<#price-all>
+    a tss:ValueField ;
+    rdfs:label "Price (All)"@en ;
+    tss:columnName "Price (All)" ;
+    tss:datatype xsd:decimal .
+
+<#change-all>
+    a tss:ValueField ;
+    rdfs:label "Change (All)"@en ;
+    tss:columnName "Change (All)" ;
+    tss:datatype xsd:decimal .
+
+<#price-new>
+    a tss:ValueField ;
+    rdfs:label "Price (New)"@en ;
+    tss:columnName "Price (New)" ;
+    tss:datatype xsd:decimal .
+
+<#change-new>
+    a tss:ValueField ;
+    rdfs:label "Change (New)"@en ;
+    tss:columnName "Change (New)" ;
+    tss:datatype xsd:decimal .
+
+<#price-modern>
+    a tss:ValueField ;
+    rdfs:label "Price (Modern)"@en ;
+    tss:columnName "Price (Modern)" ;
+    tss:datatype xsd:decimal .
+
+<#change-modern>
+    a tss:ValueField ;
+    rdfs:label "Change (Modern)"@en ;
+    tss:columnName "Change (Modern)" ;
+    tss:datatype xsd:decimal .
+
+<#price-older>
+    a tss:ValueField ;
+    rdfs:label "Price (Older)"@en ;
+    tss:columnName "Price (Older)" ;
+    tss:datatype xsd:decimal .
+
+<#change-older>
+    a tss:ValueField ;
+    rdfs:label "Change (Older)"@en ;
+    tss:columnName "Change (Older)" ;
+    tss:datatype xsd:decimal .

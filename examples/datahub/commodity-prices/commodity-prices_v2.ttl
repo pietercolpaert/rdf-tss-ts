@@ -1,0 +1,656 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/commodity-prices_v2.csv of the data package "Commodity prices" on GitHub (https://github.com/datasets/commodity-prices).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is its step on a
+# time grid of P1M from 1990-01-01: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "63 commodity prices and indices, monthly"@en ;
+    rdfs:comment "Updated monthly commodity prices and indices, with 2016 as the base year (2016=100)."@en ;
+    dcterms:source <https://github.com/datasets/commodity-prices> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/commodity-prices/main/datapackage.json> ;
+    tss:from "1990-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/commodity-prices/main/data/commodity-prices_v2.csv> ;
+    tss:timeBase "1990-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#all-commodity-price-index>,
+        <#non-fuel-price-index>,
+        <#food-and-beverage-price-index>,
+        <#food-price-index>,
+        <#beverage-price-index>,
+        <#industrial-inputs-price-index>,
+        <#agricultural-raw-materials-index>,
+        <#metals-price-index>,
+        <#fuel-energy-index>,
+        <#crude-oil-petroleum>,
+        <#aluminum>,
+        <#bananas>,
+        <#barley>,
+        <#beef>,
+        <#coal>,
+        <#cocoa-beans>,
+        <#coffee-other-mild-arabicas>,
+        <#coffee-robusta>,
+        <#rapeseed-oil>,
+        <#copper>,
+        <#cotton>,
+        <#fishmeal>,
+        <#groundnuts-peanuts>,
+        <#hides>,
+        <#china-import-iron-ore-fines-62-fe-spot>,
+        <#lamb>,
+        <#lead>,
+        <#soft-logs>,
+        <#hard-logs>,
+        <#maize-corn>,
+        <#natural-gas-russian-natural-gas-border-price-in-germany>,
+        <#natural-gas-indonesian-liquefied-natural-gas-in-japan>,
+        <#natural-gas-spot-price-at-the-henry-hub-terminal-in-louisiana>,
+        <#nickel>,
+        <#crude-oil-petroleum-simple-average-of-three-spot-prices>,
+        <#crude-oil-petroleum-dated-brent-light-blend>,
+        <#oil-dubai>,
+        <#crude-oil-petroleum-west-texas-intermediate-40-api>,
+        <#olive-oil>,
+        <#oranges>,
+        <#palm-oil>,
+        <#swine-pork>,
+        <#poultry-chicken>,
+        <#rice>,
+        <#rubber>,
+        <#fish-salmon>,
+        <#hard-sawnwood>,
+        <#soft-sawnwood>,
+        <#shrimp>,
+        <#soybean-meal>,
+        <#soybean-oil>,
+        <#soybeans>,
+        <#sugar-european-import-price>,
+        <#sugar-free-market>,
+        <#sugar-u-s-import-price>,
+        <#sunflower-oil>,
+        <#tea>,
+        <#tin>,
+        <#uranium>,
+        <#wheat>,
+        <#wool-coarse>,
+        <#wool-fine>,
+        <#zinc> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:date .
+
+<#all-commodity-price-index>
+    a tss:ValueField ;
+    rdfs:label "All Commodity Price Index"@en ;
+    rdfs:comment "includes both Fuel and Non-Fuel Price Indices"@en ;
+    tss:columnName "All Commodity Price Index" ;
+    tss:datatype xsd:decimal .
+
+<#non-fuel-price-index>
+    a tss:ValueField ;
+    rdfs:label "Non-Fuel Price Index"@en ;
+    rdfs:comment "includes Food and Beverages and Industrial Inputs Price Indices"@en ;
+    tss:columnName "Non-Fuel Price Index" ;
+    tss:datatype xsd:decimal .
+
+<#food-and-beverage-price-index>
+    a tss:ValueField ;
+    rdfs:label "Food and Beverage Price Index"@en ;
+    rdfs:comment "includes Food and Beverage Price Indices"@en ;
+    tss:columnName "Food and Beverage Price Index" ;
+    tss:datatype xsd:decimal .
+
+<#food-price-index>
+    a tss:ValueField ;
+    rdfs:label "Food Price Index"@en ;
+    rdfs:comment "includes Cereal, Vegetable Oils, Meat, Seafood, Sugar, Bananas, and Oranges Price Indices"@en ;
+    tss:columnName "Food Price Index" ;
+    tss:datatype xsd:decimal .
+
+<#beverage-price-index>
+    a tss:ValueField ;
+    rdfs:label "Beverage Price Index"@en ;
+    rdfs:comment "includes Coffee, Tea, and Cocoa"@en ;
+    tss:columnName "Beverage Price Index" ;
+    tss:datatype xsd:decimal .
+
+<#industrial-inputs-price-index>
+    a tss:ValueField ;
+    rdfs:label "Industrial Inputs Price Index"@en ;
+    rdfs:comment "includes Agricultural Raw Materials and Metals Price Indices"@en ;
+    tss:columnName "Industrial Inputs Price Index" ;
+    tss:datatype xsd:decimal .
+
+<#agricultural-raw-materials-index>
+    a tss:ValueField ;
+    rdfs:label "Agricultural Raw Materials Index"@en ;
+    rdfs:comment "includes Timber, Cotton, Wool, Rubber, and Hides Price Indices"@en ;
+    tss:columnName "Agricultural Raw Materials Index" ;
+    tss:datatype xsd:decimal .
+
+<#metals-price-index>
+    a tss:ValueField ;
+    rdfs:label "Metals Price Index"@en ;
+    rdfs:comment "includes Copper, Aluminum, Iron Ore, Tin, Nickel, Zinc, Lead, and Uranium Price Indices"@en ;
+    tss:columnName "Metals Price Index" ;
+    tss:datatype xsd:decimal .
+
+<#fuel-energy-index>
+    a tss:ValueField ;
+    rdfs:label "Fuel Energy Index"@en ;
+    rdfs:comment "includes Crude oil (petroleum), Natural Gas, and Coal Price Indices"@en ;
+    tss:columnName "Fuel Energy Index" ;
+    tss:datatype xsd:decimal .
+
+<#crude-oil-petroleum>
+    a tss:ValueField ;
+    rdfs:label "Crude Oil petroleum"@en ;
+    rdfs:comment "simple average of three spot prices Dated Brent, West Texas Intermediate and the Dubai Fateh"@en ;
+    tss:columnName "Crude Oil petroleum" ;
+    tss:datatype xsd:decimal .
+
+<#aluminum>
+    a tss:ValueField ;
+    rdfs:label "Aluminum"@en ;
+    rdfs:comment "99.5% minimum purity, USD per metric ton"@en ;
+    tss:columnName "Aluminum" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#bananas>
+    a tss:ValueField ;
+    rdfs:label "Bananas"@en ;
+    rdfs:comment "Central American and Ecuador, USD per metric ton"@en ;
+    tss:columnName "Bananas" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#barley>
+    a tss:ValueField ;
+    rdfs:label "Barley"@en ;
+    rdfs:comment "Canadian no.1 Western Barley, USD per metric ton"@en ;
+    tss:columnName "Barley" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#beef>
+    a tss:ValueField ;
+    rdfs:label "Beef"@en ;
+    rdfs:comment "Australian and New Zealand, US cents per pound"@en ;
+    tss:columnName "Beef" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-LB> .
+
+<#coal>
+    a tss:ValueField ;
+    rdfs:label "Coal"@en ;
+    rdfs:comment "Australian thermal coal, USD per metric ton"@en ;
+    tss:columnName "Coal" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#cocoa-beans>
+    a tss:ValueField ;
+    rdfs:label "Cocoa beans"@en ;
+    rdfs:comment "International Cocoa Organization, USD per metric ton"@en ;
+    tss:columnName "Cocoa beans" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#coffee-other-mild-arabicas>
+    a tss:ValueField ;
+    rdfs:label "Coffee Other Mild Arabicas"@en ;
+    rdfs:comment "International Coffee Organization, US cents per pound"@en ;
+    tss:columnName "Coffee Other Mild Arabicas" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-LB> .
+
+<#coffee-robusta>
+    a tss:ValueField ;
+    rdfs:label "Coffee Robusta"@en ;
+    rdfs:comment "International Coffee Organization, US cents per pound"@en ;
+    tss:columnName "Coffee Robusta" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-LB> .
+
+<#rapeseed-oil>
+    a tss:ValueField ;
+    rdfs:label "Rapeseed oil"@en ;
+    rdfs:comment "Fob Rotterdam, USD per metric ton"@en ;
+    tss:columnName "Rapeseed oil" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#copper>
+    a tss:ValueField ;
+    rdfs:label "Copper"@en ;
+    rdfs:comment "Grade A cathode, USD per metric ton"@en ;
+    tss:columnName "Copper" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#cotton>
+    a tss:ValueField ;
+    rdfs:label "Cotton"@en ;
+    rdfs:comment "Cotton Outlook 'A Index', Middling 1-3/32 inch staple, CIF Liverpool, US cents per pound"@en ;
+    tss:columnName "Cotton" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-LB> .
+
+<#fishmeal>
+    a tss:ValueField ;
+    rdfs:label "Fishmeal"@en ;
+    rdfs:comment "Peru Fish meal/pellets, USD per metric ton"@en ;
+    tss:columnName "Fishmeal" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#groundnuts-peanuts>
+    a tss:ValueField ;
+    rdfs:label "Groundnuts peanuts"@en ;
+    rdfs:comment "40/50 (40 to 50 count per ounce), USD per metric ton"@en ;
+    tss:columnName "Groundnuts peanuts" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#hides>
+    a tss:ValueField ;
+    rdfs:label "Hides"@en ;
+    rdfs:comment "Heavy native US steers, US cents per pound"@en ;
+    tss:columnName "Hides" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-LB> .
+
+<#china-import-iron-ore-fines-62-fe-spot>
+    a tss:ValueField ;
+    rdfs:label "China import Iron Ore Fines 62% FE spot"@en ;
+    tss:columnName "China import Iron Ore Fines 62% FE spot" ;
+    tss:datatype xsd:decimal .
+
+<#lamb>
+    a tss:ValueField ;
+    rdfs:label "Lamb"@en ;
+    rdfs:comment "Frozen carcass Smithfield London, US cents per pound"@en ;
+    tss:columnName "Lamb" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-LB> .
+
+<#lead>
+    a tss:ValueField ;
+    rdfs:label "Lead"@en ;
+    rdfs:comment "99.97% pure, USD per metric ton"@en ;
+    tss:columnName "Lead" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#soft-logs>
+    a tss:ValueField ;
+    rdfs:label "Soft Logs"@en ;
+    tss:columnName "Soft Logs" ;
+    tss:datatype xsd:decimal .
+
+<#hard-logs>
+    a tss:ValueField ;
+    rdfs:label "Hard Logs"@en ;
+    rdfs:comment "Best quality Malaysian meranti, USD per cubic meter"@en ;
+    tss:columnName "Hard Logs" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-M3> .
+
+<#maize-corn>
+    a tss:ValueField ;
+    rdfs:label "Maize corn"@en ;
+    rdfs:comment "FOB Gulf of Mexico, USD per metric ton"@en ;
+    tss:columnName "Maize corn" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#natural-gas-russian-natural-gas-border-price-in-germany>
+    a tss:ValueField ;
+    rdfs:label "Natural Gas - Russian Natural Gas border price in Germany"@en ;
+    rdfs:comment "USD per Million Metric British Thermal Unit"@en ;
+    tss:columnName "Natural Gas - Russian Natural Gas border price in Germany" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-MegaBTU_IT> .
+
+<#natural-gas-indonesian-liquefied-natural-gas-in-japan>
+    a tss:ValueField ;
+    rdfs:label "Natural Gas - Indonesian Liquefied Natural Gas in Japan"@en ;
+    rdfs:comment "USD per Million Metric British Thermal Unit"@en ;
+    tss:columnName "Natural Gas - Indonesian Liquefied Natural Gas in Japan" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-MegaBTU_IT> .
+
+<#natural-gas-spot-price-at-the-henry-hub-terminal-in-louisiana>
+    a tss:ValueField ;
+    rdfs:label "Natural Gas - Spot price at the Henry Hub terminal in Louisiana"@en ;
+    rdfs:comment "USD per Million Metric British Thermal Unit"@en ;
+    tss:columnName "Natural Gas - Spot price at the Henry Hub terminal in Louisiana" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-MegaBTU_IT> .
+
+<#nickel>
+    a tss:ValueField ;
+    rdfs:label "Nickel"@en ;
+    rdfs:comment "Melting grade USD per metric ton"@en ;
+    tss:columnName "Nickel" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#crude-oil-petroleum-simple-average-of-three-spot-prices>
+    a tss:ValueField ;
+    rdfs:label "Crude Oil - petroleum-simple average of three spot prices"@en ;
+    rdfs:comment "Dated Brent, West Texas Intermediate and the Dubai Fateh"@en ;
+    tss:columnName "Crude Oil - petroleum-simple average of three spot prices" ;
+    tss:datatype xsd:decimal .
+
+<#crude-oil-petroleum-dated-brent-light-blend>
+    a tss:ValueField ;
+    rdfs:label "Crude Oil - petroleum - Dated Brent light blend"@en ;
+    rdfs:comment "Dated Brent, light blend 38 API, USD per barrel"@en ;
+    tss:columnName "Crude Oil - petroleum - Dated Brent light blend" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-BBL> .
+
+<#oil-dubai>
+    a tss:ValueField ;
+    rdfs:label "Oil Dubai"@en ;
+    rdfs:comment "Dubai Fateh 32 API, USD per barrel"@en ;
+    tss:columnName "Oil Dubai" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-BBL> .
+
+<#crude-oil-petroleum-west-texas-intermediate-40-api>
+    a tss:ValueField ;
+    rdfs:label "Crude Oil petroleum - West Texas Intermediate 40 API"@en ;
+    rdfs:comment "West Texas Intermediate 40 API, USD per barrel"@en ;
+    tss:columnName "Crude Oil petroleum - West Texas Intermediate 40 API" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-BBL> .
+
+<#olive-oil>
+    a tss:ValueField ;
+    rdfs:label "Olive Oil"@en ;
+    rdfs:comment "Extra virgin less than 1% free fatty acid, USD per metric ton"@en ;
+    tss:columnName "Olive Oil" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#oranges>
+    a tss:ValueField ;
+    rdfs:label "Oranges"@en ;
+    rdfs:comment "Miscellaneous oranges, USD per metric ton"@en ;
+    tss:columnName "Oranges" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#palm-oil>
+    a tss:ValueField ;
+    rdfs:label "Palm oil"@en ;
+    rdfs:comment "Malaysia Palm Oil Futures (first contract forward) 4-5 percent FFA, USD per metric ton"@en ;
+    tss:columnName "Palm oil" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#swine-pork>
+    a tss:ValueField ;
+    rdfs:label "Swine - pork"@en ;
+    tss:columnName "Swine - pork" ;
+    tss:datatype xsd:decimal .
+
+<#poultry-chicken>
+    a tss:ValueField ;
+    rdfs:label "Poultry chicken"@en ;
+    rdfs:comment "Ready-to-cook, whole, iced, Georgia docks, US cents per pound"@en ;
+    tss:columnName "Poultry chicken" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-LB> .
+
+<#rice>
+    a tss:ValueField ;
+    rdfs:label "Rice"@en ;
+    rdfs:comment "5 percent broken milled white rice, USD per metric ton"@en ;
+    tss:columnName "Rice" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#rubber>
+    a tss:ValueField ;
+    rdfs:label "Rubber"@en ;
+    rdfs:comment "Singapore Commodity Exchange, No. 3 Rubber Smoked Sheets, 1st contract, US cents per pound"@en ;
+    tss:columnName "Rubber" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-LB> .
+
+<#fish-salmon>
+    a tss:ValueField ;
+    rdfs:label "Fish salmon"@en ;
+    rdfs:comment "Farm Bred Norwegian Salmon, USD per kilogram"@en ;
+    tss:columnName "Fish salmon" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-KiloGM> .
+
+<#hard-sawnwood>
+    a tss:ValueField ;
+    rdfs:label "Hard Sawnwood"@en ;
+    rdfs:comment "Dark Red Meranti, USD per cubic meter"@en ;
+    tss:columnName "Hard Sawnwood" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-M3> .
+
+<#soft-sawnwood>
+    a tss:ValueField ;
+    rdfs:label "Soft Sawnwood"@en ;
+    rdfs:comment "Average export price of Douglas Fir, USD per cubic meter"@en ;
+    tss:columnName "Soft Sawnwood" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-M3> .
+
+<#shrimp>
+    a tss:ValueField ;
+    rdfs:label "Shrimp"@en ;
+    rdfs:comment "Mexican origin, USD per kilogram "@en ;
+    tss:columnName "Shrimp" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-KiloGM> .
+
+<#soybean-meal>
+    a tss:ValueField ;
+    rdfs:label "Soybean Meal"@en ;
+    rdfs:comment "Chicago Soybean Meal Futures (first contract forward) Minimum 48 percent protein, USD per metric ton"@en ;
+    tss:columnName "Soybean Meal" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#soybean-oil>
+    a tss:ValueField ;
+    rdfs:label "Soybean Oil"@en ;
+    rdfs:comment "Chicago Soybean Oil Futures (first contract forward) exchange approved grades, USD per metric ton"@en ;
+    tss:columnName "Soybean Oil" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#soybeans>
+    a tss:ValueField ;
+    rdfs:label "Soybeans"@en ;
+    rdfs:comment "Chicago Soybean futures contract (first contract forward) No. 2 yellow and par, USD per metric ton"@en ;
+    tss:columnName "Soybeans" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#sugar-european-import-price>
+    a tss:ValueField ;
+    rdfs:label "Sugar European import price"@en ;
+    rdfs:comment "CIF Europe, US cents per pound"@en ;
+    tss:columnName "Sugar European import price" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-LB> .
+
+<#sugar-free-market>
+    a tss:ValueField ;
+    rdfs:label "Sugar Free Market"@en ;
+    rdfs:comment "Coffee Sugar and Cocoa Exchange (CSCE) contract no.11 nearest future position, US cents per pound"@en ;
+    tss:columnName "Sugar Free Market" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-LB> .
+
+<#sugar-u-s-import-price>
+    a tss:ValueField ;
+    rdfs:label "Sugar U.S. import price"@en ;
+    tss:columnName "Sugar U.S. import price" ;
+    tss:datatype xsd:decimal .
+
+<#sunflower-oil>
+    a tss:ValueField ;
+    rdfs:label "Sunflower oil"@en ;
+    rdfs:comment "US export price from Gulf of Mexico, USD per metric ton"@en ;
+    tss:columnName "Sunflower oil" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#tea>
+    a tss:ValueField ;
+    rdfs:label "Tea"@en ;
+    rdfs:comment "Mombasa, Kenya, Auction Price, US cents per kilogram"@en ;
+    tss:columnName "Tea" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-KiloGM> .
+
+<#tin>
+    a tss:ValueField ;
+    rdfs:label "Tin"@en ;
+    rdfs:comment "Standard grade, USD per metric ton"@en ;
+    tss:columnName "Tin" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#uranium>
+    a tss:ValueField ;
+    rdfs:label "Uranium"@en ;
+    rdfs:comment "NUEXCO restriced price, USD per pound"@en ;
+    tss:columnName "Uranium" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-LB> .
+
+<#wheat>
+    a tss:ValueField ;
+    rdfs:label "Wheat"@en ;
+    rdfs:comment "No.1 Hard Red Winter ordinary protein Kansas City, USD per metric ton"@en ;
+    tss:columnName "Wheat" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+<#wool-coarse>
+    a tss:ValueField ;
+    rdfs:label "Wool coarse"@en ;
+    rdfs:comment "23 micron, US cents per kilogram"@en ;
+    tss:columnName "Wool coarse" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-KiloGM> .
+
+<#wool-fine>
+    a tss:ValueField ;
+    rdfs:label "Wool fine"@en ;
+    rdfs:comment "19 micron, US cents per kilogram"@en ;
+    tss:columnName "Wool fine" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#CentiUSD-PER-KiloGM> .
+
+<#zinc>
+    a tss:ValueField ;
+    rdfs:label "Zinc"@en ;
+    rdfs:comment "High grade 98% pure, USD per metric ton"@en ;
+    tss:columnName "Zinc" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-TONNE> .
+
+# Units that QUDT does not have, made of QUDT units. A unit with a currency states no conversion
+# multiplier: an exchange rate changes over time.
+<#CentiCCY_USD>
+    a qudt:Unit ;
+    qudt:scalingOf unit:CCY_USD ;
+    qudt:prefix prefix:Centi ;
+    rdfs:label "US cent"@en ;
+    qudt:symbol "¢" .
+
+<#CentiUSD-PER-KiloGM>
+    a qudt:DerivedUnit, qudt:Unit ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit <#CentiCCY_USD> ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:KiloGM ] ;
+    rdfs:label "US cent per kilogram"@en ;
+    qudt:symbol "¢/kg" .
+
+<#CentiUSD-PER-LB>
+    a qudt:DerivedUnit, qudt:Unit ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit <#CentiCCY_USD> ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:LB ] ;
+    rdfs:label "US cent per pound"@en ;
+    qudt:symbol "¢/lb" .
+
+<#USD-PER-BBL>
+    a qudt:DerivedUnit, qudt:Unit ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit unit:CCY_USD ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:BBL ] ;
+    rdfs:label "US dollar per barrel"@en ;
+    qudt:symbol "$/bbl" .
+
+<#USD-PER-KiloGM>
+    a qudt:DerivedUnit, qudt:Unit ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit unit:CCY_USD ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:KiloGM ] ;
+    rdfs:label "US dollar per kilogram"@en ;
+    qudt:symbol "$/kg" .
+
+<#USD-PER-LB>
+    a qudt:DerivedUnit, qudt:Unit ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit unit:CCY_USD ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:LB ] ;
+    rdfs:label "US dollar per pound"@en ;
+    qudt:symbol "$/lb" .
+
+<#USD-PER-M3>
+    a qudt:DerivedUnit, qudt:Unit ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit unit:CCY_USD ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:M3 ] ;
+    rdfs:label "US dollar per cubic metre"@en ;
+    qudt:symbol "$/m³" .
+
+<#USD-PER-MegaBTU_IT>
+    a qudt:DerivedUnit, qudt:Unit ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit unit:CCY_USD ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:MegaBTU_IT ] ;
+    rdfs:label "US dollar per million British thermal units"@en ;
+    qudt:symbol "$/MMBtu" .
+
+<#USD-PER-TONNE>
+    a qudt:DerivedUnit, qudt:Unit ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit unit:CCY_USD ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:TONNE ] ;
+    rdfs:label "US dollar per metric ton"@en ;
+    qudt:symbol "$/t" .

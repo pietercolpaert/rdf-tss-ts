@@ -1,0 +1,50 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/paris.csv of the data package "House prices in Paris since 1200" on GitHub (https://github.com/datasets/house-prices-fr).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per year, without gaps, so the time of a row is its step on a
+# time grid of P1Y from 1201-01-01: the source has no step field, and its year column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "House price index of Paris since 1200"@en ;
+    rdfs:comment "Long-run historical house price index for Paris, based on CGEDD data and related historical sources."@en ;
+    dcterms:source <https://github.com/datasets/house-prices-fr> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/house-prices-fr/main/datapackage.json> ;
+    tss:from "1201-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/house-prices-fr/main/data/paris.csv> ;
+    tss:timeBase "1201-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1Y"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#price-index> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "year as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "year" ;
+    tss:datatype xsd:gYear .
+
+<#price-index>
+    a tss:ValueField ;
+    rdfs:label "price index"@en ;
+    tss:columnName "price index" ;
+    tss:datatype xsd:double .

@@ -5,7 +5,9 @@
  *   - a time grid, written by hand because the writer states each time,
  *   - three locations of the Telraam LDES, and how much smaller they are than the LDES,
  *   - months of Telraam counts and speeds, if examples/telraam-months/ exists,
- *   - monthly gold prices since 1833: a description of a CSV file published elsewhere.
+ *   - monthly gold prices since 1833: a description of a CSV file published elsewhere,
+ *   - 41 more time series of the core datasets on GitHub, described by scripts/datahub.ts into
+ *     examples/datahub/.
  *
  *   npm run examples [outputDirectory]     (default: _site/examples)
  */
@@ -15,6 +17,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Source, type CreateOptions, type RowInput, type SourceKind } from '../src/index.js';
 import { convertLocation, ldesSize, readMembers, sourceSize, type Member } from './telraam.js';
+import { DATAHUB_GROUPS, type DatahubExample } from './datahub.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = resolve(process.argv[2] ?? join(root, '_site', 'examples'));
@@ -35,6 +38,8 @@ export interface Example {
   kind: SourceKind | 'CSV (time grid)';
   /** Files of the example with their size in bytes, for display. */
   files?: string[];
+  /** The data file is read from another site. */
+  remote?: boolean;
 }
 
 /** Hourly readings of a day in Ghent: made up, but smooth and deterministic. */
@@ -178,7 +183,7 @@ interface MonthsEntry {
   series: string[];
 }
 
-const GOLD = 'Gold prices since 1833';
+const GOLD = DATAHUB_GROUPS[0];
 
 /**
  * Monthly gold prices since 1833: only the description is published here, the CSV file is read
@@ -194,7 +199,17 @@ async function gold(): Promise<void> {
       'A description of a CSV file that someone else publishes: the gold-prices data package on GitHub. The file has one row per month and no time column the specification can use, so the time of a row is its position on a time grid of one month from 1833-01-01.',
     metadata: 'gold-prices/monthly.ttl',
     kind: 'CSV (time grid)',
+    remote: true,
   });
+}
+
+/** Time series of the core datasets on GitHub, described by scripts/datahub.ts. */
+async function datahub(): Promise<void> {
+  const source = join(root, 'examples', 'datahub');
+  if (!existsSync(join(source, 'manifest.json'))) return;
+  await cp(source, join(out, 'datahub'), { recursive: true });
+  const entries: DatahubExample[] = JSON.parse(await readFile(join(source, 'manifest.json'), 'utf8'));
+  for (const entry of entries) add({ ...entry, metadata: `datahub/${entry.metadata}`, kind: 'CSV (time grid)', remote: true });
 }
 
 /**
@@ -243,9 +258,10 @@ add({ id: 'weather-parquet', title: 'Parquet', group, description: 'A Parquet fi
 await telraam();
 await telraamMonths();
 await gold();
+await datahub();
 
 // show the groups in this order
-const order = [TELRAAM_MONTHS, GOLD, TELRAAM_DAY, group];
+const order = [TELRAAM_MONTHS, ...DATAHUB_GROUPS, TELRAAM_DAY, group];
 examples.sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
 await writeFile(join(out, 'index.json'), JSON.stringify(examples, null, 2));
 console.log(`wrote ${examples.length} examples to ${out}`);

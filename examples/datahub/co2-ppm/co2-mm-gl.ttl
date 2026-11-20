@@ -1,0 +1,66 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/co2-mm-gl.csv of the data package "CO2 PPM - Trends in Atmospheric Carbon Dioxide" on GitHub (https://github.com/datasets/co2-ppm).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is its step on a
+# time grid of P1M from 1979-01-01: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "CO₂, global, monthly"@en ;
+    rdfs:comment "Data are sourced from the US Government's Earth System Research Laboratory, Global Monitoring Division. Two main series are provided: the Mauna Loa series (which has the longest continuous series since 1958) and a Global Average series (a global average over marine surface sites)."@en ;
+    dcterms:source <https://github.com/datasets/co2-ppm> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/co2-ppm/main/datapackage.json> ;
+    tss:from "1979-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/co2-ppm/main/data/co2-mm-gl.csv> ;
+    tss:timeBase "1979-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#decimal-date>,
+        <#average>,
+        <#trend> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:gYearMonth .
+
+<#decimal-date>
+    a tss:MetaField ;
+    rdfs:label "Decimal Date"@en ;
+    tss:columnName "Decimal Date" ;
+    tss:datatype xsd:decimal .
+
+<#average>
+    a tss:ValueField ;
+    rdfs:label "Average"@en ;
+    tss:columnName "Average" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:PPM .
+
+<#trend>
+    a tss:ValueField ;
+    rdfs:label "Trend"@en ;
+    tss:columnName "Trend" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:PPM .

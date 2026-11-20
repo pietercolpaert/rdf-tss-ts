@@ -1,0 +1,79 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/epa-sea-level.csv of the data package "Global Average Absolute Sea Level Change, 1880-2014" on GitHub (https://github.com/datasets/sea-level-rise).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per year, without gaps, so the time of a row is its step on a
+# time grid of P1Y from 1880-01-01: the source has no step field, and its Year column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Sea level (EPA), yearly since 1880"@en ;
+    rdfs:comment "This data contains cumulative changes in sea level for the world’s oceans since 1880, based on a combination of long-term tide gauge measurements and recent satellite measurements."@en ;
+    dcterms:source <https://github.com/datasets/sea-level-rise> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/sea-level-rise/main/datapackage.json> ;
+    tss:from "1880-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/sea-level-rise/main/data/epa-sea-level.csv> ;
+    tss:timeBase "1880-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1Y"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#csiro-adjusted-sea-level>,
+        <#lower-error-bound>,
+        <#upper-error-bound>,
+        <#noaa-adjusted-sea-level> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Year as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Year" ;
+    tss:datatype xsd:gYear .
+
+<#csiro-adjusted-sea-level>
+    a tss:ValueField ;
+    rdfs:label "CSIRO Adjusted Sea Level"@en ;
+    rdfs:comment "Comulative changes (in inches) in sea level for the world’s oceans based on the combination of long-term tide gauge measurements and recent satellite measurements."@en ;
+    tss:columnName "CSIRO Adjusted Sea Level" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:IN .
+
+<#lower-error-bound>
+    a tss:ValueField ;
+    rdfs:label "Lower Error Bound"@en ;
+    rdfs:comment "inches"@en ;
+    tss:columnName "Lower Error Bound" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:IN .
+
+<#upper-error-bound>
+    a tss:ValueField ;
+    rdfs:label "Upper Error Bound"@en ;
+    rdfs:comment "inches"@en ;
+    tss:columnName "Upper Error Bound" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:IN .
+
+<#noaa-adjusted-sea-level>
+    a tss:ValueField ;
+    rdfs:label "NOAA Adjusted Sea Level"@en ;
+    rdfs:comment "inches"@en ;
+    tss:columnName "NOAA Adjusted Sea Level" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:IN .

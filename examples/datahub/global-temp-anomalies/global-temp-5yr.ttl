@@ -1,0 +1,115 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/global-temp-5yr.csv of the data package "Nasa GISS Surface Temperature (GISTEMP) Analysis" on GitHub (https://github.com/datasets/global-temp-anomalies).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per year, without gaps, so the time of a row is its step on a
+# time grid of P1Y from 1880-01-01: the source has no step field, and its Year column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Global temperature anomalies (GISTEMP), 5-year means"@en ;
+    rdfs:comment "Data are sourced from Carbon Dioxide Information Analysis Center (CDIAC). Four different series are provided: Global Annual Temperature Anomalies (Land) 1880-2014, Global Annual Temperature Anomalies (Land and Ocean) 1880-2014, Hemispheric Temperature Anomalies (Land+ Ocean) 1880-2014 and Annual Temperature anomalies (Land + Ocean) for three latitude bands that cover 30%, 40% and 30% of the global area, respectively, 1900-2014."@en ;
+    dcterms:source <https://github.com/datasets/global-temp-anomalies> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/global-temp-anomalies/main/datapackage.json> ;
+    tss:from "1880-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/global-temp-anomalies/main/data/global-temp-5yr.csv> ;
+    tss:timeBase "1880-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1Y"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#land>,
+        <#land-and-ocean>,
+        <#n-hem>,
+        <#s-hem>,
+        <#band-1>,
+        <#band-2>,
+        <#band-3> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Year as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Year" ;
+    tss:datatype xsd:gYear .
+
+<#land>
+    a tss:ValueField ;
+    rdfs:label "Land"@en ;
+    rdfs:comment "Global 5-year anomalies mean computed from land data, in degrees C"@en ;
+    tss:columnName "Land" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#DEG_C-DIFF> .
+
+<#land-and-ocean>
+    a tss:ValueField ;
+    rdfs:label "Land and Ocean"@en ;
+    rdfs:comment "Global 5-year anomalies mean computed from land and ocean data, in degrees C"@en ;
+    tss:columnName "Land and Ocean" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#DEG_C-DIFF> .
+
+<#n-hem>
+    a tss:ValueField ;
+    rdfs:label "N Hem"@en ;
+    rdfs:comment "Northern hemisphere 5-year anomalies mean computed from land and ocean data, in degrees C"@en ;
+    tss:columnName "N Hem" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#DEG_C-DIFF> .
+
+<#s-hem>
+    a tss:ValueField ;
+    rdfs:label "S Hem"@en ;
+    rdfs:comment "Southern hemisphere 5-year anomalies mean computed from land and ocean data, in degrees C"@en ;
+    tss:columnName "S Hem" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#DEG_C-DIFF> .
+
+<#band-1>
+    a tss:ValueField ;
+    rdfs:label "Band 1"@en ;
+    rdfs:comment "Latitude band (90N-23.6N, 30% of global area) 5-year anomalies mean computed from land and ocean data, in degrees C"@en ;
+    tss:columnName "Band 1" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#DEG_C-DIFF> .
+
+<#band-2>
+    a tss:ValueField ;
+    rdfs:label "Band 2"@en ;
+    rdfs:comment "Latitude band (23.6N-23.6S, 40% of global area) 5-year anomalies mean computed from land and ocean data, in degrees C"@en ;
+    tss:columnName "Band 2" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#DEG_C-DIFF> .
+
+<#band-3>
+    a tss:ValueField ;
+    rdfs:label "Band 3"@en ;
+    rdfs:comment "Latitude band (23.6S-90S, 30% of global area) 5-year anomalies mean computed from land and ocean data, in degrees C"@en ;
+    tss:columnName "Band 3" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#DEG_C-DIFF> .
+
+# Units that QUDT does not have, made of QUDT units. A unit with a currency states no conversion
+# multiplier: an exchange rate changes over time.
+<#DEG_C-DIFF>
+    a qudt:Unit ;
+    qudt:hasQuantityKind quantitykind:TemperatureDifference ;
+    rdfs:comment "A difference of one degree Celsius is a difference of one kelvin: unlike unit:DEG_C, it has no offset."@en ;
+    rdfs:label "degree Celsius, as a difference of temperatures"@en ;
+    qudt:symbol "°C" .

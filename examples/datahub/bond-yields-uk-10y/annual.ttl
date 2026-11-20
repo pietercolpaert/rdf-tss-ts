@@ -1,0 +1,51 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/annual.csv of the data package "10y UK Government Bond Yields (long-term interest rate)" on GitHub (https://github.com/datasets/bond-yields-uk-10y).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per year, without gaps, so the time of a row is its step on a
+# time grid of P1Y from 1984-12-31: the source has no step field, and its Year column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "UK 10-year government bond yield, yearly"@en ;
+    dcterms:source <https://github.com/datasets/bond-yields-uk-10y> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/bond-yields-uk-10y/main/datapackage.json> ;
+    tss:from "1984-12-31T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/bond-yields-uk-10y/main/data/annual.csv> ;
+    tss:timeBase "1984-12-31T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1Y"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#rate> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Year as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Year" ;
+    tss:datatype xsd:date .
+
+<#rate>
+    a tss:ValueField ;
+    rdfs:label "Rate"@en ;
+    rdfs:comment "Annual average yield from British Government Securities, 10 year Nominal Par Yield"@en ;
+    tss:columnName "Rate" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:PERCENT .

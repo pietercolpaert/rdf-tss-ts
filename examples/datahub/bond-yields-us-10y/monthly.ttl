@@ -1,0 +1,51 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/monthly.csv of the data package "10 year US Government Bond Yields (long-term interest rate)" on GitHub (https://github.com/datasets/bond-yields-us-10y).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is its step on a
+# time grid of P1M from 1953-04-01: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "US 10-year government bond yield, monthly"@en ;
+    dcterms:source <https://github.com/datasets/bond-yields-us-10y> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/bond-yields-us-10y/main/datapackage.json> ;
+    tss:from "1953-04-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/bond-yields-us-10y/main/data/monthly.csv> ;
+    tss:timeBase "1953-04-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#rate> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:date .
+
+<#rate>
+    a tss:ValueField ;
+    rdfs:label "Rate"@en ;
+    rdfs:comment "Percent per year"@en ;
+    tss:columnName "Rate" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:PERCENT .

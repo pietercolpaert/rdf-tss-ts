@@ -1,0 +1,154 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/monthly-averages.csv of the data package "Air quality" on GitHub (https://github.com/datasets/london-air-quality).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is its step on a
+# time grid of P1M from 2008-01-01: the source has no step field, and its Month column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Air quality in London, monthly"@en ;
+    dcterms:source <https://github.com/datasets/london-air-quality> ;
+    dcterms:license <http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/london-air-quality/main/datapackage.json> ;
+    tss:from "2008-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/london-air-quality/main/data/monthly-averages.csv> ;
+    tss:timeBase "2008-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#london-mean-roadside-nitric-oxide-ug-m3>,
+        <#london-mean-roadside-nitrogen-dioxide-ug-m3>,
+        <#london-mean-roadside-oxides-of-nitrogen-ug-m3>,
+        <#london-mean-roadside-ozone-ug-m3>,
+        <#london-mean-roadside-pm10-particulate-ug-m3>,
+        <#london-mean-roadside-pm2-5-particulate-ug-m3>,
+        <#london-mean-roadside-sulphur-dioxide-ug-m3>,
+        <#london-mean-background-nitric-oxide-ug-m3>,
+        <#london-mean-background-nitrogen-dioxide-ug-m3>,
+        <#london-mean-background-oxides-of-nitrogen-ug-m3>,
+        <#london-mean-background-ozone-ug-m3>,
+        <#london-mean-background-pm10-particulate-ug-m3>,
+        <#london-mean-background-pm2-5-particulate-ug-m3>,
+        <#london-mean-background-sulphur-dioxide-ug-m3> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Month as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Month" ;
+    tss:datatype xsd:date .
+
+<#london-mean-roadside-nitric-oxide-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Roadside Nitric Oxide (ug/m3)"@en ;
+    tss:columnName "London Mean Roadside Nitric Oxide (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-roadside-nitrogen-dioxide-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Roadside Nitrogen Dioxide (ug/m3)"@en ;
+    tss:columnName "London Mean Roadside Nitrogen Dioxide (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-roadside-oxides-of-nitrogen-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Roadside Oxides of Nitrogen (ug/m3)"@en ;
+    tss:columnName "London Mean Roadside Oxides of Nitrogen (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-roadside-ozone-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Roadside Ozone (ug/m3)"@en ;
+    tss:columnName "London Mean Roadside Ozone (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-roadside-pm10-particulate-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Roadside PM10 Particulate (ug/m3)"@en ;
+    tss:columnName "London Mean Roadside PM10 Particulate (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-roadside-pm2-5-particulate-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Roadside PM2.5 Particulate (ug/m3)"@en ;
+    tss:columnName "London Mean Roadside PM2.5 Particulate (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-roadside-sulphur-dioxide-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Roadside Sulphur Dioxide (ug/m3)"@en ;
+    tss:columnName "London Mean Roadside Sulphur Dioxide (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-background-nitric-oxide-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Background Nitric Oxide (ug/m3)"@en ;
+    tss:columnName "London Mean Background Nitric Oxide (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-background-nitrogen-dioxide-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Background Nitrogen Dioxide (ug/m3)"@en ;
+    tss:columnName "London Mean Background Nitrogen Dioxide (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-background-oxides-of-nitrogen-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Background Oxides of Nitrogen (ug/m3)"@en ;
+    tss:columnName "London Mean Background Oxides of Nitrogen (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-background-ozone-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Background Ozone (ug/m3)"@en ;
+    tss:columnName "London Mean Background Ozone (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-background-pm10-particulate-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Background PM10 Particulate (ug/m3)"@en ;
+    tss:columnName "London Mean Background PM10 Particulate (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-background-pm2-5-particulate-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Background PM2.5 Particulate (ug/m3)"@en ;
+    tss:columnName "London Mean Background PM2.5 Particulate (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .
+
+<#london-mean-background-sulphur-dioxide-ug-m3>
+    a tss:ValueField ;
+    rdfs:label "London Mean Background Sulphur Dioxide (ug/m3)"@en ;
+    tss:columnName "London Mean Background Sulphur Dioxide (ug/m3)" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MicroGM-PER-M3 .

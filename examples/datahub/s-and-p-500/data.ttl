@@ -1,0 +1,121 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/data.csv of the data package "Standard and Poor's (S&P) 500 Index Data including Dividend, Earnings and P/E Ratio" on GitHub (https://github.com/datasets/s-and-p-500).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is its step on a
+# time grid of P1M from 1871-01-01: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "S&P 500, dividends and earnings since 1871"@en ;
+    rdfs:comment "Monthly S&P 500 index data from 1871 to present, including price, dividend, earnings, CPI, interest rate, inflation-adjusted values, and the Shiller CAPE (PE10) ratio. Recent months beyond the Shiller dataset are extended with FRED price data; for those rows only SP500 is populated and all other fields are 0."@en ;
+    dcterms:source <https://github.com/datasets/s-and-p-500> ;
+    dcterms:license <https://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/s-and-p-500/main/datapackage.json> ;
+    tss:from "1871-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/s-and-p-500/main/data/data.csv> ;
+    tss:timeBase "1871-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#sp500>,
+        <#dividend>,
+        <#earnings>,
+        <#consumer-price-index>,
+        <#long-interest-rate>,
+        <#real-price>,
+        <#real-dividend>,
+        <#real-earnings>,
+        <#pe10> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:date .
+
+<#sp500>
+    a tss:ValueField ;
+    rdfs:label "SP500"@en ;
+    rdfs:comment "Level ('price') of the S&P 500 index"@en ;
+    tss:columnName "SP500" ;
+    tss:datatype xsd:decimal .
+
+<#dividend>
+    a tss:ValueField ;
+    rdfs:label "Dividend"@en ;
+    rdfs:comment "Dividend per share (monthly, annualised)"@en ;
+    tss:columnName "Dividend" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:CCY_USD .
+
+<#earnings>
+    a tss:ValueField ;
+    rdfs:label "Earnings"@en ;
+    rdfs:comment "Earnings per share (monthly, annualised)"@en ;
+    tss:columnName "Earnings" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:CCY_USD .
+
+<#consumer-price-index>
+    a tss:ValueField ;
+    rdfs:label "Consumer Price Index"@en ;
+    rdfs:comment "Consumer Price Index (CPI-U); pre-1913 spliced from Warren-Pearson price index"@en ;
+    tss:columnName "Consumer Price Index" ;
+    tss:datatype xsd:decimal .
+
+<#long-interest-rate>
+    a tss:ValueField ;
+    rdfs:label "Long Interest Rate"@en ;
+    rdfs:comment "10 year interest rate (gov bonds)"@en ;
+    tss:columnName "Long Interest Rate" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:PERCENT .
+
+<#real-price>
+    a tss:ValueField ;
+    rdfs:label "Real Price"@en ;
+    rdfs:comment "Inflation-adjusted S&P 500 price in January 2000 dollars"@en ;
+    tss:columnName "Real Price" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:CCY_USD .
+
+<#real-dividend>
+    a tss:ValueField ;
+    rdfs:label "Real Dividend"@en ;
+    rdfs:comment "Inflation-adjusted dividend per share in January 2000 dollars"@en ;
+    tss:columnName "Real Dividend" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:CCY_USD .
+
+<#real-earnings>
+    a tss:ValueField ;
+    rdfs:label "Real Earnings"@en ;
+    rdfs:comment "Inflation-adjusted earnings per share in January 2000 dollars"@en ;
+    tss:columnName "Real Earnings" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:CCY_USD .
+
+<#pe10>
+    a tss:ValueField ;
+    rdfs:label "PE10"@en ;
+    rdfs:comment "Cyclically Adjusted Price Earnings Ratio P/E10 or CAPE. Values are 0.0 for 1871-01 through 1880-12 (the first 120 months) because computing PE10 requires 10 years of trailing real earnings history. Values are also 0.0 for FRED-only extension rows beyond the Shiller dataset."@en ;
+    tss:columnName "PE10" ;
+    tss:datatype xsd:decimal .

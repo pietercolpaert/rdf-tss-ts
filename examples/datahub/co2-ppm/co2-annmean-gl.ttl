@@ -1,0 +1,60 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/co2-annmean-gl.csv of the data package "CO2 PPM - Trends in Atmospheric Carbon Dioxide" on GitHub (https://github.com/datasets/co2-ppm).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per year, without gaps, so the time of a row is its step on a
+# time grid of P1Y from 1979-01-01: the source has no step field, and its Year column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "CO₂, global, yearly"@en ;
+    rdfs:comment "Data are sourced from the US Government's Earth System Research Laboratory, Global Monitoring Division. Two main series are provided: the Mauna Loa series (which has the longest continuous series since 1958) and a Global Average series (a global average over marine surface sites)."@en ;
+    dcterms:source <https://github.com/datasets/co2-ppm> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/co2-ppm/main/datapackage.json> ;
+    tss:from "1979-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/co2-ppm/main/data/co2-annmean-gl.csv> ;
+    tss:timeBase "1979-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1Y"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#mean>,
+        <#uncertainty> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Year as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Year" ;
+    tss:datatype xsd:gYear .
+
+<#mean>
+    a tss:ValueField ;
+    rdfs:label "Mean"@en ;
+    tss:columnName "Mean" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:PPM .
+
+<#uncertainty>
+    a tss:ValueField ;
+    rdfs:label "Uncertainty"@en ;
+    rdfs:comment "The uncertainty in the global annual mean is estimated using a monte carlo technique that computes 100 global annual averages, each time using a slightly different set of measurement records from the NOAA ESRL cooperative air sampling network.  The reported uncertainty is the mean of the standard deviations for each annual average using this technique. Please see Conway et al., 1994, JGR, vol. 99, no. D11. for a complete discussion."@en ;
+    tss:columnName "Uncertainty" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:PPM .

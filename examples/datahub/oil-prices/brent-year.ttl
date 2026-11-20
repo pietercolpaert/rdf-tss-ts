@@ -1,0 +1,61 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/brent-year.csv of the data package "Brent and WTI Spot Prices" on GitHub (https://github.com/datasets/oil-prices).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per year, without gaps, so the time of a row is its step on a
+# time grid of P1Y from 1987-06-30: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Brent crude oil, yearly"@en ;
+    rdfs:comment "Europe Brent crude oil spot price, annual averages, in USD per barrel (FOB). The Date is reported as June 30 of each year. Data start: 1987."@en ;
+    dcterms:source <https://github.com/datasets/oil-prices> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/oil-prices/main/datapackage.json> ;
+    tss:from "1987-06-30T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/oil-prices/main/data/brent-year.csv> ;
+    tss:timeBase "1987-06-30T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1Y"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#price> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:date .
+
+<#price>
+    a tss:ValueField ;
+    rdfs:label "Price"@en ;
+    rdfs:comment "Spot price in US dollars per barrel (FOB)."@en ;
+    tss:columnName "Price" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-BBL> .
+
+# Units that QUDT does not have, made of QUDT units. A unit with a currency states no conversion
+# multiplier: an exchange rate changes over time.
+<#USD-PER-BBL>
+    a qudt:DerivedUnit, qudt:Unit ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit unit:CCY_USD ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:BBL ] ;
+    rdfs:label "US dollar per barrel"@en ;
+    qudt:symbol "$/bbl" .

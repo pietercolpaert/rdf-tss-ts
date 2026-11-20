@@ -1,0 +1,49 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/worldwide-mortality-rate.csv of the data package "Novel Coronavirus 2019" on GitHub (https://github.com/datasets/covid-19).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per day, without gaps, so the time of a row is its step on a
+# time grid of P1D from 2020-01-22: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "COVID-19 mortality rate, worldwide, daily"@en ;
+    dcterms:source <https://github.com/datasets/covid-19> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/covid-19/main/datapackage.json> ;
+    tss:from "2020-01-22T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/covid-19/main/data/worldwide-mortality-rate.csv> ;
+    tss:timeBase "2020-01-22T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1D"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#mortality-rate> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:date .
+
+<#mortality-rate>
+    a tss:ValueField ;
+    rdfs:label "Mortality rate"@en ;
+    tss:columnName "Mortality rate" ;
+    tss:datatype xsd:decimal .

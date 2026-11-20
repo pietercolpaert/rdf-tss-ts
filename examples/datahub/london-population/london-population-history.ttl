@@ -1,0 +1,50 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/london-population-history.csv of the data package "London population" on GitHub (https://github.com/datasets/london-population).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per year, without gaps, so the time of a row is its step on a
+# time grid of P1Y from 1961-01-01: the source has no step field, and its Year column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Population of London since 1961"@en ;
+    dcterms:source <https://github.com/datasets/london-population> ;
+    dcterms:license <http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/london-population/main/datapackage.json> ;
+    tss:from "1961-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/london-population/main/data/london-population-history.csv> ;
+    tss:timeBase "1961-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1Y"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#value> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Year as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Year" ;
+    tss:datatype xsd:date .
+
+<#value>
+    a tss:ValueField ;
+    rdfs:label "Value"@en ;
+    tss:columnName "Value" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:NUM .

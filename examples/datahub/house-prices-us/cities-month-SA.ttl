@@ -1,0 +1,227 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/cities-month-SA.csv of the data package "US House Price Index (Case-Shiller)" on GitHub (https://github.com/datasets/house-prices-us).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is its step on a
+# time grid of P1M from 1987-01-01: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "US home price index of 20 cities, seasonally adjusted"@en ;
+    rdfs:comment "Case-Shiller US home price index levels at national and city level. Monthly. Seasonally adjusted."@en ;
+    dcterms:source <https://github.com/datasets/house-prices-us> ;
+    dcterms:license <https://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/house-prices-us/main/datapackage.json> ;
+    tss:from "1987-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/house-prices-us/main/data/cities-month-SA.csv> ;
+    tss:timeBase "1987-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#az-phoenix>,
+        <#ca-los-angeles>,
+        <#ca-san-diego>,
+        <#ca-san-francisco>,
+        <#co-denver>,
+        <#dc-washington>,
+        <#fl-miami>,
+        <#fl-tampa>,
+        <#ga-atlanta>,
+        <#il-chicago>,
+        <#ma-boston>,
+        <#mi-detroit>,
+        <#mn-minneapolis>,
+        <#nc-charlotte>,
+        <#nv-las-vegas>,
+        <#ny-new-york>,
+        <#oh-cleveland>,
+        <#or-portland>,
+        <#tx-dallas>,
+        <#wa-seattle>,
+        <#composite-10>,
+        <#composite-20>,
+        <#national-us> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:date .
+
+<#az-phoenix>
+    a tss:ValueField ;
+    rdfs:label "AZ-Phoenix"@en ;
+    rdfs:comment "Case-Shiller home price index for Phoenix, Arizona (seasonally adjusted)."@en ;
+    tss:columnName "AZ-Phoenix" ;
+    tss:datatype xsd:decimal .
+
+<#ca-los-angeles>
+    a tss:ValueField ;
+    rdfs:label "CA-Los Angeles"@en ;
+    rdfs:comment "Case-Shiller home price index for Los Angeles, California (seasonally adjusted)."@en ;
+    tss:columnName "CA-Los Angeles" ;
+    tss:datatype xsd:decimal .
+
+<#ca-san-diego>
+    a tss:ValueField ;
+    rdfs:label "CA-San Diego"@en ;
+    rdfs:comment "Case-Shiller home price index for San Diego, California (seasonally adjusted). Blank for months before the series begins."@en ;
+    tss:columnName "CA-San Diego" ;
+    tss:datatype xsd:decimal .
+
+<#ca-san-francisco>
+    a tss:ValueField ;
+    rdfs:label "CA-San Francisco"@en ;
+    rdfs:comment "Case-Shiller home price index for San Francisco, California (seasonally adjusted)."@en ;
+    tss:columnName "CA-San Francisco" ;
+    tss:datatype xsd:decimal .
+
+<#co-denver>
+    a tss:ValueField ;
+    rdfs:label "CO-Denver"@en ;
+    rdfs:comment "Case-Shiller home price index for Denver, Colorado (seasonally adjusted)."@en ;
+    tss:columnName "CO-Denver" ;
+    tss:datatype xsd:decimal .
+
+<#dc-washington>
+    a tss:ValueField ;
+    rdfs:label "DC-Washington"@en ;
+    rdfs:comment "Case-Shiller home price index for Washington, DC (seasonally adjusted)."@en ;
+    tss:columnName "DC-Washington" ;
+    tss:datatype xsd:decimal .
+
+<#fl-miami>
+    a tss:ValueField ;
+    rdfs:label "FL-Miami"@en ;
+    rdfs:comment "Case-Shiller home price index for Miami, Florida (seasonally adjusted)."@en ;
+    tss:columnName "FL-Miami" ;
+    tss:datatype xsd:decimal .
+
+<#fl-tampa>
+    a tss:ValueField ;
+    rdfs:label "FL-Tampa"@en ;
+    rdfs:comment "Case-Shiller home price index for Tampa, Florida (seasonally adjusted)."@en ;
+    tss:columnName "FL-Tampa" ;
+    tss:datatype xsd:decimal .
+
+<#ga-atlanta>
+    a tss:ValueField ;
+    rdfs:label "GA-Atlanta"@en ;
+    rdfs:comment "Case-Shiller home price index for Atlanta, Georgia (seasonally adjusted)."@en ;
+    tss:columnName "GA-Atlanta" ;
+    tss:datatype xsd:decimal .
+
+<#il-chicago>
+    a tss:ValueField ;
+    rdfs:label "IL-Chicago"@en ;
+    rdfs:comment "Case-Shiller home price index for Chicago, Illinois (seasonally adjusted)."@en ;
+    tss:columnName "IL-Chicago" ;
+    tss:datatype xsd:decimal .
+
+<#ma-boston>
+    a tss:ValueField ;
+    rdfs:label "MA-Boston"@en ;
+    rdfs:comment "Case-Shiller home price index for Boston, Massachusetts (seasonally adjusted)."@en ;
+    tss:columnName "MA-Boston" ;
+    tss:datatype xsd:decimal .
+
+<#mi-detroit>
+    a tss:ValueField ;
+    rdfs:label "MI-Detroit"@en ;
+    rdfs:comment "Case-Shiller home price index for Detroit, Michigan (seasonally adjusted)."@en ;
+    tss:columnName "MI-Detroit" ;
+    tss:datatype xsd:decimal .
+
+<#mn-minneapolis>
+    a tss:ValueField ;
+    rdfs:label "MN-Minneapolis"@en ;
+    rdfs:comment "Case-Shiller home price index for Minneapolis, Minnesota (seasonally adjusted)."@en ;
+    tss:columnName "MN-Minneapolis" ;
+    tss:datatype xsd:decimal .
+
+<#nc-charlotte>
+    a tss:ValueField ;
+    rdfs:label "NC-Charlotte"@en ;
+    rdfs:comment "Case-Shiller home price index for Charlotte, North Carolina (seasonally adjusted)."@en ;
+    tss:columnName "NC-Charlotte" ;
+    tss:datatype xsd:decimal .
+
+<#nv-las-vegas>
+    a tss:ValueField ;
+    rdfs:label "NV-Las Vegas"@en ;
+    rdfs:comment "Case-Shiller home price index for Las Vegas, Nevada (seasonally adjusted)."@en ;
+    tss:columnName "NV-Las Vegas" ;
+    tss:datatype xsd:decimal .
+
+<#ny-new-york>
+    a tss:ValueField ;
+    rdfs:label "NY-New York"@en ;
+    rdfs:comment "Case-Shiller home price index for New York, New York (seasonally adjusted)."@en ;
+    tss:columnName "NY-New York" ;
+    tss:datatype xsd:decimal .
+
+<#oh-cleveland>
+    a tss:ValueField ;
+    rdfs:label "OH-Cleveland"@en ;
+    rdfs:comment "Case-Shiller home price index for Cleveland, Ohio (seasonally adjusted)."@en ;
+    tss:columnName "OH-Cleveland" ;
+    tss:datatype xsd:decimal .
+
+<#or-portland>
+    a tss:ValueField ;
+    rdfs:label "OR-Portland"@en ;
+    rdfs:comment "Case-Shiller home price index for Portland, Oregon (seasonally adjusted)."@en ;
+    tss:columnName "OR-Portland" ;
+    tss:datatype xsd:decimal .
+
+<#tx-dallas>
+    a tss:ValueField ;
+    rdfs:label "TX-Dallas"@en ;
+    rdfs:comment "Case-Shiller home price index for Dallas, Texas (seasonally adjusted)."@en ;
+    tss:columnName "TX-Dallas" ;
+    tss:datatype xsd:decimal .
+
+<#wa-seattle>
+    a tss:ValueField ;
+    rdfs:label "WA-Seattle"@en ;
+    rdfs:comment "Case-Shiller home price index for Seattle, Washington (seasonally adjusted)."@en ;
+    tss:columnName "WA-Seattle" ;
+    tss:datatype xsd:decimal .
+
+<#composite-10>
+    a tss:ValueField ;
+    rdfs:label "Composite-10"@en ;
+    rdfs:comment "S&P/Case-Shiller 10-City Composite Home Price Index (seasonally adjusted)."@en ;
+    tss:columnName "Composite-10" ;
+    tss:datatype xsd:decimal .
+
+<#composite-20>
+    a tss:ValueField ;
+    rdfs:label "Composite-20"@en ;
+    rdfs:comment "S&P/Case-Shiller 20-City Composite Home Price Index (seasonally adjusted)."@en ;
+    tss:columnName "Composite-20" ;
+    tss:datatype xsd:decimal .
+
+<#national-us>
+    a tss:ValueField ;
+    rdfs:label "National-US"@en ;
+    rdfs:comment "S&P/Case-Shiller U.S. National Home Price Index (seasonally adjusted)."@en ;
+    tss:columnName "National-US" ;
+    tss:datatype xsd:decimal .

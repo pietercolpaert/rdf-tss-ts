@@ -28,6 +28,7 @@
     "examples": "tsx scripts/build-examples.ts",
     "examples:telraam": "node scripts/fetch-telraam.mjs",
     "examples:telraam-months": "tsx scripts/telraam-log.ts",
+    "examples:datahub": "tsx scripts/datahub.ts",
     "build:playground": "tsx scripts/build-playground.ts",
     "build:site": "npm run examples && npm run build:playground",
     "serve": "npm run build:site && npx --yes http-server _site -c-1 -o"

@@ -1,0 +1,289 @@
+[
+  {
+    "id": "datahub-oil-prices-brent-monthly",
+    "title": "Brent crude oil, monthly",
+    "group": "Prices and markets (core datasets on GitHub)",
+    "description": "474 rows of data/brent-monthly.csv in the oil-prices data package on GitHub, one per month. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1987-05-15.",
+    "metadata": "oil-prices/brent-monthly.ttl"
+  },
+  {
+    "id": "datahub-oil-prices-brent-year",
+    "title": "Brent crude oil, yearly",
+    "group": "Prices and markets (core datasets on GitHub)",
+    "description": "39 rows of data/brent-year.csv in the oil-prices data package on GitHub, one per year. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1987-06-30.",
+    "metadata": "oil-prices/brent-year.ttl"
+  },
+  {
+    "id": "datahub-oil-prices-wti-monthly",
+    "title": "WTI crude oil, monthly",
+    "group": "Prices and markets (core datasets on GitHub)",
+    "description": "490 rows of data/wti-monthly.csv in the oil-prices data package on GitHub, one per month. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1986-01-15.",
+    "metadata": "oil-prices/wti-monthly.ttl"
+  },
+  {
+    "id": "datahub-oil-prices-wti-year",
+    "title": "WTI crude oil, yearly",
+    "group": "Prices and markets (core datasets on GitHub)",
+    "description": "40 rows of data/wti-year.csv in the oil-prices data package on GitHub, one per year. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1986-06-30.",
+    "metadata": "oil-prices/wti-year.ttl"
+  },
+  {
+    "id": "datahub-natural-gas-monthly-processed",
+    "title": "Natural gas (Henry Hub), monthly",
+    "group": "Prices and markets (core datasets on GitHub)",
+    "description": "358 rows of data/monthly-processed.csv in the natural-gas data package on GitHub, one per month. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1997-01-01.",
+    "metadata": "natural-gas/monthly-processed.ttl"
+  },
+  {
+    "id": "datahub-commodity-prices-commodity-prices-v2",
+    "title": "63 commodity prices and indices, monthly",
+    "group": "Prices and markets (core datasets on GitHub)",
+    "description": "429 rows of data/commodity-prices_v2.csv in the commodity-prices data package on GitHub, one per month. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1990-01-01.",
+    "metadata": "commodity-prices/commodity-prices_v2.ttl"
+  },
+  {
+    "id": "datahub-s-and-p-500-data",
+    "title": "S&P 500, dividends and earnings since 1871",
+    "group": "Prices and markets (core datasets on GitHub)",
+    "description": "1869 rows of data/data.csv in the s-and-p-500 data package on GitHub, one per month. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1871-01-01.",
+    "metadata": "s-and-p-500/data.ttl"
+  },
+  {
+    "id": "datahub-bond-yields-us-10y-monthly",
+    "title": "US 10-year government bond yield, monthly",
+    "group": "Prices and markets (core datasets on GitHub)",
+    "description": "882 rows of data/monthly.csv in the bond-yields-us-10y data package on GitHub, one per month. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1953-04-01.",
+    "metadata": "bond-yields-us-10y/monthly.ttl"
+  },
+  {
+    "id": "datahub-bond-yields-uk-10y-annual",
+    "title": "UK 10-year government bond yield, yearly",
+    "group": "Prices and markets (core datasets on GitHub)",
+    "description": "42 rows of data/annual.csv in the bond-yields-uk-10y data package on GitHub, one per year. The Year column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1984-12-31.",
+    "metadata": "bond-yields-uk-10y/annual.ttl"
+  },
+  {
+    "id": "datahub-gdp-us-quarter",
+    "title": "US GDP, quarterly",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "312 rows of data/quarter.csv in the gdp-us data package on GitHub, one per quarter. The date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P3M from 1947-01-01.",
+    "metadata": "gdp-us/quarter.ttl"
+  },
+  {
+    "id": "datahub-gdp-us-year",
+    "title": "US GDP, yearly",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "95 rows of data/year.csv in the gdp-us data package on GitHub, one per year. The date column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1929.",
+    "metadata": "gdp-us/year.ttl"
+  },
+  {
+    "id": "datahub-gdp-uk-data",
+    "title": "UK GDP, yearly",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "77 rows of data/data.csv in the gdp-uk data package on GitHub, one per year. The date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1948-12-31.",
+    "metadata": "gdp-uk/data.ttl"
+  },
+  {
+    "id": "datahub-cpi-gb-cpi-uk-monthly",
+    "title": "UK consumer price index, monthly",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "952 rows of data/cpi-uk-monthly.csv in the cpi-gb data package on GitHub, one per month. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1947-06-01.",
+    "metadata": "cpi-gb/cpi-uk-monthly.ttl"
+  },
+  {
+    "id": "datahub-cpi-gb-cpi-uk-annual",
+    "title": "UK consumer price index, yearly since 1800",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "226 rows of data/cpi-uk-annual.csv in the cpi-gb data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1800.",
+    "metadata": "cpi-gb/cpi-uk-annual.ttl"
+  },
+  {
+    "id": "datahub-cpi-gb-inflation-uk",
+    "title": "UK inflation, yearly since 1800",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "226 rows of data/inflation-uk.csv in the cpi-gb data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1800.",
+    "metadata": "cpi-gb/inflation-uk.ttl"
+  },
+  {
+    "id": "datahub-house-prices-us-national-month",
+    "title": "US national home price index (Case-Shiller)",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "619 rows of data/national-month.csv in the house-prices-us data package on GitHub, one per month. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1975-01-01.",
+    "metadata": "house-prices-us/national-month.ttl"
+  },
+  {
+    "id": "datahub-house-prices-us-cities-month-sa",
+    "title": "US home price index of 20 cities, seasonally adjusted",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "475 rows of data/cities-month-SA.csv in the house-prices-us data package on GitHub, one per month. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1987-01-01.",
+    "metadata": "house-prices-us/cities-month-SA.ttl"
+  },
+  {
+    "id": "datahub-house-prices-us-cities-month-nsa",
+    "title": "US home price index of 20 cities, not seasonally adjusted",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "475 rows of data/cities-month-NSA.csv in the house-prices-us data package on GitHub, one per month. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1987-01-01.",
+    "metadata": "house-prices-us/cities-month-NSA.ttl"
+  },
+  {
+    "id": "datahub-house-prices-uk-data",
+    "title": "UK house prices, quarterly",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "290 rows of data/data.csv in the house-prices-uk data package on GitHub, one per quarter. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P3M from 1953-02-01.",
+    "metadata": "house-prices-uk/data.ttl"
+  },
+  {
+    "id": "datahub-house-prices-fr-paris",
+    "title": "House price index of Paris since 1200",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "820 rows of data/paris.csv in the house-prices-fr data package on GitHub, one per year. The year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1201.",
+    "metadata": "house-prices-fr/paris.ttl"
+  },
+  {
+    "id": "datahub-usa-education-budget-analysis-data",
+    "title": "US education budget and GDP",
+    "group": "Economy (core datasets on GitHub)",
+    "description": "48 rows of data/data.csv in the usa-education-budget-analysis data package on GitHub, one per year. The YEAR column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1976.",
+    "metadata": "usa-education-budget-analysis/data.ttl"
+  },
+  {
+    "id": "datahub-co2-ppm-co2-mm-mlo",
+    "title": "CO₂ at Mauna Loa, monthly",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "823 rows of data/co2-mm-mlo.csv in the co2-ppm data package on GitHub, one per month. The Date column holds months, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1958-03.",
+    "metadata": "co2-ppm/co2-mm-mlo.ttl"
+  },
+  {
+    "id": "datahub-co2-ppm-co2-annmean-mlo",
+    "title": "CO₂ at Mauna Loa, yearly",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "67 rows of data/co2-annmean-mlo.csv in the co2-ppm data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1959.",
+    "metadata": "co2-ppm/co2-annmean-mlo.ttl"
+  },
+  {
+    "id": "datahub-co2-ppm-co2-gr-mlo",
+    "title": "CO₂ increase at Mauna Loa, yearly",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "67 rows of data/co2-gr-mlo.csv in the co2-ppm data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1959.",
+    "metadata": "co2-ppm/co2-gr-mlo.ttl"
+  },
+  {
+    "id": "datahub-co2-ppm-co2-mm-gl",
+    "title": "CO₂, global, monthly",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "571 rows of data/co2-mm-gl.csv in the co2-ppm data package on GitHub, one per month. The Date column holds months, not times with a timezone, so the time of a row is its position on a time grid of P1M from 1979-01.",
+    "metadata": "co2-ppm/co2-mm-gl.ttl"
+  },
+  {
+    "id": "datahub-co2-ppm-co2-annmean-gl",
+    "title": "CO₂, global, yearly",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "47 rows of data/co2-annmean-gl.csv in the co2-ppm data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1979.",
+    "metadata": "co2-ppm/co2-annmean-gl.ttl"
+  },
+  {
+    "id": "datahub-co2-ppm-co2-gr-gl",
+    "title": "CO₂ increase, global, yearly",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "67 rows of data/co2-gr-gl.csv in the co2-ppm data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1959.",
+    "metadata": "co2-ppm/co2-gr-gl.ttl"
+  },
+  {
+    "id": "datahub-co2-fossil-global-global",
+    "title": "CO₂ emissions from fossil fuels since 1750",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "275 rows of data/global.csv in the co2-fossil-global data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1750.",
+    "metadata": "co2-fossil-global/global.ttl"
+  },
+  {
+    "id": "datahub-global-temp-anomalies-global-temp-annual",
+    "title": "Global temperature anomalies (GISTEMP), yearly",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "136 rows of data/global-temp-annual.csv in the global-temp-anomalies data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1880.",
+    "metadata": "global-temp-anomalies/global-temp-annual.ttl"
+  },
+  {
+    "id": "datahub-global-temp-anomalies-global-temp-5yr",
+    "title": "Global temperature anomalies (GISTEMP), 5-year means",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "136 rows of data/global-temp-5yr.csv in the global-temp-anomalies data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1880.",
+    "metadata": "global-temp-anomalies/global-temp-5yr.ttl"
+  },
+  {
+    "id": "datahub-sea-level-rise-epa-sea-level",
+    "title": "Sea level (EPA), yearly since 1880",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "144 rows of data/epa-sea-level.csv in the sea-level-rise data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1880.",
+    "metadata": "sea-level-rise/epa-sea-level.ttl"
+  },
+  {
+    "id": "datahub-sea-level-rise-csiro-recons-gmsl-yr-2019",
+    "title": "Sea level (CSIRO reconstruction), yearly since 1880",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "140 rows of data/CSIRO_Recons_gmsl_yr_2019.csv in the sea-level-rise data package on GitHub, one per year. The Time column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1880.",
+    "metadata": "sea-level-rise/CSIRO_Recons_gmsl_yr_2019.ttl"
+  },
+  {
+    "id": "datahub-sea-level-rise-csiro-alt-yearly",
+    "title": "Sea level (CSIRO, satellite altimetry), yearly",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "27 rows of data/CSIRO_Alt_yearly.csv in the sea-level-rise data package on GitHub, one per year. The Time column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1993.",
+    "metadata": "sea-level-rise/CSIRO_Alt_yearly.ttl"
+  },
+  {
+    "id": "datahub-glacier-mass-balance-glaciers",
+    "title": "Mass balance of reference glaciers",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "68 rows of data/glaciers.csv in the glacier-mass-balance data package on GitHub, one per year. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1956.",
+    "metadata": "glacier-mass-balance/glaciers.ttl"
+  },
+  {
+    "id": "datahub-london-air-quality-monthly-averages",
+    "title": "Air quality in London, monthly",
+    "group": "Climate and environment (core datasets on GitHub)",
+    "description": "132 rows of data/monthly-averages.csv in the london-air-quality data package on GitHub, one per month. The Month column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1M from 2008-01-01.",
+    "metadata": "london-air-quality/monthly-averages.ttl"
+  },
+  {
+    "id": "datahub-covid-19-worldwide-aggregate",
+    "title": "COVID-19 worldwide, daily",
+    "group": "Population and health (core datasets on GitHub)",
+    "description": "816 rows of data/worldwide-aggregate.csv in the covid-19 data package on GitHub, one per day. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1D from 2020-01-22.",
+    "metadata": "covid-19/worldwide-aggregate.ttl"
+  },
+  {
+    "id": "datahub-covid-19-key-countries-pivoted",
+    "title": "COVID-19 in eight countries, daily",
+    "group": "Population and health (core datasets on GitHub)",
+    "description": "816 rows of data/key-countries-pivoted.csv in the covid-19 data package on GitHub, one per day. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1D from 2020-01-22.",
+    "metadata": "covid-19/key-countries-pivoted.ttl"
+  },
+  {
+    "id": "datahub-covid-19-worldwide-mortality-rate",
+    "title": "COVID-19 mortality rate, worldwide, daily",
+    "group": "Population and health (core datasets on GitHub)",
+    "description": "816 rows of data/worldwide-mortality-rate.csv in the covid-19 data package on GitHub, one per day. The Date column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1D from 2020-01-22.",
+    "metadata": "covid-19/worldwide-mortality-rate.ttl"
+  },
+  {
+    "id": "datahub-london-population-london-population-history",
+    "title": "Population of London since 1961",
+    "group": "Population and health (core datasets on GitHub)",
+    "description": "55 rows of data/london-population-history.csv in the london-population data package on GitHub, one per year. The Year column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 1961-01-01.",
+    "metadata": "london-population/london-population-history.ttl"
+  },
+  {
+    "id": "datahub-london-population-london-population-projection",
+    "title": "Population of London, projected to 2050",
+    "group": "Population and health (core datasets on GitHub)",
+    "description": "40 rows of data/london-population-projection.csv in the london-population data package on GitHub, one per year. The Year column holds dates, not times with a timezone, so the time of a row is its position on a time grid of P1Y from 2011-01-01.",
+    "metadata": "london-population/london-population-projection.ttl"
+  },
+  {
+    "id": "datahub-world-religion-projections-world",
+    "title": "World religion projections, 2010 to 2050",
+    "group": "Population and health (core datasets on GitHub)",
+    "description": "5 rows of world.csv in the world-religion-projections data package on GitHub, one per 10 years. The Year column holds years, not times with a timezone, so the time of a row is its position on a time grid of P10Y from 2010.",
+    "metadata": "world-religion-projections/world.ttl"
+  }
+]

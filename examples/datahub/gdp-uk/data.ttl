@@ -1,0 +1,60 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/data.csv of the data package "UK Gross Domestic Product (GDP)" on GitHub (https://github.com/datasets/gdp-uk).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per year, without gaps, so the time of a row is its step on a
+# time grid of P1Y from 1948-12-31: the source has no step field, and its date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "UK GDP, yearly"@en ;
+    dcterms:source <https://github.com/datasets/gdp-uk> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/gdp-uk/main/datapackage.json> ;
+    tss:from "1948-12-31T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/gdp-uk/main/data/data.csv> ;
+    tss:timeBase "1948-12-31T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1Y"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#gdp> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "date" ;
+    tss:datatype xsd:date .
+
+<#gdp>
+    a tss:ValueField ;
+    rdfs:label "GDP"@en ;
+    rdfs:comment "Gross Value Added at basic prices: chained volume measures: Seasonally adjusted. Millions of GBP. ABMI variable in ONS source."@en ;
+    tss:columnName "GDP" ;
+    tss:datatype xsd:integer ;
+    tss:unit <#MegaCCY_GBP> .
+
+# Units that QUDT does not have, made of QUDT units. A unit with a currency states no conversion
+# multiplier: an exchange rate changes over time.
+<#MegaCCY_GBP>
+    a qudt:Unit ;
+    qudt:scalingOf unit:CCY_GBP ;
+    qudt:prefix prefix:Mega ;
+    rdfs:label "million pounds sterling"@en ;
+    qudt:symbol "£m" .

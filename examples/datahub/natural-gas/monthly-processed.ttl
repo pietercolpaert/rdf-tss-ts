@@ -1,0 +1,61 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/monthly-processed.csv of the data package "Natural gas prices" on GitHub (https://github.com/datasets/natural-gas).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is its step on a
+# time grid of P1M from 1997-01-01: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Natural gas (Henry Hub), monthly"@en ;
+    rdfs:comment "Monthly Henry Hub natural gas spot prices with dates anchored to the first of each month (YYYY-MM-DD), derived from the monthly series. Suitable for time-series charting."@en ;
+    dcterms:source <https://github.com/datasets/natural-gas> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/natural-gas/main/datapackage.json> ;
+    tss:from "1997-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/natural-gas/main/data/monthly-processed.csv> ;
+    tss:timeBase "1997-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#price> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:date .
+
+<#price>
+    a tss:ValueField ;
+    rdfs:label "Price"@en ;
+    rdfs:comment "Henry Hub spot price in USD per MMBtu"@en ;
+    tss:columnName "Price" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-MegaBTU_IT> .
+
+# Units that QUDT does not have, made of QUDT units. A unit with a currency states no conversion
+# multiplier: an exchange rate changes over time.
+<#USD-PER-MegaBTU_IT>
+    a qudt:DerivedUnit, qudt:Unit ;
+    qudt:hasFactorUnit [ a qudt:FactorUnit ; qudt:exponent 1 ; qudt:hasUnit unit:CCY_USD ],
+        [ a qudt:FactorUnit ; qudt:exponent -1 ; qudt:hasUnit unit:MegaBTU_IT ] ;
+    rdfs:label "US dollar per million British thermal units"@en ;
+    qudt:symbol "$/MMBtu" .

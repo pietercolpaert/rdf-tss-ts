@@ -1,0 +1,60 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/glaciers.csv of the data package "Average cumulative mass balance of reference Glaciers worldwide" on GitHub (https://github.com/datasets/glacier-mass-balance).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per year, without gaps, so the time of a row is its step on a
+# time grid of P1Y from 1956-01-01: the source has no step field, and its Year column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Mass balance of reference glaciers"@en ;
+    rdfs:comment "This is cumulative change in mass balance of a set of reference glaciers worldwide beginning in 1945. The values represents the average of all the glaciers that were measured. Negative values indicate a net loss of ice and snow compared with the base year of 1945. For consistency, measurements are in meters of water equivalent, which represent changes in the average thickness of a glacier."@en ;
+    dcterms:source <https://github.com/datasets/glacier-mass-balance> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/glacier-mass-balance/main/datapackage.json> ;
+    tss:from "1956-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/glacier-mass-balance/main/data/glaciers.csv> ;
+    tss:timeBase "1956-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1Y"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#mean-cumulative-mass-balance>,
+        <#number-of-observations> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Year as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Year" ;
+    tss:datatype xsd:gYear .
+
+<#mean-cumulative-mass-balance>
+    a tss:ValueField ;
+    rdfs:label "Mean cumulative mass balance"@en ;
+    rdfs:comment "Average mass of measured glacier"@en ;
+    tss:columnName "Mean cumulative mass balance" ;
+    tss:datatype xsd:decimal .
+
+<#number-of-observations>
+    a tss:ValueField ;
+    rdfs:label "Number of observations"@en ;
+    rdfs:comment "Number of glaciers observed"@en ;
+    tss:columnName "Number of observations" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:NUM .

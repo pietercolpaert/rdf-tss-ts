@@ -1,0 +1,86 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/co2-mm-mlo.csv of the data package "CO2 PPM - Trends in Atmospheric Carbon Dioxide" on GitHub (https://github.com/datasets/co2-ppm).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per month, without gaps, so the time of a row is its step on a
+# time grid of P1M from 1958-03-01: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "CO₂ at Mauna Loa, monthly"@en ;
+    rdfs:comment "Data are sourced from the US Government's Earth System Research Laboratory, Global Monitoring Division. Two main series are provided: the Mauna Loa series (which has the longest continuous series since 1958) and a Global Average series (a global average over marine surface sites)."@en ;
+    dcterms:source <https://github.com/datasets/co2-ppm> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/co2-ppm/main/datapackage.json> ;
+    tss:from "1958-03-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/co2-ppm/main/data/co2-mm-mlo.csv> ;
+    tss:timeBase "1958-03-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#decimal-date>,
+        <#average>,
+        <#interpolated>,
+        <#trend>,
+        <#number-of-days> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:gYearMonth .
+
+<#decimal-date>
+    a tss:MetaField ;
+    rdfs:label "Decimal Date"@en ;
+    tss:columnName "Decimal Date" ;
+    tss:datatype xsd:decimal .
+
+<#average>
+    a tss:ValueField ;
+    rdfs:label "Average"@en ;
+    rdfs:comment "The monthly mean CO2 mole fraction determined from daily averages. If there are missing days concentrated either early or late in the month, the monthly mean is corrected to the middle of the month using the average seasonal cycle. Missing months are denoted by -99.99."@en ;
+    tss:columnName "Average" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:PPM .
+
+<#interpolated>
+    a tss:ValueField ;
+    rdfs:label "Interpolated"@en ;
+    rdfs:comment "Values from the average column and interpolated values where data are missing. Interpolated values are computed in two steps. First, we compute for each month the average seasonal cycle in a 7-year window around each monthly value. In this way the seasonal cycle is allowed to change slowly over time. We then determine the trend value for each month by removing the seasonal cycle; this result is shown in the trend column. Trend values are linearly interpolated for missing months. The interpolated monthly mean is then the sum of the average seasonal cycle value and the trend value for the missing month."@en ;
+    tss:columnName "Interpolated" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:PPM .
+
+<#trend>
+    a tss:ValueField ;
+    rdfs:label "Trend"@en ;
+    rdfs:comment "Seasonally corrected."@en ;
+    tss:columnName "Trend" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:PPM .
+
+<#number-of-days>
+    a tss:ValueField ;
+    rdfs:label "Number of Days"@en ;
+    rdfs:comment "-1 denotes no data for number of daily averages in the month."@en ;
+    tss:columnName "Number of Days" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:NUM .

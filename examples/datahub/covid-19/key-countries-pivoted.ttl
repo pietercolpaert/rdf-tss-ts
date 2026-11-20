@@ -1,0 +1,106 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/key-countries-pivoted.csv of the data package "Novel Coronavirus 2019" on GitHub (https://github.com/datasets/covid-19).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per day, without gaps, so the time of a row is its step on a
+# time grid of P1D from 2020-01-22: the source has no step field, and its Date column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "COVID-19 in eight countries, daily"@en ;
+    dcterms:source <https://github.com/datasets/covid-19> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/covid-19/main/datapackage.json> ;
+    tss:from "2020-01-22T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/covid-19/main/data/key-countries-pivoted.csv> ;
+    tss:timeBase "2020-01-22T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1D"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#china>,
+        <#us>,
+        <#united-kingdom>,
+        <#italy>,
+        <#france>,
+        <#germany>,
+        <#spain>,
+        <#iran> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:date .
+
+<#china>
+    a tss:ValueField ;
+    rdfs:label "China"@en ;
+    tss:columnName "China" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:NUM .
+
+<#us>
+    a tss:ValueField ;
+    rdfs:label "US"@en ;
+    tss:columnName "US" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:NUM .
+
+<#united-kingdom>
+    a tss:ValueField ;
+    rdfs:label "United_Kingdom"@en ;
+    tss:columnName "United_Kingdom" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:NUM .
+
+<#italy>
+    a tss:ValueField ;
+    rdfs:label "Italy"@en ;
+    tss:columnName "Italy" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:NUM .
+
+<#france>
+    a tss:ValueField ;
+    rdfs:label "France"@en ;
+    tss:columnName "France" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:NUM .
+
+<#germany>
+    a tss:ValueField ;
+    rdfs:label "Germany"@en ;
+    tss:columnName "Germany" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:NUM .
+
+<#spain>
+    a tss:ValueField ;
+    rdfs:label "Spain"@en ;
+    tss:columnName "Spain" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:NUM .
+
+<#iran>
+    a tss:ValueField ;
+    rdfs:label "Iran"@en ;
+    tss:columnName "Iran" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:NUM .

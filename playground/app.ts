@@ -38,6 +38,7 @@ const SYMBOLS: Record<string, string> = {
   DEG_C: '°C', DEG_F: '°F', K: 'K', PERCENT: '%', UNITLESS: '1', 'KiloM-PER-HR': 'km/h', 'M-PER-SEC': 'm/s', 'MI-PER-HR': 'mph', KN: 'kn',
   KiloPA: 'kPa', PA: 'Pa', BAR: 'bar', M: 'm', KiloM: 'km', CentiM: 'cm', MilliM: 'mm', IN: 'in', FT: 'ft', MI: 'mi', SEC: 's', MIN: 'min', HR: 'h', DAY: 'd',
   KiloGM: 'kg', GM: 'g', LB: 'lb', J: 'J', KiloJ: 'kJ', W: 'W', KiloW: 'kW', L: 'L', MilliL: 'mL', M2: 'm²', M3: 'm³',
+  TONNE: 't', MegaTONNE: 'Mt', PPM: 'ppm', NUM: 'count', 'MicroGM-PER-M3': 'µg/m³', CCY_USD: '$', CCY_GBP: '£', CCY_EUR: '€',
 };
 const FAMILIES = [
   ['DEG_C', 'DEG_F', 'K'],
@@ -100,8 +101,11 @@ let compaction: Compaction | undefined;
 /** The `qudt:symbol` of the units the metadata defines itself, such as a unit made of QUDT units. */
 const unitSymbols = new Map<string, string>();
 const symbol = (iri?: string) => (iri ? (unitSymbols.get(iri) ?? SYMBOLS[iri.replace(QUDT_UNIT, '')] ?? iri.replace(QUDT_UNIT, '')) : '');
-/** Only the units of the QUDT catalog can be converted: a unit the metadata makes itself has no conversion. */
-const convertible = (iri?: string) => !!iri && iri.startsWith(QUDT_UNIT);
+/**
+ * Only the units of the QUDT catalog can be converted: a unit the metadata makes itself has no
+ * conversion, and neither has a currency, whose exchange rate changes over time.
+ */
+const convertible = (iri?: string) => !!iri && iri.startsWith(QUDT_UNIT) && !iri.startsWith(`${QUDT_UNIT}CCY_`);
 const label = (f: FieldMetadata) => f.labels[0] ?? f.localName;
 const local = (iri: string) => iri.replace(/[#/]+$/, '').split(/[#/]/).pop() ?? iri;
 const esc = (text: string) => text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -128,7 +132,8 @@ function groups(source: ReadableSource): Map<string, FieldMetadata[]> {
   const { timeField, stepField } = source.metadata;
   const out = new Map<string, FieldMetadata[]>();
   for (const f of source.metadata.fields) {
-    if (f.id === timeField || f.id === stepField || !isNumeric(f)) continue;
+    // a meta field says something about a row, such as its date as a number: its values are no readings
+    if (f.id === timeField || f.id === stepField || f.kind === 'meta' || !isNumeric(f)) continue;
     const key = f.observedProperty || f.unit ? `${f.observedProperty ?? ''}|${f.unit ?? ''}` : f.id;
     out.set(key, [...(out.get(key) ?? []), f]);
   }
@@ -228,7 +233,12 @@ async function renderCharts(): Promise<void> {
     const head = document.createElement('div');
     head.className = 'chart-head';
     const title = document.createElement('h3');
-    const property = fields[0].observedProperty ? local(fields[0].observedProperty) : label(fields[0]);
+    // fields that share a unit share a chart: its title names the first, the legend all of them
+    const property = fields[0].observedProperty
+      ? local(fields[0].observedProperty)
+      : fields.length > 1
+        ? `${label(fields[0])} and ${fields.length - 1} more`
+        : label(fields[0]);
     const setTitle = (unit?: string) => (title.textContent = `${property}${unit ? ` (${symbol(unit)})` : ''}`);
     setTitle(fields[0].unit);
     head.append(title);

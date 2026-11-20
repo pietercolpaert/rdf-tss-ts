@@ -1,0 +1,78 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+@prefix prefix: <http://qudt.org/vocab/prefix/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+# data/data.csv of the data package "United States of America education budget analysis" on GitHub (https://github.com/datasets/usa-education-budget-analysis).
+# This document only describes the CSV file: the rows are read from where the data package
+# publishes them. Written by scripts/datahub.ts.
+#
+# The file has one row per year, without gaps, so the time of a row is its step on a
+# time grid of P1Y from 1976-01-01: the source has no step field, and its YEAR column
+# is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "US education budget and GDP"@en ;
+    dcterms:source <https://github.com/datasets/usa-education-budget-analysis> ;
+    dcterms:license <http://opendatacommons.org/licenses/pddl/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/usa-education-budget-analysis/main/datapackage.json> ;
+    tss:from "1976-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/usa-education-budget-analysis/main/data/data.csv> ;
+    tss:timeBase "1976-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1Y"^^xsd:duration ;
+    tss:timeField <#time> ;
+    tss:hasField <#time>,
+        <#date>,
+        <#budget-on-education>,
+        <#gdp>,
+        <#ratio> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#time>
+    a tss:MetaField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "YEAR as written in the file"@en ;
+    rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
+    tss:columnName "YEAR" ;
+    tss:datatype xsd:gYear .
+
+<#budget-on-education>
+    a tss:ValueField ;
+    rdfs:label "BUDGET_ON_EDUCATION"@en ;
+    rdfs:comment "in millions of dollars"@en ;
+    tss:columnName "BUDGET_ON_EDUCATION" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#MegaCCY_USD> .
+
+<#gdp>
+    a tss:ValueField ;
+    rdfs:label "GDP"@en ;
+    rdfs:comment "in millions of dollars"@en ;
+    tss:columnName "GDP" ;
+    tss:datatype xsd:decimal ;
+    tss:unit <#MegaCCY_USD> .
+
+<#ratio>
+    a tss:ValueField ;
+    rdfs:label "RATIO"@en ;
+    rdfs:comment "education expenditure / GDP in percentage"@en ;
+    tss:columnName "RATIO" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:PERCENT .
+
+# Units that QUDT does not have, made of QUDT units. A unit with a currency states no conversion
+# multiplier: an exchange rate changes over time.
+<#MegaCCY_USD>
+    a qudt:Unit ;
+    qudt:scalingOf unit:CCY_USD ;
+    qudt:prefix prefix:Mega ;
+    rdfs:label "million US dollars"@en ;
+    qudt:symbol "$m" .

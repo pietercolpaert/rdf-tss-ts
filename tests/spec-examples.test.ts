@@ -570,6 +570,23 @@ ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double .`,
     expect((await source.validate()).results).toEqual([]);
   });
 
+  it('a point IRI may be made of the step of its row', async () => {
+    const source = await open(
+      'grid-about.ttl',
+      external(
+        'CSVSource',
+        `    tss:dataFile <grid.csv> ; tss:timeBase "2024-05-12T08:00:00Z"^^xsd:dateTime ; tss:timeStep "PT15M"^^xsd:duration ;
+    tss:timeField ex:t ; tss:stepField ex:s ; tss:hasField ex:t, ex:s, ex:v .
+ex:t a tss:ContextField ; tss:datatype xsd:dateTime .
+ex:s a tss:ContextField ; tss:columnName "step" ; tss:datatype xsd:integer .
+ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double ; tss:aboutUrl "https://example.org/obs/{step}" .`,
+      ),
+    );
+    const texts = await ntriples((await all(source.expand())).slice(1, -1));
+    expect(texts.map((t) => t.match(/<https:\/\/example.org\/obs\/(\d+)>/)?.[1])).toEqual(['0', '1', '2', '5', '7']);
+    expect((await source.validate()).results).toEqual([]);
+  });
+
   it('the time grid without a step field: the step of a row is its position in the data file', async () => {
     const source = await open('position.ttl', POSITION_EXAMPLE('position.csv'));
     const rows = await all(source.read());

@@ -264,7 +264,7 @@ export class ReadableSource {
         values.set(f.id, new Value(decoded, f.datatype, f.unit));
       }
     }
-    return new Row(this, raw.time, values, raw.nodes);
+    return new Row(this, raw.time, values, raw.nodes, raw.step);
   }
 
   /** The follower of a growing source, or nothing when it cannot be followed (it is in memory). */

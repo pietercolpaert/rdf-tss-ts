@@ -2,7 +2,7 @@
 
 A TypeScript library to read, follow, write and expand [RDF Time Series Sources](https://knowledgeonwebscale.github.io/rdf-tss/) (RDF-TSS).
 
-> **Status: first implementation of an API draft.** The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change. This version follows [pull request #37](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/37) (every point states its reading with `tss:value`, its time with `tss:time` and its value field with `tss:field`; `tss:MetaField` is now `tss:ContextField`), which builds on [#33](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/33) (times as `xsd:dateTime`, an optional step field on a time grid, and the RDF Message Stream Profile), which builds on [#31](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/31), which builds on [#28](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/28) (*Snippets* were renamed to *Sources*) and [#25](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/25) (a source *grows* until it is *ended* with `tss:immutable true`, and followers use plain HTTP: `Range`, `ETag`, `max-age`).
+It implements the specification, a living document of the [KNoWS team](https://knows.idlab.ugent.be): reading every source class, following a growing source, appending to it and ending it, stored summaries, time grids, value encodings, validation, and the expansion into points as RDF Messages, which follows the spec's RDF Message Stream Profile. Of the names of earlier drafts, `tss:MetaField` and `tss:mutable false` are still read, and `validate()` names the current term; a document with the *Snippets* classes (`tss:EmbeddedRDFSnippet`, …) is refused with a message that names the new class.
 
 **Try the [playground](https://pieter.pm/rdf-tss-ts/)**: pick a dataset from the drop-down (months of Telraam traffic counts and speeds, 42 time series of the core datasets on GitHub, from gold and oil prices to CO₂ and sea level, and a day of weather in every format), see charts (large series are downsampled to an average per day, with a min–max band; drag to zoom in on the raw values), convert units with QUDT, find repeating patterns with the matrix profile and the contextual matrix profile, and see the source expanded into points as RDF Messages. The Telraam data is read from the [Telraam LDES](https://ldes.telraam-api.net/measurements) as RDF Messages and turned into binary sources, see [Telraam](#telraam).
 
@@ -18,7 +18,7 @@ A source is a table of readings described in RDF: one time column, and one colum
 | `tss:ArrowSource` | an external Arrow file | yes* (IPC streaming format; the IPC file format is read-only, for immutable sources) |
 | `tss:ParquetSource` | an external Parquet file | no, written once |
 
-\* Growing is by appending bytes: a CSV row, an Arrow record batch, or a message at the end of an RDF Message Log. An embedded RDF source is an [RDF Message Log](https://w3c-cg.github.io/rsp/spec/messages): the metadata is the first message, every row is a message, and a last message ends the source. See [Open spec issues](#open-spec-issues).
+\* Growing is by appending bytes: a CSV row, an Arrow record batch, or a message at the end of an RDF Message Log. An embedded RDF source is an [RDF Message Log](https://w3c-cg.github.io/rsp/spec/messages): the metadata is the first message, every row is a message, and a last message ends the source.
 
 ### Fields: value fields, context fields and how points state values
 
@@ -34,7 +34,7 @@ ex:source tss:hasPoint [
 
 A point of a source with one value field may leave out `tss:field`. Only a *describing field* has a *field property*: the property that states its value on the points it describes, such as `ex:status "ok"`. That is its `tss:property` or, by default, `<base#columnName>`, as CSVW's default `propertyUrl`, where the base is the data file (external sources) or the metadata document (embedded sources).
 
-The library gives each field's `kind` (`'value'` or `'context'`), and for a describing field its resolved `property` and whether that is the `defaultProperty`, in `source.metadata.fields`. `tss:MetaField`, the name of earlier drafts, is still read as a context field, and `validate()` reports it. A document of the earlier *Snippets* drafts (`tss:EmbeddedRDFSnippet`, …) is refused with a message that names the new class.
+The library gives each field's `kind` (`'value'` or `'context'`), and for a describing field its resolved `property` and whether that is the `defaultProperty`, in `source.metadata.fields`. `tss:MetaField`, the name of earlier drafts, is still read as a context field, and `validate()` reports it.
 
 ### Times and time grids
 
@@ -42,7 +42,7 @@ A time is an `xsd:dateTime` with a timezone (`Z` or an offset such as `+02:00`),
 
 A data file can leave out the times: on a *time grid*, row n is at `tss:timeBase` + n × `tss:timeStep`, in calendar steps for years and months. The step of a row is in the column of its `tss:stepField`, which lets the file leave out rows; or, without a step field, it is the row's position in the file, from 0 for the first row. The [gold prices](examples/gold-prices/monthly.ttl) of the playground describe a CSV file that someone else publishes this way: one row per month since 1833, on a grid of `P1M`.
 
-[scripts/datahub.ts](scripts/datahub.ts) (`npm run examples:datahub`) describes 41 more CSV files of the [core datasets on GitHub](https://github.com/datasets) in the same way, into [examples/datahub/](examples/datahub/): oil, gas and commodity prices, the S&P 500, bond yields, GDP, consumer prices, house prices, CO₂, temperature anomalies, sea level, COVID-19 and population. Their dates have no time of day and no timezone, so only a file with a row at every step of a calendar grid fits, and only a file with one series: a file with a column such as a country holds a series per country, which a source cannot describe yet (see [Open spec issues](#open-spec-issues)). A daily price on trading days only has gaps, so it does not fit either. The script takes the units from a table, or from the descriptions in the data package, and makes the ones QUDT does not have, such as US dollar per barrel or million pounds sterling, of QUDT units. A column that says something about the reading of another, such as the uncertainty of the CO₂ increase or the error bounds of the EPA sea level, is a describing context field: its value is stated on the point of that reading with `qudt:standardUncertainty`, `qudt:lowerBound` or `qudt:upperBound`, and the playground draws it as a band around the line. The script reads every description back from GitHub before it writes it: it has to conform, and every row has to be at the date in the file.
+[scripts/datahub.ts](scripts/datahub.ts) (`npm run examples:datahub`) describes 41 more CSV files of the [core datasets on GitHub](https://github.com/datasets) in the same way, into [examples/datahub/](examples/datahub/): oil, gas and commodity prices, the S&P 500, bond yields, GDP, consumer prices, house prices, CO₂, temperature anomalies, sea level, COVID-19 and population. Their dates have no time of day and no timezone, so only a file with a row at every step of a calendar grid fits, and only a file with one series: a file with a column such as a country holds a series per country, which one source cannot describe (see [Beyond the specification](#beyond-the-specification)). A daily price on trading days only has gaps, so it does not fit either. The script takes the units from a table, or from the descriptions in the data package, and makes the ones QUDT does not have, such as US dollar per barrel or million pounds sterling, of QUDT units. A column that says something about the reading of another, such as the uncertainty of the CO₂ increase or the error bounds of the EPA sea level, is a describing context field: its value is stated on the point of that reading with `qudt:standardUncertainty`, `qudt:lowerBound` or `qudt:upperBound`, and the playground draws it as a band around the line. The script reads every description back from GitHub before it writes it: it has to conform, and every row has to be at the date in the file.
 
 ## Install
 
@@ -385,17 +385,15 @@ convertUnit(value: string, from: string, to: string | 'qudt'): Promise<string>
 | `LockError` | another process is writing to the source |
 | `UnitConversionError` | no unit, unknown unit, or units of different dimensions |
 
-## Open spec issues
+## Beyond the specification
 
-The library depends on these points, which the spec does not define yet:
+The specification leaves these points to implementations, or does not cover them:
 
-- **Single writer:** how to prevent two processes writing to the same source.
-- **Empty values:** an empty string and no value are currently the same.
-- **Several sources in one file:** each source repeats the file configuration, and long tables (`sensor_id, time, value`) can't be described: the key of a source is its time field.
-- **Blank node fields in a message log:** the expansion links points to their field with `tss:field`; a field that is a blank node cannot be referred to from another message of an RDF Message Log. Give fields IRIs.
-- **Point IRIs from a step:** `tss:aboutUrl` may use the column name of any field; the library fills in the time and the values of a row, but not the step of a time grid.
-
-Until these are settled, the behaviour of `follow`, `append` on external files, and locking is provisional.
+- **One writer at a time:** the spec says what a write appends, not how two writers are kept apart. The library takes a lock on the metadata file (or on the data file), and a second writer gets a `LockError`.
+- **Long tables:** the key of a source is its time field, so a table with a row per sensor and time (`sensor_id, time, value`) is a source per sensor, each with its own description.
+- **Fields in a message log:** blank node identifiers are scoped to their message, so a row message cannot refer to a field that is a blank node: give fields IRIs.
+- **Uncertainty and error bounds:** the spec has no terms of its own for them ([issue #38](https://github.com/KNowledgeOnWebScale/rdf-tss/issues/38)). The core datasets on GitHub use describing fields with `qudt:standardUncertainty`, `qudt:lowerBound` and `qudt:upperBound`, which the library converts with their value and the playground draws as a band.
+- **Times without a timezone:** a date such as `1833-01-01` is not a time of the spec ([issue #34](https://github.com/KNowledgeOnWebScale/rdf-tss/issues/34)): such a file is read on a time grid, and its dates are a context field.
 
 ## Telraam
 

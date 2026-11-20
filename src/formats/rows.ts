@@ -11,6 +11,8 @@ export interface RawRow {
   values: Map<string, string>;
   /** The RDF node of the point of each value field, in an embedded RDF source. */
   nodes?: Map<string, Term>;
+  /** The step of the row on a time grid, as written in its step field. */
+  step?: string;
 }
 
 /** Gives the lexical value a row has for a field; `undefined` for an empty value. */
@@ -37,11 +39,13 @@ export function makeRowConverter(meta: SourceMetadata): (access: RowAccess, row:
 
   return (access, row) => {
     let time: string | undefined;
+    let stepText: string | undefined;
     if (grid && stepField) {
       const step = access(stepField);
       if (step === undefined || !/^\d+$/.test(step.trim())) {
         throw new ValidationError(`row ${row} has no valid step (a whole number of 0 or more)`);
       }
+      stepText = step;
       time = formatTime(gridTime(grid.base, grid.step, BigInt(step.trim())));
     } else if (grid) {
       // no step field: the step of a row is its position in the data file
@@ -55,6 +59,6 @@ export function makeRowConverter(meta: SourceMetadata): (access: RowAccess, row:
       const value = access(f);
       if (value !== undefined) values.set(f.id, value);
     }
-    return { time, values };
+    return stepText === undefined ? { time, values } : { time, values, step: stepText };
   };
 }

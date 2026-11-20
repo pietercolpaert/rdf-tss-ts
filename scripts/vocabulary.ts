@@ -7,8 +7,8 @@ import { writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** The commit of the specification whose vocabulary is copied: pull request #37. */
-const COMMIT = '99ee66e2bc6e1b0d9686b8d6be675bcf72bebc22';
+/** The commit of the specification whose vocabulary is copied: the main branch, the stable specification. */
+const COMMIT = 'a1195c90787b342f5a779ee2b7d87120c7735958';
 const URL = `https://raw.githubusercontent.com/KNowledgeOnWebScale/rdf-tss/${COMMIT}/tss.ttl`;
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');

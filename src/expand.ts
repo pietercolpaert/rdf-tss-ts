@@ -177,7 +177,8 @@ export function pointsOfRow(row: Row, _options: ExpandOptions = {}): Quad[] {
     const node = row.nodes?.get(f.id);
     if (node?.termType === 'NamedNode') point = node;
     else if (f.aboutUrl) {
-      variables ??= Object.fromEntries(plan.variables.map(([name, id]) => [name, id === '' ? row.time : values.get(id)?.value]));
+      // a variable is the value of a field in the row, as written: also the time and the step
+      variables ??= Object.fromEntries(plan.variables.map(([name, id]) => [name, id === '' ? row.time : id === row.source.metadata.stepField ? row.step : values.get(id)?.value]));
       point = namedNode(resolveIri(expandTemplate(f.aboutUrl, variables), plan.base));
     } else point = blankNode();
     const add = (predicate: string, object: Term) => out.push(quad(point as NamedNode, namedNode(predicate), object as NamedNode));

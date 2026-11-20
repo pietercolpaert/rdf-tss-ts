@@ -273,7 +273,8 @@ async function dataRules(source: ReadableSource, add: Add): Promise<void> {
         if (!isValidLexical(f.datatype, text)) add('lexical-form', `${JSON.stringify(text)} is not a valid ${f.datatype}`, fieldId, row);
       }
       if (templated.length > 0) {
-        const variables = Object.fromEntries(named.map((f) => [f.columnName!, f.id === meta.timeField ? raw.time : raw.values.get(f.id)]));
+        // a variable is the value of a field in the row, as written: also the time and the step
+        const variables = Object.fromEntries(named.map((f) => [f.columnName!, f.id === meta.timeField ? raw.time : f.id === meta.stepField ? raw.step : raw.values.get(f.id)]));
         for (const f of templated) {
           if (!raw.values.has(f.id)) continue;
           let iri: string;

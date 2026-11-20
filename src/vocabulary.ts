@@ -1,7 +1,7 @@
 // Written by scripts/vocabulary.ts: do not edit.
 
 /** Where the vocabulary was copied from: tss.ttl of the specification, at one commit. */
-export const TSS_VOCABULARY_SOURCE = "https://raw.githubusercontent.com/KNowledgeOnWebScale/rdf-tss/99ee66e2bc6e1b0d9686b8d6be675bcf72bebc22/tss.ttl";
+export const TSS_VOCABULARY_SOURCE = "https://raw.githubusercontent.com/KNowledgeOnWebScale/rdf-tss/a1195c90787b342f5a779ee2b7d87120c7735958/tss.ttl";
 
 /**
  * The TSS vocabulary (tss.ttl) of the specification, as Turtle. Among its terms are the

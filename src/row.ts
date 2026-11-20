@@ -36,6 +36,8 @@ export class Row {
     private readonly values: Map<string, Value>,
     /** @internal The RDF node of the point of each value field, in an embedded RDF source. */
     readonly nodes?: Map<string, Term>,
+    /** @internal The step of the row on a time grid, as written in its step field. */
+    readonly step?: string,
   ) {}
 
   /** The value of a field, by local name or IRI. `undefined` means there is no value. */

@@ -302,7 +302,7 @@ try {
   assert.match(await text('#panel-messages'), /tss:hasPoint/);
   assert.match(await text('#panel-messages'), /tss:field/);
   await page.select('#msg-align', 'sosa');
-  // derived in the browser by rdfjs-inference-engine, from the TSS vocabulary: the chains over tss:field too
+  // derived in the browser by eyemind, from the TSS vocabulary: the chains over tss:field too
   await page.waitForFunction(() => /each next row/.test(document.querySelector('#panel-messages').textContent), { timeout: 60000 });
   assert.match(await page.evaluate(() => location.hash), /&tab=messages&align=sosa$/);
   const messages = await text('#panel-messages');

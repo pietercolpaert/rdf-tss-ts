@@ -66,8 +66,7 @@ Formats and units need packages that you only install when you use them (optiona
 |---|---|
 | Arrow sources | `apache-arrow` |
 | Parquet sources | `hyparquet` (reading), `hyparquet-writer` (writing), `hyparquet-compressors` (reading files compressed with ZSTD, Gzip, Brotli or LZ4) |
-| `unit: 'qudt'`, `unit: <IRI>`, `convertUnit` | `eyemind` (version 0.8.15) |
-| `expand({ align })` | `rdfjs-inference-engine` |
+| `unit: 'qudt'`, `unit: <IRI>`, `convertUnit`, `expand({ align })` | `eyemind` (version 0.8.17) |
 
 ## Reading sources
 
@@ -188,7 +187,7 @@ The spec does not map points onto SOSA or SAREF: the TSS vocabulary is aligned w
 source.expand({ align: 'sosa' });              // or 'saref', or ['sosa', 'saref']
 ```
 
-The library writes none of the alignment itself. The reasoner is [rdfjs-inference-engine](https://www.npmjs.com/package/rdfjs-inference-engine) (OWL 2 RL rules for [Eyeling](https://github.com/eyereasoner/eyeling)), with the TSS vocabulary of the specification (`TSS_VOCABULARY`, copied from the spec by `npm run vocabulary`) and the description message of the source as background. Two SHACL shapes, which the reasoner trusts, specialize its rules: the shape of the points of a row message, and the observations asked for. So the background is closed once (about half a second), and then each row takes a few milliseconds, in Node and in the browser. eyemind, which converts the units, does not specialize its OWL 2 RL rules to message shapes yet, so it takes about 80 ms per row here; until it does, the alignment uses rdfjs-inference-engine. `npm install rdfjs-inference-engine` for `align`; in the browser, pass the module and its OWL 2 RL rules: `expand({ align, aligner: { engine, owl2rl } })`, as the [playground](playground/app.ts) does.
+The library writes none of the alignment itself. The reasoner is [eyemind](https://github.com/eyereasoner/eyemind) with its OWL 2 RL profile, reasoning over the rows as RDF Messages, with the TSS vocabulary of the specification (`TSS_VOCABULARY`, copied from the spec by `npm run vocabulary`) and the description message of the source as background. Two SHACL shapes, which eyemind trusts, specialize its rules: the shape of the points of a row message, and the observations asked for. So the background is closed once, and then each row takes a few milliseconds, in Node and in the browser. In the browser, pass the modules of eyemind that reason over messages, which its package does not export: `expand({ align, aligner: { eyemind: { loadMessageReasoner, parseRdfMessages, writeRdf } } })`, from `eyemind/src/formats.js`, `messages.js` and `rdf.js`, as the [playground](playground/app.ts) does.
 
 ## Writing sources
 

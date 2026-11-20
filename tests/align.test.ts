@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Source, parseRdf, type RDFMessage } from '../src/index.js';
 
-// The alignment with SOSA and SAREF is derived by a reasoner (rdfjs-inference-engine) from the TSS
+// The alignment with SOSA and SAREF is derived by a reasoner (eyemind, OWL 2 RL) from the TSS
 // vocabulary of the specification and the description of the source: the library writes none of it.
 
 const SOURCE = `

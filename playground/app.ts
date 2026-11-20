@@ -90,14 +90,19 @@ const lazyConverter: UnitConverter = {
   },
 };
 
-/** rdfjs-inference-engine (Eyeling, about 1 MB) and its OWL 2 RL rules are only loaded when the alignment is derived. */
+/** The reasoner of eyemind over messages, with its OWL 2 RL profile, is only loaded when the alignment is derived. */
 let aligner: Promise<AlignerOptions> | undefined;
 const loadAligner = () =>
   (aligner ??= Promise.all([
-    import('rdfjs-inference-engine'),
-    // @ts-expect-error resolved by the bundler: the rules as text
-    import('owl2rl-rules'),
-  ]).then(([engine, rules]) => ({ engine: (engine as { default?: AlignerOptions['engine'] }).default ?? (engine as unknown as AlignerOptions['engine']), owl2rl: (rules as { default: string }).default })));
+    // @ts-expect-error resolved by the bundler: eyemind/src/formats.js
+    import('eyemind-formats'),
+    // @ts-expect-error resolved by the bundler: eyemind/src/messages.js
+    import('eyemind-messages'),
+    // @ts-expect-error resolved by the bundler: eyemind/src/rdf.js
+    import('eyemind-rdf'),
+  ]).then(([formats, messages, rdf]) => ({
+    eyemind: { loadMessageReasoner: formats.loadMessageReasoner, parseRdfMessages: messages.parseRdfMessages, writeRdf: rdf.writeRdf },
+  })));
 
 /**
  * The view, in the hash after the dataset: `#weather-csv&tab=messages&rows=5&align=sosa`. The
@@ -570,7 +575,7 @@ async function renderMessages(): Promise<void> {
         last = performance.now();
       }
       const derivedNote = align
-        ? `<p class="muted">With <b>${align === 'sosa' ? 'SOSA observations' : 'SAREF measurements'}</b>, the triples about each point other than <code>tss:</code> ones are derived in your browser by a reasoner, <a href="https://www.npmjs.com/package/rdfjs-inference-engine">rdfjs-inference-engine</a> (OWL 2 RL rules for Eyeling), from the <a href="${TSS_VOCABULARY_SOURCE}">TSS vocabulary of the specification</a> and the description of the source: the library itself writes none of them. The rules are specialized to the shape of the points and to the observations asked for (SHACL in and out shapes), so the background is closed once: ${Math.round(loaded)} ms to load the reasoner, ${Math.round(prepared)} ms to prepare it with the first row${reasoned ? `, then ${(rowTime / reasoned).toFixed(1)} ms for each next row` : ''}.</p>`
+        ? `<p class="muted">With <b>${align === 'sosa' ? 'SOSA observations' : 'SAREF measurements'}</b>, the triples about each point other than <code>tss:</code> ones are derived in your browser by a reasoner, <a href="https://github.com/eyereasoner/eyemind">eyemind</a> with its OWL 2 RL profile, from the <a href="${TSS_VOCABULARY_SOURCE}">TSS vocabulary of the specification</a> and the description of the source: the library itself writes none of them. The rules are specialized to the shape of the points and to the observations asked for (SHACL in and out shapes), so the background is closed once: ${Math.round(loaded)} ms to load the reasoner, ${Math.round(prepared)} ms to prepare it with the first row${reasoned ? `, then ${(rowTime / reasoned).toFixed(1)} ms for each next row` : ''}.</p>`
         : '';
       out.innerHTML = `<p class="muted">The expansion of the source into points, as one RDF Message Log: the first message is the metadata, with the default property of each describing field that states no <code>tss:property</code>; each next message holds one row, with a point for every value of a value field (${points} points in ${rows} rows here), which states its field, time and reading with <code>tss:field</code>, <code>tss:time</code> and <code>tss:value</code>; an immutable source ends with a message with <code>tss:immutable true</code> and the stored summaries. These are the three kinds of messages of the RDF Message Stream Profile of the specification, each ended by <code>MESSAGE</code>. A source is a table; an RDF Message Log is a stream of small RDF documents: this turns one into the other.</p>${derivedNote}<pre class="messages">${highlightTurtle(await messageLog(messages))}</pre>`;
     } catch (error) {

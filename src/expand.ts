@@ -33,11 +33,11 @@ export interface ExpandOptions {
    * Also write, for each point, what a reasoner derives from the alignment of the TSS vocabulary
    * with SOSA (and QUDT) or SAREF: the point as an observation or measurement, with its result
    * time, result, observed property, sensor, feature of interest and unit. The reasoner is
-   * rdfjs-inference-engine, with the vocabulary of the specification and the description of the
+   * eyemind, with its OWL 2 RL profile, the vocabulary of the specification and the description of the
    * source as background: nothing of the alignment is written out by this library.
    */
   align?: Alignment | Alignment[];
-  /** The reasoner for `align`: in the browser, pass rdfjs-inference-engine and its OWL 2 RL rules. */
+  /** The reasoner for `align`: in the browser, pass the modules of eyemind that reason over messages. */
   aligner?: AlignerOptions;
 }
 

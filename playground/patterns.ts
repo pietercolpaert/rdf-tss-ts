@@ -141,7 +141,9 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
   gapSelect.append(new Option('draw a line across', 'linear'), new Option('count as zero', 'zero'), new Option('skip the windows', 'none'));
   gapSelect.title = 'A window cannot contain a step without a value';
   const windowText = element('span', 'muted');
-  toolbar.append(labelled('Field', fieldSelect), labelled('Context per', periodSelect), labelled('Window (values)', windowInput), labelled('Shift tolerance (values)', shiftInput), labelled('Missing values', gapSelect), windowText);
+  const windowLabel = labelled('Window (values)', windowInput);
+  windowLabel.append(' ', windowText);
+  toolbar.append(labelled('Field', fieldSelect), labelled('Context per', periodSelect), windowLabel, labelled('Shift tolerance (values)', shiftInput), labelled('Missing values', gapSelect));
   const status = element('p', 'status');
   const results = element('div');
   panel.append(toolbar, status, results);
@@ -180,7 +182,14 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
     const m = Math.min(Math.max(2, Math.round(Number(windowInput.value) || 2)), grid.values.length - 1);
     const shift = Math.max(0, Math.round(Number(shiftInput.value) || 0));
     const period = periodSelect.value === 'week' ? 'week' : 'day';
-    windowText.textContent = `a window is ${duration(m * grid.step)}, one value per ${duration(grid.step)}`;
+    // a window of a context starts at most `shift` values into its period: say whether it still ends inside it
+    const fit =
+      m + shift === samplesPerPeriod
+        ? `: a ${period} minus the shift tolerance, so a window that starts late still ends within its ${period}`
+        : m + shift > samplesPerPeriod
+          ? `: longer than a ${period} minus the shift tolerance, so a window that starts late runs into the next ${period}`
+          : '';
+    windowText.textContent = `= ${duration(m * grid.step)}, one value per ${duration(grid.step)}${fit}`;
     const contexts = contextsOf(grid, m, { period, shift });
     const filled = fillGaps(grid.values, gapSelect.value as GapFill);
     const started = performance.now();

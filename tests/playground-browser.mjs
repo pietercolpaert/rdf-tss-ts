@@ -146,6 +146,8 @@ try {
     await page.waitForFunction(() => document.querySelector('#panel-patterns canvas.cmp'), { timeout: 60000 });
     const patternsStatus = await text('#panel-patterns .status');
     assert.match(patternsStatus, /windows of 22 values compared in \d+ ms/, patternsStatus);
+    const windowLabel = () => page.$eval('#panel-patterns input[type=number]', (input) => input.closest('label').textContent);
+    assert.match(await windowLabel(), /= 22 h, one value per 1 h: a day minus the shift tolerance, so a window that starts late still ends within its day/);
     assert.equal(await page.$$eval('#panel-patterns .chart svg', (nodes) => nodes.length >= 2), true, 'the series and its matrix profile');
     const size = await page.$eval('#panel-patterns canvas.cmp', (c) => [c.width, c.height]);
     assert.ok(size[0] > 100 && size[0] === size[1], `a square heatmap of days: ${size}`);
@@ -162,6 +164,7 @@ try {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
     await page.waitForFunction(() => /windows of 12 values compared/.test(document.querySelector('#panel-patterns .status').textContent), { timeout: 60000 });
+    assert.match(await windowLabel(), /= 12 h, one value per 1 h$/, 'a shorter window needs no explanation');
     console.log(`  ok patterns: ${patternsStatus}; heatmap ${size[0]} x ${size[1]} days`);
     await page.click('#tab-chart');
   }

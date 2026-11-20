@@ -6,6 +6,7 @@
 @prefix unit: <http://qudt.org/vocab/unit/> .
 @prefix prefix: <http://qudt.org/vocab/prefix/> .
 @prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+@prefix qkdv: <http://qudt.org/vocab/dimensionvector/> .
 
 # data/CSIRO_Recons_gmsl_yr_2019.csv of the data package "Global Average Absolute Sea Level Change, 1880-2014" on GitHub (https://github.com/datasets/sea-level-rise).
 # This document only describes the CSV file: the rows are read from where the data package
@@ -33,12 +34,12 @@
 
 # The time field: computed from the position of the row, so it has no column.
 <#time>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Time"@en ;
     tss:datatype xsd:dateTime .
 
 <#date>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Time as written in the file"@en ;
     rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
     tss:columnName "Time" ;
@@ -53,9 +54,11 @@
     tss:unit unit:MilliM .
 
 <#gmsl-uncertainty>
-    a tss:ValueField ;
+    a tss:ContextField ;
     rdfs:label "GMSL uncertainty"@en ;
     rdfs:comment "Uncertainty due to reconstruction"@en ;
     tss:columnName "GMSL uncertainty" ;
     tss:datatype xsd:decimal ;
+    tss:describesField <#gmsl> ;
+    tss:property qudt:standardUncertainty ;
     tss:unit unit:MilliM .

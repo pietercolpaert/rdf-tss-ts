@@ -6,6 +6,7 @@
 @prefix unit: <http://qudt.org/vocab/unit/> .
 @prefix prefix: <http://qudt.org/vocab/prefix/> .
 @prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+@prefix qkdv: <http://qudt.org/vocab/dimensionvector/> .
 
 # data/co2-gr-mlo.csv of the data package "CO2 PPM - Trends in Atmospheric Carbon Dioxide" on GitHub (https://github.com/datasets/co2-ppm).
 # This document only describes the CSV file: the rows are read from where the data package
@@ -33,12 +34,12 @@
 
 # The time field: computed from the position of the row, so it has no column.
 <#time>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Time"@en ;
     tss:datatype xsd:dateTime .
 
 <#date>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Year as written in the file"@en ;
     rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
     tss:columnName "Year" ;
@@ -53,9 +54,11 @@
     tss:unit unit:PPM .
 
 <#uncertainty>
-    a tss:ValueField ;
+    a tss:ContextField ;
     rdfs:label "Uncertainty"@en ;
     rdfs:comment "Estimated from the standard deviation of the differences between monthly mean values determined independently by the Scripps Institution of Oceanography and by NOAA/ESRL."@en ;
     tss:columnName "Uncertainty" ;
     tss:datatype xsd:decimal ;
+    tss:describesField <#annual-increase> ;
+    tss:property qudt:standardUncertainty ;
     tss:unit unit:PPM .

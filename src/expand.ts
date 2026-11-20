@@ -1,39 +1,44 @@
 /**
  * Expanding a source into points (spec: "Expanding a source into points"): every value of a
  * value field becomes a point, in the shape of the points of a `tss:EmbeddedRDFSource`, linked
- * to its source with `tss:hasPoint` and to its field with `tss:field`.
+ * to its source with `tss:hasPoint`, stating its value field, time and reading with
+ * `tss:field`, `tss:time` and `tss:value`, and the values of the describing fields of its
+ * value field with their field properties.
  *
  * Written as RDF messages, the expansion follows the RDF Message Stream Profile of the
  * specification (`tss:MessageStreamProfile`): a description message per source, a row message
  * per row, and, for an immutable source, an ending message with `tss:immutable true` and the
  * stored summaries.
  */
+import { createAligner, type Aligner, type AlignerOptions, type Alignment } from './align.js';
 import { expandTemplate, resolveIri } from './iri.js';
 import { propertyBase } from './metadata.js';
-import { QUDT, RDF, RDFS, SAREF, SOSA, tss, xsd } from './ns.js';
+import { tss, xsd } from './ns.js';
 import type { NamedNode, Quad, Term } from './rdf.js';
 import { blankNode, literal, namedNode, quad, serializeRdf } from './rdf.js';
 import type { ReadableSource } from './readable.js';
 import type { Row, Value } from './row.js';
 import type { FieldMetadata, RDFMessage } from './types.js';
 
-export type Alignment = 'sosa' | 'saref';
+export type { Alignment } from './align.js';
 
 export interface ExpandOptions {
   /**
    * Start with a description message with the metadata of the source (without `tss:points`) and
-   * its default field properties, and end an immutable source with an ending message. Default
+   * the default field properties of its describing fields, and end an immutable source with an ending message. Default
    * `true`; `toRDFMessages` writes them once per source.
    */
   metadata?: boolean;
   /**
    * Also write, for each point, what a reasoner derives from the alignment of the TSS vocabulary
    * with SOSA (and QUDT) or SAREF: the point as an observation or measurement, with its result
-   * time, result, observed property, sensor, feature of interest and unit. A value is only a
-   * result when its field property is aligned: a default property, or one the metadata states to
-   * be a subproperty of `tss:value`.
+   * time, result, observed property, sensor, feature of interest and unit. The reasoner is
+   * rdfjs-inference-engine, with the vocabulary of the specification and the description of the
+   * source as background: nothing of the alignment is written out by this library.
    */
   align?: Alignment | Alignment[];
+  /** The reasoner for `align`: in the browser, pass rdfjs-inference-engine and its OWL 2 RL rules. */
+  aligner?: AlignerOptions;
 }
 
 function message(quads: Quad[]): RDFMessage {
@@ -44,48 +49,33 @@ const termOf = (id: string): NamedNode | Term => (id.startsWith('_:') ? blankNod
 
 interface Plan {
   source: Term;
-  time: string;
   /** The datatype of the times: that of the time field, `xsd:dateTime` or `xsd:dateTimeStamp`. */
   timeDatatype: string;
-  timeAligned: boolean;
-  valueFields: (FieldMetadata & { property: string; aligned: boolean })[];
+  valueFields: FieldMetadata[];
   /** The describing fields of each value field. */
   describers: Map<string, (FieldMetadata & { property: string })[]>;
   /** The variables of `tss:aboutUrl`: column name to field id (`''` for the time field). */
   variables: [string, string][];
   base?: string;
-  align: Set<Alignment>;
 }
 
 const plans = new WeakMap<ReadableSource, Map<string, Plan>>();
 
-function hasSubProperty(source: ReadableSource, property: string, of: string): boolean {
-  if (property === of) return true;
-  for (const _ of source.dataset.match(namedNode(property), namedNode(RDFS + 'subPropertyOf'), namedNode(of), null)) return true;
-  return false;
-}
-
-function planOf(source: ReadableSource, align: Set<Alignment>): Plan {
+function planOf(source: ReadableSource): Plan {
   let bySource = plans.get(source);
   if (!bySource) plans.set(source, (bySource = new Map()));
   const meta = source.metadata;
-  const key = `${meta.id} ${[...align].sort().join(',')} ${source.dataset.size ?? ''}`;
+  const key = `${meta.id} ${source.dataset.size ?? ''}`;
   const cached = bySource.get(key);
   if (cached) return cached;
 
   const timeField = meta.fields.find((f) => f.id === meta.timeField)!;
-  const time = timeField.property ?? tss('time');
   const missing = (f: FieldMetadata) =>
-    new Error(`field ${f.id} states no tss:property and its default property cannot be made: ${f.columnName === undefined ? 'it has no tss:columnName' : 'there is no base IRI'}`);
-  const valueFields: Plan['valueFields'] = [];
+    new Error(`the describing field ${f.id} states no tss:property and its default property cannot be made: ${f.columnName === undefined ? 'it has no tss:columnName' : 'there is no base IRI'}`);
+  const valueFields = meta.fields.filter((f) => f.kind === 'value' && f.id !== meta.timeField && f.id !== meta.stepField);
   const describers: Plan['describers'] = new Map();
   for (const f of meta.fields) {
-    if (f.kind !== 'value' || f.id === meta.timeField || f.id === meta.stepField) continue;
-    if (!f.property) throw missing(f);
-    valueFields.push({ ...f, property: f.property, aligned: f.defaultProperty || hasSubProperty(source, f.property, tss('value')) });
-  }
-  for (const f of meta.fields) {
-    if (f.kind !== 'meta') continue;
+    if (f.kind !== 'context') continue;
     for (const target of f.describesField) {
       if (!f.property) throw missing(f);
       describers.set(target, [...(describers.get(target) ?? []), { ...f, property: f.property }]);
@@ -94,20 +84,17 @@ function planOf(source: ReadableSource, align: Set<Alignment>): Plan {
   const variables: [string, string][] = meta.fields.filter((f) => f.columnName !== undefined).map((f) => [f.columnName!, f.id === meta.timeField ? '' : f.id]);
   const plan: Plan = {
     source: source.node,
-    time,
     timeDatatype: timeField.datatype === xsd('dateTimeStamp') ? xsd('dateTimeStamp') : xsd('dateTime'),
-    timeAligned: hasSubProperty(source, time, tss('time')),
     valueFields,
     describers,
     variables,
     base: propertyBase(meta, source.baseIRI),
-    align,
   };
   bySource.set(key, plan);
   return plan;
 }
 
-const alignmentsOf = (options: ExpandOptions) => new Set(options.align === undefined ? [] : Array.isArray(options.align) ? options.align : [options.align]);
+const alignmentsOf = (options: ExpandOptions): Alignment[] => [...new Set(options.align === undefined ? [] : Array.isArray(options.align) ? options.align : [options.align])].sort();
 
 const key = (t: Term) => `${t.termType}:${t.value}`;
 
@@ -129,9 +116,8 @@ function endingParts(source: ReadableSource): { quads: Quad[]; summaryNodes: Set
 /**
  * The description message of the expansion: the metadata document without `tss:points`,
  * without the embedded points (they follow, one row per message) and, for an immutable source,
- * without `tss:immutable` and the stored summaries (they end the stream); and, for each field
- * without a `tss:property`, its default property; for a value field, also that this property is
- * a subproperty of `tss:value`.
+ * without `tss:immutable` and the stored summaries (they end the stream); and, for each
+ * describing field without a `tss:property`, its default property.
  */
 export function expansionHead(source: ReadableSource, _options: ExpandOptions = {}): RDFMessage {
   const ds = source.dataset;
@@ -147,11 +133,8 @@ export function expansionHead(source: ReadableSource, _options: ExpandOptions = 
     out.push(q);
   }
   for (const f of source.metadata.fields) {
-    if (!f.defaultProperty || !f.property) continue;
+    if (!f.defaultProperty || !f.property || f.describesField.length === 0) continue;
     out.push(quad(termOf(f.id) as NamedNode, namedNode(tss('property')), namedNode(f.property)));
-    if (f.kind === 'value' && f.id !== source.metadata.timeField) {
-      out.push(quad(namedNode(f.property), namedNode(RDFS + 'subPropertyOf'), namedNode(tss('value'))));
-    }
   }
   return message(out);
 }
@@ -174,9 +157,12 @@ function valueLiteral(f: FieldMetadata, value: Value) {
   return f.language ? literal(value.value, f.language) : literal(value.value, namedNode(f.datatype));
 }
 
-/** The points of one row, as quads. */
-export function pointsOfRow(row: Row, options: ExpandOptions = {}): Quad[] {
-  const plan = planOf(row.source, alignmentsOf(options));
+/**
+ * The points of one row, as quads. The alignment with SOSA or SAREF is not part of them: a
+ * reasoner derives it, see `toRDFMessages` and `expand({ align })`.
+ */
+export function pointsOfRow(row: Row, _options: ExpandOptions = {}): Quad[] {
+  const plan = planOf(row.source);
   const values = new Map(row.fields());
   const out: Quad[] = [];
   const timeLiteral = literal(row.time, namedNode(plan.timeDatatype));
@@ -197,30 +183,12 @@ export function pointsOfRow(row: Row, options: ExpandOptions = {}): Quad[] {
     const add = (predicate: string, object: Term) => out.push(quad(point as NamedNode, namedNode(predicate), object as NamedNode));
     out.push(quad(plan.source as NamedNode, namedNode(tss('hasPoint')), point as NamedNode));
     add(tss('field'), termOf(f.id));
-    add(plan.time, timeLiteral);
+    add(tss('time'), timeLiteral);
     const result = valueLiteral(f, value);
-    add(f.property, result);
+    add(tss('value'), result);
     for (const d of plan.describers.get(f.id) ?? []) {
       const described = values.get(d.id);
       if (described) add(d.property, valueLiteral(d, described));
-    }
-    if (plan.align.has('sosa')) {
-      add(RDF + 'type', namedNode(SOSA + 'Observation'));
-      if (plan.timeAligned) add(SOSA + 'resultTime', timeLiteral);
-      if (f.aligned) add(SOSA + 'hasSimpleResult', result);
-      if (f.observedProperty) add(SOSA + 'observedProperty', termOf(f.observedProperty));
-      if (f.sensor) add(SOSA + 'madeBySensor', termOf(f.sensor));
-      if (f.featureOfInterest) add(SOSA + 'hasFeatureOfInterest', termOf(f.featureOfInterest));
-      if (f.unit) add(QUDT + 'hasUnit', termOf(f.unit));
-    }
-    if (plan.align.has('saref')) {
-      add(RDF + 'type', namedNode(SAREF + 'Measurement'));
-      if (plan.timeAligned) add(SAREF + 'hasTimestamp', timeLiteral);
-      if (f.aligned) add(SAREF + 'hasValue', result);
-      if (f.observedProperty) add(SAREF + 'relatesToProperty', termOf(f.observedProperty));
-      if (f.sensor) add(SAREF + 'measurementMadeBy', termOf(f.sensor));
-      if (f.featureOfInterest) add(SAREF + 'isMeasurementOf', termOf(f.featureOfInterest));
-      if (f.unit) add(SAREF + 'isMeasuredIn', termOf(f.unit));
     }
   }
   return out;
@@ -234,13 +202,22 @@ export function pointsOfRow(row: Row, options: ExpandOptions = {}): Quad[] {
  */
 export async function* toRDFMessages(rows: AsyncIterable<Row>, options: ExpandOptions = {}): AsyncGenerator<RDFMessage> {
   const described = new Set<ReadableSource>();
+  const alignments = alignmentsOf(options);
+  // a reasoner per source, with its description as background
+  const aligners = new Map<ReadableSource, Promise<Aligner>>();
   for await (const row of rows) {
     if (options.metadata !== false && !described.has(row.source)) {
       described.add(row.source);
       yield expansionHead(row.source, options);
     }
     const quads = pointsOfRow(row, options);
-    if (quads.length > 0) yield message(quads);
+    if (quads.length === 0) continue;
+    if (alignments.length > 0) {
+      let aligner = aligners.get(row.source);
+      if (!aligner) aligners.set(row.source, (aligner = createAligner(expansionHead(row.source).quads, alignments, options.aligner)));
+      quads.push(...(await aligner).align(quads));
+    }
+    yield message(quads);
   }
   for (const source of described) {
     const ending = expansionEnding(source);

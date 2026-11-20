@@ -11,6 +11,9 @@ export interface Point {
   t: number;
   /** `null` is a missing value: the line breaks. */
   v: number | null;
+  /** The interval around the value, such as one standard uncertainty: drawn as a band. */
+  lo?: number | null;
+  hi?: number | null;
 }
 
 /** All the points of a time bucket, as their mean, minimum and maximum. */

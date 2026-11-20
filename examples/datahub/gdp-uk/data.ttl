@@ -6,6 +6,7 @@
 @prefix unit: <http://qudt.org/vocab/unit/> .
 @prefix prefix: <http://qudt.org/vocab/prefix/> .
 @prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+@prefix qkdv: <http://qudt.org/vocab/dimensionvector/> .
 
 # data/data.csv of the data package "UK Gross Domestic Product (GDP)" on GitHub (https://github.com/datasets/gdp-uk).
 # This document only describes the CSV file: the rows are read from where the data package
@@ -31,12 +32,12 @@
 
 # The time field: computed from the position of the row, so it has no column.
 <#time>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Time"@en ;
     tss:datatype xsd:dateTime .
 
 <#date>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "date as written in the file"@en ;
     rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
     tss:columnName "date" ;

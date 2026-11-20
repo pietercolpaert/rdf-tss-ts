@@ -11,6 +11,8 @@ export type { Point };
 export interface Series {
   name: string;
   points: Point[];
+  /** What the `lo`–`hi` interval of the points is, such as `±1 standard uncertainty`: drawn as a band around the line. */
+  interval?: string;
 }
 
 /**
@@ -120,6 +122,9 @@ interface Plotted {
   min: number | null;
   max: number | null;
   count: number;
+  /** The interval of a raw point. */
+  lo?: number | null;
+  hi?: number | null;
 }
 
 const round = (v: number) => String(Number(v.toPrecision(7)));
@@ -205,7 +210,15 @@ export function renderChart(container: HTMLElement, options: ChartOptions): () =
     const slices = shown.map((s) => visiblePoints(s.points, tMin, tMax));
     const most = Math.max(0, ...slices.map((slice) => slice.filter((p) => p.t >= tMin && p.t <= tMax && p.v !== null).length));
     const budget = pointBudget(plotWidth);
-    const rawPlotted = (): Plotted[][] => slices.map((slice) => slice.map((p) => ({ t: p.t, start: p.t, v: p.v, min: p.v, max: p.v, count: p.v === null ? 0 : 1 })));
+    const rawPlotted = (): Plotted[][] =>
+      slices.map((slice) =>
+        slice.map((p) => {
+          const lo = p.v === null || p.lo == null ? null : p.lo;
+          const hi = p.v === null || p.hi == null ? null : p.hi;
+          // the interval is part of what is shown, so it is part of the range of the axis
+          return { t: p.t, start: p.t, v: p.v, min: p.v === null ? null : Math.min(p.v, lo ?? p.v), max: p.v === null ? null : Math.max(p.v, hi ?? p.v), count: p.v === null ? 0 : 1, lo, hi };
+        }),
+      );
     let size = downsample && most > budget ? bucketSize(tMax - tMin, budget) : undefined;
     let plotted: Plotted[][] = rawPlotted();
     if (size) {
@@ -215,13 +228,15 @@ export function renderChart(container: HTMLElement, options: ChartOptions): () =
       else plotted = buckets.map((list) => list.map((b) => ({ t: b.t, start: b.start, v: b.v, min: b.min, max: b.max, count: b.count })));
     }
     const zoomHint = 'Drag over the chart to zoom in, double-click to zoom out.';
-    status.textContent = size
+    const intervals = shown.filter((one, index) => one.interval && plotted[index].some((p) => p.lo != null && p.hi != null));
+    const intervalNote = intervals.length && !size ? ` The band around ${intervals.map((one) => `${one.name} is its ${one.interval}`).join('; around ')}.` : '';
+    status.textContent = (size
       ? `${most} values per series, shown as the average per ${bucketName(size)} with a band from the minimum to the maximum. ${zoomHint}`
       : view
         ? `${most} values per series, all shown. Double-click to zoom out.`
         : most > budget
           ? `${most} values per series, all shown. ${zoomHint}`
-          : `${most} values per series. ${zoomHint}`;
+          : `${most} values per series. ${zoomHint}`) + intervalNote;
 
     const inView = plotted.flat().filter((p) => p.v !== null && p.t >= tMin - (size ?? 0) && p.t <= tMax + (size ?? 0));
     if (inView.length === 0) {
@@ -299,6 +314,22 @@ export function renderChart(container: HTMLElement, options: ChartOptions): () =
           band += `M${segment.map((p) => `${x(p.t).toFixed(1)},${y(p.max!).toFixed(1)}`).join('L')}`;
           band += `L${[...segment].reverse().map((p) => `${x(p.t).toFixed(1)},${y(p.min!).toFixed(1)}`).join('L')}Z`;
         }
+        // the interval of the raw points, such as their standard uncertainty: a band where every point has one
+        if (!size && one.interval) {
+          let run: Plotted[] = [];
+          const close = () => {
+            if (run.length > 1) {
+              band += `M${run.map((p) => `${x(p.t).toFixed(1)},${y(p.hi!).toFixed(1)}`).join('L')}`;
+              band += `L${[...run].reverse().map((p) => `${x(p.t).toFixed(1)},${y(p.lo!).toFixed(1)}`).join('L')}Z`;
+            }
+            run = [];
+          };
+          for (const p of segment) {
+            if (p.lo == null || p.hi == null) close();
+            else run.push(p);
+          }
+          close();
+        }
       }
       if (band) layer.append(el('path', { class: 'band', d: band, fill: color(one.name) }));
       layer.append(el('path', { class: 'line', d, stroke: color(one.name) }));
@@ -363,7 +394,9 @@ export function renderChart(container: HTMLElement, options: ChartOptions): () =
             ? `${one.name}: –`
             : size
               ? `${one.name}: ${round(point.v)}${unit} (${round(point.min!)} to ${round(point.max!)}, ${point.count} values)`
-              : `${one.name}: ${round(point.v)}${unit}`;
+              : point.lo != null && point.hi != null && one.interval
+                ? `${one.name}: ${round(point.v)}${unit} (${round(point.lo)} to ${round(point.hi)}, ${one.interval})`
+                : `${one.name}: ${round(point.v)}${unit}`;
         line.style.borderLeft = `4px solid ${color(one.name)}`;
         line.style.paddingLeft = '6px';
         tip.append(line);

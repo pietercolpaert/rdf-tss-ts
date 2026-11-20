@@ -1,7 +1,8 @@
 import { Store } from 'n3';
-import { META_FIELD, RDF, RDFS, SOURCE_CLASSES, VALUE_FIELD, isExternalKind, tss, xsd } from './ns.js';
+import { CONTEXT_FIELD, RDF, RDFS, SOURCE_CLASSES, VALUE_FIELD, isExternalKind, tss, xsd } from './ns.js';
 import { literal, namedNode, quad } from './rdf.js';
 import type { Quad, Term } from './rdf.js';
+import { ValidationError } from './errors.js';
 import { localNameOf } from './metadata.js';
 import type { CreateOptions } from './types.js';
 
@@ -16,7 +17,8 @@ export function buildStore(options: CreateOptions, dataFileRef?: string): Store 
   const external = isExternalKind(options.kind);
   // An embedded RDF source states its values with the field properties: a field without a
   // tss:property needs a column name to make its default property from.
-  const needsColumnName = (property?: string) => options.kind !== 'EmbeddedRDF' || property === undefined;
+  // a field of an embedded RDF source only needs a column name to make the default property of a describing field
+  const needsColumnName = (describing: boolean, property?: string) => options.kind !== 'EmbeddedRDF' || (describing && property === undefined);
 
   add(source, RDF + 'type', namedNode(SOURCE_CLASSES[options.kind]));
   if (options.label) add(source, RDFS + 'label', literal(options.label));
@@ -38,24 +40,26 @@ export function buildStore(options: CreateOptions, dataFileRef?: string): Store 
 
   const time = namedNode(options.timeField.id);
   add(source, tss('hasField'), time);
-  add(time, RDF + 'type', namedNode(META_FIELD));
+  add(time, RDF + 'type', namedNode(CONTEXT_FIELD));
   add(time, tss('datatype'), namedNode(xsd('dateTime')));
-  // the time field of an embedded RDF source has tss:time as default property: no column name needed
+  // a point of an embedded RDF source states its time with tss:time: no column name needed
   if (options.kind !== 'EmbeddedRDF' || options.timeField.columnName !== undefined) {
     add(time, tss('columnName'), literal(options.timeField.columnName ?? localNameOf(options.timeField.id)));
   }
   if (options.timeField.columnIndex !== undefined) add(time, tss('columnIndex'), lit(String(options.timeField.columnIndex), xsd('integer')));
-  if (options.timeField.property) add(time, tss('property'), namedNode(options.timeField.property));
 
   for (const f of options.fields) {
     const field = namedNode(f.id);
     const describes = f.describesField === undefined ? [] : Array.isArray(f.describesField) ? f.describesField : [f.describesField];
-    const kind = f.kind ?? (describes.length > 0 ? 'meta' : 'value');
+    const kind = f.kind ?? (describes.length > 0 ? 'context' : 'value');
+    if (f.property && describes.length === 0) {
+      throw new ValidationError(`field ${f.id}: only a describing field states tss:property; a point states its reading with tss:value`);
+    }
     add(source, tss('hasField'), field);
-    add(field, RDF + 'type', namedNode(kind === 'value' ? VALUE_FIELD : META_FIELD));
+    add(field, RDF + 'type', namedNode(kind === 'value' ? VALUE_FIELD : CONTEXT_FIELD));
     if (f.label) add(field, RDFS + 'label', literal(f.label));
     add(field, tss('datatype'), namedNode(f.datatype ?? xsd('decimal')));
-    if (needsColumnName(f.property) || f.columnName !== undefined) add(field, tss('columnName'), literal(f.columnName ?? localNameOf(f.id)));
+    if (needsColumnName(describes.length > 0, f.property) || f.columnName !== undefined) add(field, tss('columnName'), literal(f.columnName ?? localNameOf(f.id)));
     if (f.columnIndex !== undefined) add(field, tss('columnIndex'), lit(String(f.columnIndex), xsd('integer')));
     if (f.property) add(field, tss('property'), namedNode(f.property));
     if (f.aboutUrl) add(field, tss('aboutUrl'), literal(f.aboutUrl));

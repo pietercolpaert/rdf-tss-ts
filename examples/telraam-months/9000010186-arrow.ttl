@@ -27,7 +27,7 @@ ex:source-2026-01-07-2026-05-03 a tss:ArrowSource;
     tss:dataFile <9000010186-arrow.arrows>;
     tss:hasField ex:time, ex:car-lft, ex:car-rgt, ex:v85;
     tss:immutable true.
-ex:time a tss:MetaField;
+ex:time a tss:ContextField;
     tss:datatype xsd:dateTimeStamp;
     tss:columnName "time".
 ex:car-lft a tss:ValueField;

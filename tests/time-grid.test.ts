@@ -33,7 +33,7 @@ const gridTurtle = (cls: string, dataFile: string, { base = '2030-01-01T00:00:00
     tss:timeStep "${step}"^^xsd:duration ;
     tss:timeField <#time> ;
     tss:hasField <#time>, <#temp> .
-<#time> a tss:MetaField ; tss:datatype xsd:dateTime .
+<#time> a tss:ContextField ; tss:datatype xsd:dateTime .
 <#temp> a tss:ValueField ; tss:columnName "temp" ; tss:datatype xsd:double .
 `;
 

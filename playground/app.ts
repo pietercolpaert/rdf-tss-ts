@@ -6,7 +6,10 @@ import {
   type FieldMetadata,
   type ReadableSource,
   type Row,
+  type AlignerOptions,
   type UnitConverter,
+  unitDefinitions,
+  TSS_VOCABULARY_SOURCE,
 } from '../src/index.js';
 import { ZoomGroup, renderChart, type Series } from './chart.js';
 import { renderPatterns } from './patterns.js';
@@ -75,12 +78,21 @@ const PREFIXES = {
 /** eyemind (490 kB) is only loaded when a unit is converted. */
 let converter: UnitConverter | undefined;
 const lazyConverter: UnitConverter = {
-  async conversion(from, to) {
+  async conversion(from, to, options) {
     // @ts-expect-error resolved by the bundler: the command line entry of eyemind, which has the QUDT profile
     converter ??= createEyemindUnitConverter({ main: (await import('eyemind-cli')).main });
-    return converter.conversion(from, to);
+    return converter.conversion(from, to, options);
   },
 };
+
+/** rdfjs-inference-engine (Eyeling, about 1 MB) and its OWL 2 RL rules are only loaded when the alignment is derived. */
+let aligner: Promise<AlignerOptions> | undefined;
+const loadAligner = () =>
+  (aligner ??= Promise.all([
+    import('rdfjs-inference-engine'),
+    // @ts-expect-error resolved by the bundler: the rules as text
+    import('owl2rl-rules'),
+  ]).then(([engine, rules]) => ({ engine: (engine as { default?: AlignerOptions['engine'] }).default ?? (engine as unknown as AlignerOptions['engine']), owl2rl: (rules as { default: string }).default })));
 
 interface State {
   url: string;
@@ -102,10 +114,35 @@ let compaction: Compaction | undefined;
 const unitSymbols = new Map<string, string>();
 const symbol = (iri?: string) => (iri ? (unitSymbols.get(iri) ?? SYMBOLS[iri.replace(QUDT_UNIT, '')] ?? iri.replace(QUDT_UNIT, '')) : '');
 /**
- * Only the units of the QUDT catalog can be converted: a unit the metadata makes itself has no
- * conversion, and neither has a currency, whose exchange rate changes over time.
+ * A unit of the QUDT catalog, or one the metadata makes itself (of QUDT units, or with its own
+ * conversion multiplier), can be converted; a currency cannot, as its exchange rate changes
+ * over time, and neither can a unit made with one.
  */
-const convertible = (iri?: string) => !!iri && iri.startsWith(QUDT_UNIT) && !iri.startsWith(`${QUDT_UNIT}CCY_`);
+const convertible = (iri?: string) => {
+  if (!iri) return false;
+  if (iri.startsWith(QUDT_UNIT)) return !iri.startsWith(`${QUDT_UNIT}CCY_`);
+  const definitions = state ? unitDefinitions(state.source.dataset, iri) : '';
+  return definitions !== '' && !definitions.includes(`${QUDT_UNIT}CCY_`);
+};
+
+const QUDT_SCHEMA = 'http://qudt.org/schema/qudt/';
+/** What the interval of the values of a field is, by the QUDT property of the describing fields that state it. */
+interface Interval {
+  /** `standardUncertainty`: one standard deviation either side; else the bounds. */
+  uncertainty?: FieldMetadata;
+  lower?: FieldMetadata;
+  upper?: FieldMetadata;
+}
+
+/** The describing fields that give an interval around the values of `field`: a standard uncertainty, or lower and upper bounds. */
+function intervalOf(field: FieldMetadata): Interval | undefined {
+  const describing = state!.source.metadata.fields.filter((f) => f.kind === 'context' && f.describesField.includes(field.id) && isNumeric(f));
+  const by = (name: string) => describing.find((f) => f.property === QUDT_SCHEMA + name);
+  const interval: Interval = { uncertainty: by('standardUncertainty'), lower: by('lowerBound'), upper: by('upperBound') };
+  if (interval.uncertainty || (interval.lower && interval.upper)) return interval;
+  return undefined;
+}
+const intervalFields = (fields: FieldMetadata[]) => fields.flatMap((f) => Object.values(intervalOf(f) ?? {}).filter((d): d is FieldMetadata => d !== undefined));
 const label = (f: FieldMetadata) => f.labels[0] ?? f.localName;
 const local = (iri: string) => iri.replace(/[#/]+$/, '').split(/[#/]/).pop() ?? iri;
 const esc = (text: string) => text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -132,8 +169,8 @@ function groups(source: ReadableSource): Map<string, FieldMetadata[]> {
   const { timeField, stepField } = source.metadata;
   const out = new Map<string, FieldMetadata[]>();
   for (const f of source.metadata.fields) {
-    // a meta field says something about a row, such as its date as a number: its values are no readings
-    if (f.id === timeField || f.id === stepField || f.kind === 'meta' || !isNumeric(f)) continue;
+    // a context field gives the context of a row, such as its date as a number: its values are no readings
+    if (f.id === timeField || f.id === stepField || f.kind === 'context' || !isNumeric(f)) continue;
     const key = f.observedProperty || f.unit ? `${f.observedProperty ?? ''}|${f.unit ?? ''}` : f.id;
     out.set(key, [...(out.get(key) ?? []), f]);
   }
@@ -209,13 +246,27 @@ function selectTab(name: string): void {
 
 function seriesOf(fields: FieldMetadata[]): Series[] {
   const { times, values } = state!;
-  return fields.map((f) => ({
-    name: label(f),
-    points: times.map((time, i) => {
-      const text = values.get(f.id)![i];
-      return { t: Date.parse(time), v: text === undefined || Number.isNaN(Number(text)) ? null : Number(text) };
-    }),
-  }));
+  const number = (f: FieldMetadata | undefined, i: number) => {
+    const text = f ? values.get(f.id)?.[i] : undefined;
+    return text === undefined || Number.isNaN(Number(text)) ? null : Number(text);
+  };
+  return fields.map((f) => {
+    const interval = intervalOf(f);
+    return {
+      name: label(f),
+      // a standard uncertainty is one standard deviation either side of the value
+      interval: interval?.uncertainty ? `standard uncertainty (±1σ, ${label(interval.uncertainty)})` : interval ? `error bounds (${label(interval.lower!)} to ${label(interval.upper!)})` : undefined,
+      points: times.map((time, i) => {
+        const v = number(f, i);
+        if (v === null || !interval) return { t: Date.parse(time), v };
+        if (interval.uncertainty) {
+          const u = number(interval.uncertainty, i);
+          return { t: Date.parse(time), v, lo: u === null ? null : v - u, hi: u === null ? null : v + u };
+        }
+        return { t: Date.parse(time), v, lo: number(interval.lower, i), hi: number(interval.upper, i) };
+      }),
+    };
+  });
 }
 
 async function renderCharts(): Promise<void> {
@@ -270,8 +321,10 @@ async function renderCharts(): Promise<void> {
         note.textContent = 'Converting with QUDT, by eyemind …';
         note.style.color = '';
         try {
-          const readings = await readAll(source, { fields: fields.map((f) => f.id), unit: unit === fields[0].unit ? 'source' : unit });
-          for (const f of fields) {
+          // the uncertainty or the bounds of a value are converted with it
+          const converted = [...fields, ...intervalFields(fields)];
+          const readings = await readAll(source, { fields: converted.map((f) => f.id), unit: unit === fields[0].unit ? 'source' : unit });
+          for (const f of converted) {
             state!.values.set(f.id, readings.map((r) => r.get(f.id)?.value));
             state!.unit.set(f.id, readings.find((r) => r.get(f.id))?.get(f.id)?.unit ?? f.unit);
             state!.selectedUnit.set(f.id, unit);
@@ -363,7 +416,20 @@ async function renderMessages(): Promise<void> {
       let points = 0;
       let index = 0;
       let rows = 0;
-      for await (const message of state!.source.expand(align ? { align } : {})) {
+      const started = performance.now();
+      const options = align ? { align, aligner: await loadAligner() } : {};
+      const loaded = performance.now() - started;
+      // the first row message also prepares the reasoner: the background is closed once
+      let prepared = 0;
+      let reasoned = 0;
+      let rowTime = 0;
+      let last = performance.now();
+      for await (const message of state!.source.expand(options)) {
+        if (align && index === 1) prepared = performance.now() - last;
+        else if (align && index > 1) {
+          rowTime += performance.now() - last;
+          reasoned++;
+        }
         index++;
         const rowPoints = message.quads.filter((q) => q.predicate.value === 'https://w3id.org/tss#hasPoint').length;
         points += rowPoints;
@@ -372,8 +438,12 @@ async function renderMessages(): Promise<void> {
         const title = index === 1 ? 'Message 1: the metadata' : rowPoints > 0 ? `Message ${index}: row ${rows}` : `Message ${index}: the ending`;
         parts.push(`<div class="message"><h4>${title}</h4><pre>${esc(text)}</pre></div>`);
         if (index > count) break;
+        last = performance.now();
       }
-      out.innerHTML = `<p class="muted">The expansion of the source into points: the first message is the metadata, with the default property of each field that states no <code>tss:property</code>; each next message holds one row, with a point for every value of a value field (${points} points in ${rows} rows here); an immutable source ends with a message with <code>tss:immutable true</code> and the stored summaries. These are the three kinds of messages of the RDF Message Stream Profile of the specification. Each point links to its field with <code>tss:field</code>, and the TSS vocabulary is aligned with SOSA and SAREF, so a reasoner derives observations from it. A source is a table; an RDF Message Log is a stream of small RDF documents: this turns one into the other.</p>${parts.join('')}`;
+      const derivedNote = align
+        ? `<p class="muted">With <b>${align === 'sosa' ? 'SOSA observations' : 'SAREF measurements'}</b>, the triples about each point other than <code>tss:</code> ones are derived in your browser by a reasoner, <a href="https://www.npmjs.com/package/rdfjs-inference-engine">rdfjs-inference-engine</a> (OWL 2 RL rules for Eyeling), from the <a href="${TSS_VOCABULARY_SOURCE}">TSS vocabulary of the specification</a> and the description of the source: the library itself writes none of them. The rules are specialized to the shape of the points and to the observations asked for (SHACL in and out shapes), so the background is closed once: ${Math.round(loaded)} ms to load the reasoner, ${Math.round(prepared)} ms to prepare it with the first row${reasoned ? `, then ${(rowTime / reasoned).toFixed(1)} ms for each next row` : ''}.</p>`
+        : '';
+      out.innerHTML = `<p class="muted">The expansion of the source into points: the first message is the metadata, with the default property of each describing field that states no <code>tss:property</code>; each next message holds one row, with a point for every value of a value field (${points} points in ${rows} rows here), which states its field, time and reading with <code>tss:field</code>, <code>tss:time</code> and <code>tss:value</code>; an immutable source ends with a message with <code>tss:immutable true</code> and the stored summaries. These are the three kinds of messages of the RDF Message Stream Profile of the specification. The TSS vocabulary is aligned with SOSA and SAREF, so a reasoner derives observations from it. A source is a table; an RDF Message Log is a stream of small RDF documents: this turns one into the other.</p>${derivedNote}${parts.join('')}`;
     } catch (error) {
       out.textContent = (error as Error).message;
     }

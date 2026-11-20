@@ -3,14 +3,18 @@ export { ReadableSource } from './readable.js';
 export { WritableSource } from './writable.js';
 export { Row, Value } from './row.js';
 export { toRDFMessages, expansionHead, expansionEnding, pointsOfRow, type Alignment, type ExpandOptions } from './expand.js';
+export { createAligner, type Aligner, type AlignerOptions, type InferenceEngineModule } from './align.js';
+export { TSS_VOCABULARY, TSS_VOCABULARY_SOURCE } from './vocabulary.js';
 export {
   convertUnit,
   createEyemindUnitConverter,
   EyemindUnitConverter,
   defaultUnitConverter,
   setDefaultUnitConverter,
+  unitDefinitions,
   type UnitConverter,
   type UnitConversion,
+  type UnitConversionOptions,
   type EyemindMain,
 } from './units.js';
 export { ValidationError, NotWritableError, LockError, UnitConversionError, type Report, type ReportEntry } from './errors.js';

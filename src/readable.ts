@@ -13,7 +13,7 @@ import {
 import { isNumericDatatype } from './lexical.js';
 import { loadDocument, type RdfLoader } from './loader.js';
 import { parseSource, type ParsedSource } from './metadata.js';
-import { tss, xsd } from './ns.js';
+import { QUDT, tss, xsd } from './ns.js';
 import type { Dataset, Quad, Term } from './rdf.js';
 import { Row, Value } from './row.js';
 import { expansionEnding, expansionHead, toRDFMessages, type ExpandOptions } from './expand.js';
@@ -23,7 +23,7 @@ import { csvRows } from './formats/csv.js';
 import { embeddedJsonRows, embeddedRdfRows } from './formats/embedded.js';
 import type { RawRow } from './formats/rows.js';
 import { durationToMs, toInstant, tryInstantOf, type Instant } from './time.js';
-import { defaultUnitConverter, type UnitConversion, type UnitConverter } from './units.js';
+import { defaultUnitConverter, unitDefinitions, type UnitConversion, type UnitConverter } from './units.js';
 import type { FieldMetadata, FieldSummary, RDFMessage, ReadOptions, SourceMetadata, SourceKind } from './types.js';
 
 export type Origin = { type: 'http'; url: string } | { type: 'file'; url: string; path: string } | { type: 'dataset' };
@@ -46,6 +46,8 @@ interface Plan {
   from?: Instant;
   until?: Instant;
   conversions: Map<string, UnitConversion>;
+  /** The fields whose values are differences, such as a standard uncertainty: converted without the offset. */
+  differences: Set<string>;
 }
 
 interface PassState {
@@ -202,7 +204,7 @@ export class ReadableSource {
       const wanted = new Set(options.fields.map((key) => this.resolveField(key).id));
       fields = fields.filter((f) => wanted.has(f.id));
     }
-    const plan: Plan = { fields, conversions: new Map() };
+    const plan: Plan = { fields, conversions: new Map(), differences: new Set() };
     if (options.from !== undefined) plan.from = toInstant(options.from);
     if (options.until !== undefined) plan.until = toInstant(options.until);
 
@@ -213,7 +215,12 @@ export class ReadableSource {
     const converter = this.ctx.converter ?? defaultUnitConverter();
     for (const f of fields) {
       const unit = typeof choice === 'string' ? choice : (perField.get(f.id) ?? 'source');
-      if (unit !== 'source' && f.unit && isNumericDatatype(f.datatype)) plan.conversions.set(f.id, await converter.conversion(f.unit, unit));
+      if (unit === 'source' || !f.unit || !isNumericDatatype(f.datatype)) continue;
+      // the units the metadata defines itself, such as a unit made of QUDT units
+      const definitions = [f.unit, unit].map((u) => unitDefinitions(this.dataset, u)).join('');
+      plan.conversions.set(f.id, await converter.conversion(f.unit, unit, definitions ? { definitions } : {}));
+      // a standard uncertainty is a difference of values: converted with the scale, without the offset
+      if (f.property === QUDT + 'standardUncertainty') plan.differences.add(f.id);
     }
     return plan;
   }
@@ -250,7 +257,8 @@ export class ReadableSource {
         if (!Number.isFinite(number)) {
           values.set(f.id, new Value(decoded, f.datatype, f.unit));
         } else {
-          values.set(f.id, new Value(String(conversion.convert(number)), xsd('double'), conversion.unit));
+          const converted = plan.differences.has(f.id) && conversion.convertDifference ? conversion.convertDifference(number) : conversion.convert(number);
+          values.set(f.id, new Value(String(converted), xsd('double'), conversion.unit));
         }
       } else {
         values.set(f.id, new Value(decoded, f.datatype, f.unit));

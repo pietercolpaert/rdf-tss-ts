@@ -25,7 +25,7 @@ export class Value {
 
 /**
  * One row of a source: its time and the values of its fields. Each value of a value field
- * is one reading, a point; the values of meta fields say something about the row or its points.
+ * is one reading, a point; the values of context fields give the context of the row or its points.
  */
 export class Row {
   constructor(

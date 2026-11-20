@@ -1,8 +1,9 @@
 import { makeReport, type Report, type ReportEntry } from './errors.js';
 import { expandTemplate, resolveIri } from './iri.js';
 import { isNumericDatatype, isValidLexical } from './lexical.js';
-import { findSources, propertyBase, statedFieldKinds } from './metadata.js';
-import { LEGACY_SOURCE_CLASSES, RDF, SOURCE_CLASSES, isExternalKind, tss, xsd } from './ns.js';
+import { findSources, isReservedProperty, propertyBase, statedFieldKinds } from './metadata.js';
+import { valueFieldOfPoint } from './formats/embedded.js';
+import { LEGACY_META_FIELD, LEGACY_SOURCE_CLASSES, RDF, SOURCE_CLASSES, isExternalKind, tss, xsd } from './ns.js';
 import type { Dataset, Term } from './rdf.js';
 import { namedNode, objectsOf, termId } from './rdf.js';
 import type { ReadableSource } from './readable.js';
@@ -156,16 +157,19 @@ function metadataRules(source: ReadableSource, add: Add): void {
     const at = f.id;
     const isTime = f.id === meta.timeField;
 
-    // value field or meta field
+    // value field or context field
+    if (many(fieldTerm, RDF + 'type').some((t) => t.value === LEGACY_META_FIELD)) {
+      add('removed-term', `tss:MetaField was renamed to tss:ContextField`, at);
+    }
     const stated = statedFieldKinds(ds, fieldTerm);
     if (stated.length !== 1) {
-      add('field-kind', `a field states exactly one of tss:ValueField and tss:MetaField as its type, not ${stated.length === 0 ? 'none' : 'both'}`, at);
+      add('field-kind', `a field states exactly one of tss:ValueField and tss:ContextField as its type, not ${stated.length === 0 ? 'none' : 'both'}`, at);
     }
     const role = isTime ? 'the time field' : f.id === meta.stepField ? 'the step field' : describing.has(f.id) ? 'a describing field' : undefined;
-    if (role && f.kind !== 'meta') add('field-kind', `${role} is a tss:MetaField`, at);
-    if (f.kind === 'meta') {
+    if (role && f.kind !== 'context') add('field-kind', `${role} is a tss:ContextField`, at);
+    if (f.kind === 'context') {
       for (const p of ['observedProperty', 'sensor', 'featureOfInterest', 'aboutUrl']) {
-        if (many(fieldTerm, tss(p)).length > 0) add('meta-field', `a meta field has no tss:${p}`, at);
+        if (many(fieldTerm, tss(p)).length > 0) add('context-field', `a context field has no tss:${p}`, at);
       }
     }
 
@@ -173,11 +177,15 @@ function metadataRules(source: ReadableSource, add: Add): void {
     if (datatypes.length !== 1 || datatypes[0].termType !== 'NamedNode') add('datatype', 'a field has exactly one tss:datatype (an IRI)', at);
     if (isTime && !TIME_DATATYPES.includes(f.datatype)) add('time-datatype', 'the datatype of the time field is xsd:dateTime or xsd:dateTimeStamp', at);
 
-    // the field property
+    // the field property: only a describing field has one
     const stated_ = many(fieldTerm, tss('property'));
     if (stated_.length > 1 || (stated_[0] && stated_[0].termType !== 'NamedNode')) add('property', 'a field has at most one tss:property, an IRI', at);
-    if (stated_[0]?.value === tss('value') && f.kind === 'meta') add('property', 'a meta field does not state tss:value as its tss:property', at);
-    if (stated_[0]?.value === tss('time') && !isTime) add('property', 'only the time field states tss:time as its tss:property', at);
+    if (stated_.length > 0 && !describing.has(f.id)) {
+      add('property', 'only a describing field states tss:property: a point states its value field, time and reading with tss:field, tss:time and tss:value', at);
+    }
+    if (stated_[0] && isReservedProperty(stated_[0].value)) {
+      add('property', `the field property is not rdf:type or a term of the TSS vocabulary, such as ${stated_[0].value}`, at);
+    }
     if (f.property) {
       const other = properties.get(f.property);
       if (other) add('property', `the field property ${f.property} is also the field property of ${other}`, at);
@@ -185,10 +193,10 @@ function metadataRules(source: ReadableSource, add: Add): void {
     }
 
     const columnNames = many(fieldTerm, tss('columnName'));
-    const columnNeeded = meta.kind === 'EmbeddedRDF' ? !isTime && stated_.length === 0 : !(isTime && hasGrid);
+    const columnNeeded = meta.kind === 'EmbeddedRDF' ? describing.has(f.id) && stated_.length === 0 : !(isTime && hasGrid);
     if (columnNames.length > 1) add('column-name', 'a field has at most one tss:columnName', at);
     if (columnNames.length === 0 && columnNeeded) {
-      add('column-name', meta.kind === 'EmbeddedRDF' ? 'a field without tss:property needs a tss:columnName to make its default property' : 'a field of this source needs a tss:columnName', at);
+      add('column-name', meta.kind === 'EmbeddedRDF' ? 'a describing field states tss:property or a tss:columnName to make its default property' : 'a field of this source needs a tss:columnName', at);
     }
     if (columnNames[0]) {
       if (columnNames[0].value === '') add('column-name', 'tss:columnName is not empty', at);
@@ -286,51 +294,57 @@ async function dataRules(source: ReadableSource, add: Add): Promise<void> {
   }
 }
 
-/** The rules on the points of a `tss:EmbeddedRDFSource`: one reading per point, in the shape of its fields. */
+/** The rules on the points of a `tss:EmbeddedRDFSource`: one reading per point, with its value field, time and reading. */
 function embeddedRdfRules(source: ReadableSource, add: Add): void {
   const ds: Dataset = source.dataset;
   const meta = source.metadata;
-  const timeField = meta.fields.find((f) => f.id === meta.timeField)!;
-  const others = meta.fields.filter((f) => f.id !== meta.timeField && f.property);
-  const valueFields = others.filter((f) => f.kind === 'value');
+  const valueFields = meta.fields.filter((f) => f.kind === 'value' && f.id !== meta.timeField && f.id !== meta.stepField);
+  const describing = meta.fields.filter((f) => f.kind === 'context' && f.describesField.length > 0 && f.property);
+  const literalRule = (o: Term, f: { id: string; datatype: string }, index: number) => {
+    const datatype = o.termType === 'Literal' ? (o as { datatype?: { value: string } }).datatype?.value : undefined;
+    if (o.termType !== 'Literal') add('literal', 'a value of an RDF point is a literal', f.id, index);
+    else if (f.datatype !== RDF + 'langString' && datatype !== f.datatype) {
+      add('value-datatype', `the datatype of the value is ${datatype}, the field says ${f.datatype}`, f.id, index);
+    }
+  };
   const pointsByTime = new Map<bigint, Set<string>>();
   let index = 0;
   for (const point of objectsOf(ds, source.node, tss('hasPoint'))) {
     index++;
     const where = point.termType === 'NamedNode' ? point.value : undefined;
-    const times = timeField.property ? objectsOf(ds, point, timeField.property) : [];
-    if (times.length !== 1) add('point-time', `a point has exactly one time (${timeField.property}), not ${times.length}`, where, index);
+    const fields = objectsOf(ds, point, tss('field'));
+    if (fields.length > 1) add('point-field', `a point has at most one tss:field, not ${fields.length}`, where, index);
+    else if (fields.length === 0 && valueFields.length !== 1) add('point-field', 'a point of a source with several value fields states its value field with tss:field', where, index);
+    const field = valueFieldOfPoint(ds, point, valueFields);
+    if (fields.length === 1 && !field) add('point-field', `${termId(fields[0])} is not a value field of the source`, where, index);
+    const times = objectsOf(ds, point, tss('time'));
+    if (times.length !== 1) add('point-time', `a point has exactly one time (tss:time), not ${times.length}`, where, index);
     else if (!isTimeLiteral(times[0])) add('point-time', `the time of a point is an xsd:dateTime (or xsd:dateTimeStamp) literal with a timezone`, where, index);
-    const own = valueFields.filter((f) => objectsOf(ds, point, f.property!).length > 0);
-    if (own.length !== 1) add('point-value', `a point has the value of exactly one value field, not ${own.length}`, where, index);
-    for (const f of others) {
-      const objects = objectsOf(ds, point, f.property!);
+    const readings = objectsOf(ds, point, tss('value'));
+    if (readings.length !== 1) add('point-value', `a point has exactly one reading (tss:value), not ${readings.length}`, where, index);
+    else if (field) literalRule(readings[0], field, index);
+    for (const d of describing) {
+      const objects = objectsOf(ds, point, d.property!);
       if (objects.length === 0) continue;
-      if (objects.length > 1) add('one-value', `a point has at most one value for a field, not ${objects.length}`, f.id, index);
-      if (f.kind === 'meta' && !f.describesField.some((target) => own.some((v) => v.id === target))) {
-        add('point-value', `a point only states the values of the describing fields of its value field, not of ${f.localName}`, f.id, index);
+      if (objects.length > 1) add('one-value', `a point has at most one value for a describing field, not ${objects.length}`, d.id, index);
+      if (field && !d.describesField.includes(field.id)) {
+        add('point-value', `a point only states the values of the describing fields of its value field, not of ${d.localName}`, d.id, index);
       }
-      for (const o of objects) {
-        const datatype = o.termType === 'Literal' ? (o as { datatype?: { value: string } }).datatype?.value : undefined;
-        if (o.termType !== 'Literal') add('literal', 'a value of an RDF point is a literal', f.id, index);
-        else if (f.datatype !== RDF + 'langString' && datatype !== f.datatype) {
-          add('value-datatype', `the datatype of the value is ${datatype}, the field says ${f.datatype}`, f.id, index);
-        }
-      }
+      for (const o of objects) literalRule(o, d, index);
     }
     const instant = times.length === 1 ? tryInstantOf(times[0].value) : null;
-    if (instant !== null && own.length === 1) {
+    if (instant !== null && field) {
       let row = pointsByTime.get(instant);
       if (!row) pointsByTime.set(instant, (row = new Set()));
-      if (row.has(own[0].id)) add('unique-point', `two points of ${own[0].localName} have the time ${times[0].value}: a row has at most one point for each value field`, own[0].id, index);
-      row.add(own[0].id);
+      if (row.has(field.id)) add('unique-point', `two points of ${field.localName} have the time ${times[0].value}: a row has at most one point for each value field`, field.id, index);
+      row.add(field.id);
     }
   }
-  // a field property that is not stated in the metadata may still be used by a point by mistake: the old shape used the field IRI
+  // the shape of earlier drafts: a field, or a property of a field that is not a describing field, as the predicate of a value
   for (const f of meta.fields) {
-    if (f.id.startsWith('_:') || f.id === f.property) continue;
+    if (f.id.startsWith('_:')) continue;
     for (const _ of ds.match(null, namedNode(f.id), null, null)) {
-      add('field-as-property', `${f.id} is a field, not the property that states its values (${f.property ?? 'tss:property'})`, f.id);
+      add('field-as-property', `${f.id} is a field, not the predicate of its values: a point states its reading with tss:value`, f.id);
       break;
     }
   }

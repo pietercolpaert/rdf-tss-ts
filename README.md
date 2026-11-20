@@ -2,13 +2,13 @@
 
 A TypeScript library to read, follow, write and expand [RDF Time Series Sources](https://knowledgeonwebscale.github.io/rdf-tss/) (RDF-TSS).
 
-> **Status: first implementation of an API draft.** The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change. This version follows [pull request #33](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/33) (times as `xsd:dateTime`, an optional step field on a time grid, and the RDF Message Stream Profile), which builds on [#31](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/31), which builds on [#28](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/28) (*Snippets* were renamed to *Sources*) and [#25](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/25) (a source *grows* until it is *ended* with `tss:immutable true`, and followers use plain HTTP: `Range`, `ETag`, `max-age`).
+> **Status: first implementation of an API draft.** The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change. This version follows [pull request #37](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/37) (every point states its reading with `tss:value`, its time with `tss:time` and its value field with `tss:field`; `tss:MetaField` is now `tss:ContextField`), which builds on [#33](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/33) (times as `xsd:dateTime`, an optional step field on a time grid, and the RDF Message Stream Profile), which builds on [#31](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/31), which builds on [#28](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/28) (*Snippets* were renamed to *Sources*) and [#25](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/25) (a source *grows* until it is *ended* with `tss:immutable true`, and followers use plain HTTP: `Range`, `ETag`, `max-age`).
 
 **Try the [playground](https://pieter.pm/rdf-tss-ts/)**: pick a dataset from the drop-down (months of Telraam traffic counts and speeds, 42 time series of the core datasets on GitHub, from gold and oil prices to CO₂ and sea level, and a day of weather in every format), see charts (large series are downsampled to an average per day, with a min–max band; drag to zoom in on the raw values), convert units with QUDT, find repeating patterns with the matrix profile and the contextual matrix profile, and see the source expanded into points as RDF Messages. The Telraam data is read from the [Telraam LDES](https://ldes.telraam-api.net/measurements) as RDF Messages and turned into binary sources, see [Telraam](#telraam).
 
 ## What is a source?
 
-A source is a table of readings described in RDF: one time column, and one column per field. Every row has one time; every value of a *value field* is one reading, a *point*. The RDF metadata says, per field, its datatype, where its values are, the RDF property that states them (`tss:property`), and what a value field observes (property, unit, sensor, feature of interest). It also states the time window, and whether the source has ended (`tss:immutable true`). A source that has not ended is *growing*: rows are only ever added at its end. The rows themselves are stored in one of five ways, set by the source's class:
+A source is a table of readings described in RDF: one time column, and one column per field. Every row has one time; every value of a *value field* is one reading, a *point*. The RDF metadata says, per field, its datatype, where its values are, and what a value field observes (property, unit, sensor, feature of interest). It also states the time window, and whether the source has ended (`tss:immutable true`). A source that has not ended is *growing*: rows are only ever added at its end. The rows themselves are stored in one of five ways, set by the source's class:
 
 | Source class | Where the rows are | Can be appended to |
 |---|---|---|
@@ -20,23 +20,21 @@ A source is a table of readings described in RDF: one time column, and one colum
 
 \* Growing is by appending bytes: a CSV row, an Arrow record batch, or a message at the end of an RDF Message Log. An embedded RDF source is an [RDF Message Log](https://w3c-cg.github.io/rsp/spec/messages): the metadata is the first message, every row is a message, and a last message ends the source. See [Open spec issues](#open-spec-issues).
 
-### Fields: value fields, meta fields and field properties
+### Fields: value fields, context fields and how points state values
 
-Every field is a `tss:ValueField` (its values are readings) or a `tss:MetaField` (the time field, the step field of a time grid, a field that describes a value field with `tss:describesField`, or another field such as an identifier). A field is never itself the predicate of its values: its *field property* is. That is its `tss:property` or, by default:
-
-- `tss:time` for the time field;
-- `<base#columnName>` for any other field, as CSVW's default `propertyUrl`, where the base is the data file (external sources) or the metadata document (embedded sources).
-
-So an embedded RDF point looks like this, one reading per point:
+Every field is a `tss:ValueField` (its values are readings) or a `tss:ContextField` (the time field, the step field of a time grid, a field that describes a value field with `tss:describesField`, or another field such as an identifier). A field is never itself the predicate of its values. In RDF, every point states its value field, its time and its reading with the same three properties, and what a reading means is stated once, on its field:
 
 ```turtle
 ex:source tss:hasPoint [
+    tss:field ex:value-field ;
     tss:time "2024-05-12T08:00:00Z"^^xsd:dateTime ;
-    ex:conductivity "4810.5"^^xsd:double
+    tss:value "4810.5"^^xsd:double
 ] .
 ```
 
-The library gives each field's `kind` (`'value'` or `'meta'`), its resolved `property`, and whether that is the `defaultProperty`, in `source.metadata.fields`. A document of the earlier *Snippets* drafts (`tss:EmbeddedRDFSnippet`, …) is refused with a message that names the new class.
+A point of a source with one value field may leave out `tss:field`. Only a *describing field* has a *field property*: the property that states its value on the points it describes, such as `ex:status "ok"`. That is its `tss:property` or, by default, `<base#columnName>`, as CSVW's default `propertyUrl`, where the base is the data file (external sources) or the metadata document (embedded sources).
+
+The library gives each field's `kind` (`'value'` or `'context'`), and for a describing field its resolved `property` and whether that is the `defaultProperty`, in `source.metadata.fields`. `tss:MetaField`, the name of earlier drafts, is still read as a context field, and `validate()` reports it. A document of the earlier *Snippets* drafts (`tss:EmbeddedRDFSnippet`, …) is refused with a message that names the new class.
 
 ### Times and time grids
 
@@ -44,7 +42,7 @@ A time is an `xsd:dateTime` with a timezone (`Z` or an offset such as `+02:00`),
 
 A data file can leave out the times: on a *time grid*, row n is at `tss:timeBase` + n × `tss:timeStep`, in calendar steps for years and months. The step of a row is in the column of its `tss:stepField`, which lets the file leave out rows; or, without a step field, it is the row's position in the file, from 0 for the first row. The [gold prices](examples/gold-prices/monthly.ttl) of the playground describe a CSV file that someone else publishes this way: one row per month since 1833, on a grid of `P1M`.
 
-[scripts/datahub.ts](scripts/datahub.ts) (`npm run examples:datahub`) describes 41 more CSV files of the [core datasets on GitHub](https://github.com/datasets) in the same way, into [examples/datahub/](examples/datahub/): oil, gas and commodity prices, the S&P 500, bond yields, GDP, consumer prices, house prices, CO₂, temperature anomalies, sea level, COVID-19 and population. Their dates have no time of day and no timezone, so only a file with a row at every step of a calendar grid fits, and only a file with one series: a file with a column such as a country holds a series per country, which a source cannot describe yet (see [Open spec issues](#open-spec-issues)). A daily price on trading days only has gaps, so it does not fit either. The script takes the units from a table, or from the descriptions in the data package, and makes the ones QUDT does not have, such as US dollar per barrel or million pounds sterling, of QUDT units. It reads every description back from GitHub before it writes it: it has to conform, and every row has to be at the date in the file.
+[scripts/datahub.ts](scripts/datahub.ts) (`npm run examples:datahub`) describes 41 more CSV files of the [core datasets on GitHub](https://github.com/datasets) in the same way, into [examples/datahub/](examples/datahub/): oil, gas and commodity prices, the S&P 500, bond yields, GDP, consumer prices, house prices, CO₂, temperature anomalies, sea level, COVID-19 and population. Their dates have no time of day and no timezone, so only a file with a row at every step of a calendar grid fits, and only a file with one series: a file with a column such as a country holds a series per country, which a source cannot describe yet (see [Open spec issues](#open-spec-issues)). A daily price on trading days only has gaps, so it does not fit either. The script takes the units from a table, or from the descriptions in the data package, and makes the ones QUDT does not have, such as US dollar per barrel or million pounds sterling, of QUDT units. A column that says something about the reading of another, such as the uncertainty of the CO₂ increase or the error bounds of the EPA sea level, is a describing context field: its value is stated on the point of that reading with `qudt:standardUncertainty`, `qudt:lowerBound` or `qudt:upperBound`, and the playground draws it as a band around the line. The script reads every description back from GitHub before it writes it: it has to conform, and every row has to be at the date in the file.
 
 ## Install
 
@@ -62,7 +60,8 @@ Formats and units need packages that you only install when you use them (optiona
 |---|---|
 | Arrow sources | `apache-arrow` |
 | Parquet sources | `hyparquet` (reading), `hyparquet-writer` (writing) |
-| `unit: 'qudt'`, `unit: <IRI>`, `convertUnit` | `eyemind` (version 0.8.4) |
+| `unit: 'qudt'`, `unit: <IRI>`, `convertUnit` | `eyemind` (version 0.8.15) |
+| `expand({ align })` | `rdfjs-inference-engine` |
 
 ## Reading sources
 
@@ -124,7 +123,9 @@ A single unit IRI is for a source whose fields share a dimension: it throws `Uni
 
 Conversion only applies to fields with a `tss:unit`. Converted values are numbers computed with the [QUDT](https://qudt.org/) unit catalog of [eyemind](https://github.com/eyereasoner/eyemind), so they are `xsd:double`s rounded to 12 significant digits; only `'source'` keeps the published text exactly. Converting to a unit of a different dimension throws `UnitConversionError`, and so does a unit that is not in the catalog.
 
-A unit that QUDT does not have can be made in the metadata from QUDT units, as QUDT makes its own derived units: the [gold prices](examples/gold-prices/monthly.ttl) are in `<#USD-PER-OZ_TROY>`, a `qudt:DerivedUnit` with the factor units `unit:CCY_USD` (exponent 1) and `unit:OZ_TROY` (exponent −1) and the `qudt:symbol` `"$/oz{Troy}"`. Such a unit describes the values, but is not converted: it is not in the catalog. That is on purpose for a currency: QUDT gives every currency the conversion multiplier 1, but an exchange rate changes over time, so a price is not converted to another currency as a unit is.
+A unit that QUDT does not have can be made in the metadata, as QUDT makes its own units: of QUDT units, with `qudt:hasFactorUnit` (a `qudt:DerivedUnit`) or `qudt:prefix` and `qudt:scalingOf`, or with its own `qudt:conversionMultiplier`, `qudt:conversionOffset` and `qudt:hasDimensionVector`. The library hands its description to eyemind with the conversion, so it is converted like a unit of the catalog: the temperature anomalies of the [core datasets on GitHub](scripts/datahub.ts) are in `<#DEG_C-DIFF>`, a difference of degrees Celsius, which converts 1:1 to kelvin, without the offset of `unit:DEG_C`. A unit with a currency in it is not converted, on purpose: the [gold prices](examples/gold-prices/monthly.ttl) are in `<#USD-PER-OZ_TROY>`, a `qudt:DerivedUnit` with the factor units `unit:CCY_USD` (exponent 1) and `unit:OZ_TROY` (exponent −1) and the `qudt:symbol` `"$/oz{Troy}"`. QUDT gives every currency the conversion multiplier 1, but an exchange rate changes over time, so a price is not converted to another currency as a unit is.
+
+A describing field with the property `qudt:standardUncertainty` holds the standard uncertainty of the value it describes, one standard deviation: it is a difference of values, so it is converted with the scale of its unit, without the offset (±0.5 °C is ±0.5 K).
 
 The conversion of a unit is looked up once, with eyemind, and then applied to every reading with plain arithmetic, so reading stays fast. In the browser, hand the library eyemind's `main` yourself, see the [playground](playground/app.ts).
 
@@ -166,8 +167,8 @@ for await (const message of source.expand()) {
 
 `expand()` follows the spec's *Expanding a source into points*, in the shape of the points of a `tss:EmbeddedRDFSource`:
 
-- The first message is the metadata document, without `tss:points`, plus the default property of each field that states no `tss:property` (`ex:value-field tss:property <data.csv#value>`), and, for a value field, that this property is a subproperty of `tss:value`. A property the publisher states keeps the meaning of its own vocabulary: it is not made a subproperty of anything.
-- Every next message holds one row: the source `tss:hasPoint` one point per value of a value field. The point links to its field (`tss:field`), and states the time (the field property of the time field) and its value (the field property of its value field, the decoded value as published), plus the values of the describing fields that describe its field. The values of other meta fields, such as a step or an identifier, are not stated.
+- The first message is the metadata document, without `tss:points`, plus the default property of each describing field that states no `tss:property` (`ex:status-field tss:property <data.csv#status>`).
+- Every next message holds one row: the source `tss:hasPoint` one point per value of a value field. The point states its value field (`tss:field`, always), its time (`tss:time`) and its reading (`tss:value`, the decoded value as published), plus the values of the describing fields that describe its field, with their field properties. The values of other context fields, such as a step or an identifier, are not stated.
 - A point is a blank node, the RDF node of the embedded point, or the IRI made by the `tss:aboutUrl` URI template of its field (`'https://example.org/obs/{time}'`).
 - The last message of an immutable source is its ending: `tss:immutable true` and the stored summaries, which the first message leaves out. A growing source has none, until it is ended while you follow it.
 
@@ -175,13 +176,13 @@ These are the three kinds of messages of the spec's *RDF Message Stream Profile*
 
 It takes `from`, `until`, `follow` and `signal` as `read()` does. To expand rows that you read yourself, use `toRDFMessages(source.read(options))`; the values have to be as published, so a unit conversion throws.
 
-The spec does not map points onto SOSA or SAREF: the TSS vocabulary is aligned with them (`tss:Point` is a `sosa:Observation` and a `saref:Measurement`, `tss:time` a subproperty of `sosa:resultTime`, `tss:value` of `sosa:hasSimpleResult`, and property chains over `tss:field` carry the observed property, sensor, feature of interest and unit), so an OWL 2 RL reasoner derives the observations. Without a reasoner, ask the library to write what it would derive:
+The spec does not map points onto SOSA or SAREF: the TSS vocabulary is aligned with them (`tss:Point` is a `sosa:Observation` and a `saref:Measurement`, `tss:time` a subproperty of `sosa:resultTime`, `tss:value` of `sosa:hasSimpleResult`, and property chains over `tss:field` carry the observed property, sensor, feature of interest and unit), so an OWL 2 RL reasoner derives the observations. Ask for them, and a reasoner derives them while the source is expanded:
 
 ```ts
 source.expand({ align: 'sosa' });              // or 'saref', or ['sosa', 'saref']
 ```
 
-A value is only a result (`sosa:hasSimpleResult`, `saref:hasValue`) when its field property is aligned: a default property, or one the metadata states to be a subproperty of `tss:value`.
+The library writes none of the alignment itself. The reasoner is [rdfjs-inference-engine](https://www.npmjs.com/package/rdfjs-inference-engine) (OWL 2 RL rules for [Eyeling](https://github.com/eyereasoner/eyeling)), with the TSS vocabulary of the specification (`TSS_VOCABULARY`, copied from the spec by `npm run vocabulary`) and the description message of the source as background. Two SHACL shapes, which the reasoner trusts, specialize its rules: the shape of the points of a row message, and the observations asked for. So the background is closed once (about half a second), and then each row takes a few milliseconds, in Node and in the browser. eyemind, which converts the units, does not specialize its OWL 2 RL rules to message shapes yet, so it takes about 80 ms per row here; until it does, the alignment uses rdfjs-inference-engine. `npm install rdfjs-inference-engine` for `align`; in the browser, pass the module and its OWL 2 RL rules: `expand({ align, aligner: { engine, owl2rl } })`, as the [playground](playground/app.ts) does.
 
 ## Writing sources
 
@@ -202,14 +203,14 @@ const source = await Source.create({
   csv: { delimiter: ',', encoding: 'utf-8', header: true },
   timeField: { id: `${ex}fields/time`, columnName: 'time' },
   fields: [{
-    id: `${ex}fields/temperature`,   // a tss:ValueField, unless kind: 'meta'
+    id: `${ex}fields/temperature`,   // a tss:ValueField, unless kind: 'context'
     columnName: 'temp',
     datatype: 'http://www.w3.org/2001/XMLSchema#decimal',
     observedProperty: `${ex}props/airTemperature`,
     unit: 'http://qudt.org/vocab/unit/DEG_C',
     sensor: `${ex}sensors/s1`,
   }, {
-    id: `${ex}fields/status`,        // a tss:MetaField, as it describes another field
+    id: `${ex}fields/status`,        // a tss:ContextField, as it describes another field
     columnName: 'status',
     datatype: 'http://www.w3.org/2001/XMLSchema#string',
     describesField: `${ex}fields/temperature`,
@@ -229,11 +230,11 @@ await source.append([   // a batch: either all rows are added, or none
 await source.close();
 ```
 
-The time field is a `tss:MetaField`. A field with `describesField` is a meta field by default, every other field a value field; set `kind` to choose. Give a field a `property` to state its values with a property of your own vocabulary (`tss:property`); without it, the field gets the default property `<base#columnName>`. For an embedded RDF source, the base is the metadata document: the library writes these properties as relative IRIs (`<#temp>`) in Turtle and TriG, so the log stays right wherever it is published. Without `file`, pass `baseIRI`, or the source IRI without its fragment is used.
+The time field is a `tss:ContextField`. A field with `describesField` is a context field by default, every other field a value field; set `kind` to choose. Give a describing field a `property` to state its values on the points with a property of your own vocabulary (`tss:property`); without it, it gets the default property `<base#columnName>`. Only a describing field takes a `property`: the points of an embedded RDF source state their value field, time and reading with `tss:field` (when there are several value fields), `tss:time` and `tss:value`. For an embedded RDF source, the base of the default property is the metadata document: the library writes these properties as relative IRIs (`<#temp>`) in Turtle and TriG, so the log stays right wherever it is published. Without `file`, pass `baseIRI`, or the source IRI without its fragment is used.
 
 With `file`, the metadata is kept up to date on disk, so followers see every append; without it, call `await source.serialize('text/turtle')` and write the result yourself. The lock is taken on the metadata file (or on the data file when there is no `file`).
 
-Each `append` checks the rows (datatypes, unique increasing times, inside the `from`/`until` window of the source) and then only *adds data at the end*: a CSV row, an Arrow record batch, a message of the log with one point per value. The window is fixed when the source is created, and no summaries are written while it grows. If a row does not conform, nothing is changed and a `ValidationError` is thrown. A CSV source on a time grid with a step of fixed length (not months or years) can be appended to as well: a row's time has to be on the grid, and without a step field the library writes a row of empty values for every step without readings, so that each row stays at the step of its position. An embedded RDF source can only state the values of describing fields, on the points they describe: a value of another meta field, or of a describing field whose value field has no value in the row, is refused.
+Each `append` checks the rows (datatypes, unique increasing times, inside the `from`/`until` window of the source) and then only *adds data at the end*: a CSV row, an Arrow record batch, a message of the log with one point per value. The window is fixed when the source is created, and no summaries are written while it grows. If a row does not conform, nothing is changed and a `ValidationError` is thrown. A CSV source on a time grid with a step of fixed length (not months or years) can be appended to as well: a row's time has to be on the grid, and without a step field the library writes a row of empty values for every step without readings, so that each row stays at the step of its position. An embedded RDF source can only state the values of describing fields, on the points they describe: a value of another context field, or of a describing field whose value field has no value in the row, is refused.
 
 ### Continue writing to an existing source
 
@@ -360,7 +361,7 @@ interface Value {
 }
 ```
 
-A row holds the values of every field but the time and step fields: each value of a value field is one point, the values of meta fields say something about the row or its points. Values are kept as text because the spec preserves exact text: `"2.50"` stays `"2.50"`. Call `toNative()` when you want a JavaScript value.
+A row holds the values of every field but the time and step fields: each value of a value field is one point, the values of context fields give the context of the row or its points. Values are kept as text because the spec preserves exact text: `"2.50"` stays `"2.50"`. Call `toNative()` when you want a JavaScript value.
 
 ### Helpers
 

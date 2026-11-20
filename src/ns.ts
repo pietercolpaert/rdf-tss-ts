@@ -36,4 +36,6 @@ export const isExternalKind = (kind: SourceKind) => EXTERNAL_KINDS.includes(kind
 export const VALUE_FIELD = tss('ValueField');
 /** The RDF Message Stream Profile of RDF Time Series Sources: `<stream> dcterms:conformsTo tss:MessageStreamProfile`. */
 export const MESSAGE_STREAM_PROFILE = tss('MessageStreamProfile');
-export const META_FIELD = tss('MetaField');
+export const CONTEXT_FIELD = tss('ContextField');
+/** The name of `tss:ContextField` in earlier drafts: read as a context field, reported by `validate()`. */
+export const LEGACY_META_FIELD = tss('MetaField');

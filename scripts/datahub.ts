@@ -49,6 +49,9 @@ const LOCAL_UNITS: Record<string, { label: string; symbol: string; turtle: strin
     symbol: '°C',
     turtle: `a qudt:Unit ;
     qudt:hasQuantityKind quantitykind:TemperatureDifference ;
+    qudt:hasDimensionVector qkdv:A0E0L0I0M0H1T0D0 ;
+    qudt:conversionMultiplier 1.0 ;
+    qudt:conversionOffset 0.0 ;
     rdfs:comment "A difference of one degree Celsius is a difference of one kelvin: unlike unit:DEG_C, it has no offset."@en`,
   },
 };
@@ -93,8 +96,14 @@ interface Entry {
   units?: Record<string, string>;
   /** Take the unit of every column from its name or its description. */
   unitsFromDescriptions?: boolean;
-  /** Numeric columns that say something about the row, and are not readings. */
-  meta?: string[];
+  /** Numeric columns that give the context of the row, and are not readings. */
+  context?: string[];
+  /**
+   * Columns that describe the reading of another column of the row (`tss:describesField`), with
+   * the QUDT property that states their value on its point: its standard uncertainty (one
+   * standard deviation), or the lower or upper bound of its error.
+   */
+  describes?: Record<string, { column: string; property: 'standardUncertainty' | 'lowerBound' | 'upperBound' }>;
 }
 
 const PRICES = 'Prices and markets (core datasets on GitHub)';
@@ -154,12 +163,12 @@ const ENTRIES: Entry[] = [
     units: { BUDGET_ON_EDUCATION: 'MegaCCY_USD', GDP: 'MegaCCY_USD', RATIO: 'PERCENT' },
   },
   // climate and environment
-  { repo: 'co2-ppm', path: 'data/co2-mm-mlo.csv', group: CLIMATE, title: 'CO₂ at Mauna Loa, monthly', units: { Average: 'PPM', Interpolated: 'PPM', Trend: 'PPM', 'Number of Days': 'NUM' }, meta: ['Decimal Date'] },
-  { repo: 'co2-ppm', path: 'data/co2-annmean-mlo.csv', group: CLIMATE, title: 'CO₂ at Mauna Loa, yearly', units: { Mean: 'PPM', Uncertainty: 'PPM' } },
-  { repo: 'co2-ppm', path: 'data/co2-gr-mlo.csv', group: CLIMATE, title: 'CO₂ increase at Mauna Loa, yearly', units: { 'Annual Increase': 'PPM', Uncertainty: 'PPM' } },
-  { repo: 'co2-ppm', path: 'data/co2-mm-gl.csv', group: CLIMATE, title: 'CO₂, global, monthly', units: { Average: 'PPM', Trend: 'PPM' }, meta: ['Decimal Date'] },
-  { repo: 'co2-ppm', path: 'data/co2-annmean-gl.csv', group: CLIMATE, title: 'CO₂, global, yearly', units: { Mean: 'PPM', Uncertainty: 'PPM' } },
-  { repo: 'co2-ppm', path: 'data/co2-gr-gl.csv', group: CLIMATE, title: 'CO₂ increase, global, yearly', units: { 'Annual Increase': 'PPM', Uncertainty: 'PPM' } },
+  { repo: 'co2-ppm', path: 'data/co2-mm-mlo.csv', group: CLIMATE, title: 'CO₂ at Mauna Loa, monthly', units: { Average: 'PPM', Interpolated: 'PPM', Trend: 'PPM', 'Number of Days': 'NUM' }, context: ['Decimal Date'] },
+  { repo: 'co2-ppm', path: 'data/co2-annmean-mlo.csv', group: CLIMATE, title: 'CO₂ at Mauna Loa, yearly', units: { Mean: 'PPM', Uncertainty: 'PPM' }, describes: { Uncertainty: { column: 'Mean', property: 'standardUncertainty' } } },
+  { repo: 'co2-ppm', path: 'data/co2-gr-mlo.csv', group: CLIMATE, title: 'CO₂ increase at Mauna Loa, yearly', units: { 'Annual Increase': 'PPM', Uncertainty: 'PPM' }, describes: { Uncertainty: { column: 'Annual Increase', property: 'standardUncertainty' } } },
+  { repo: 'co2-ppm', path: 'data/co2-mm-gl.csv', group: CLIMATE, title: 'CO₂, global, monthly', units: { Average: 'PPM', Trend: 'PPM' }, context: ['Decimal Date'] },
+  { repo: 'co2-ppm', path: 'data/co2-annmean-gl.csv', group: CLIMATE, title: 'CO₂, global, yearly', units: { Mean: 'PPM', Uncertainty: 'PPM' }, describes: { Uncertainty: { column: 'Mean', property: 'standardUncertainty' } } },
+  { repo: 'co2-ppm', path: 'data/co2-gr-gl.csv', group: CLIMATE, title: 'CO₂ increase, global, yearly', units: { 'Annual Increase': 'PPM', Uncertainty: 'PPM' }, describes: { Uncertainty: { column: 'Annual Increase', property: 'standardUncertainty' } } },
   {
     repo: 'co2-fossil-global',
     path: 'data/global.csv',
@@ -181,8 +190,8 @@ const ENTRIES: Entry[] = [
     title: 'Global temperature anomalies (GISTEMP), 5-year means',
     units: each(['Land', 'Land and Ocean', 'N Hem', 'S Hem', 'Band 1', 'Band 2', 'Band 3'], 'DEG_C-DIFF'),
   },
-  { repo: 'sea-level-rise', path: 'data/epa-sea-level.csv', group: CLIMATE, title: 'Sea level (EPA), yearly since 1880', units: each(['CSIRO Adjusted Sea Level', 'Lower Error Bound', 'Upper Error Bound', 'NOAA Adjusted Sea Level'], 'IN') },
-  { repo: 'sea-level-rise', path: 'data/CSIRO_Recons_gmsl_yr_2019.csv', group: CLIMATE, title: 'Sea level (CSIRO reconstruction), yearly since 1880', units: { GMSL: 'MilliM', 'GMSL uncertainty': 'MilliM' } },
+  { repo: 'sea-level-rise', path: 'data/epa-sea-level.csv', group: CLIMATE, title: 'Sea level (EPA), yearly since 1880', units: each(['CSIRO Adjusted Sea Level', 'Lower Error Bound', 'Upper Error Bound', 'NOAA Adjusted Sea Level'], 'IN'), describes: { 'Lower Error Bound': { column: 'CSIRO Adjusted Sea Level', property: 'lowerBound' }, 'Upper Error Bound': { column: 'CSIRO Adjusted Sea Level', property: 'upperBound' } } },
+  { repo: 'sea-level-rise', path: 'data/CSIRO_Recons_gmsl_yr_2019.csv', group: CLIMATE, title: 'Sea level (CSIRO reconstruction), yearly since 1880', units: { GMSL: 'MilliM', 'GMSL uncertainty': 'MilliM' }, describes: { 'GMSL uncertainty': { column: 'GMSL', property: 'standardUncertainty' } } },
   { repo: 'sea-level-rise', path: 'data/CSIRO_Alt_yearly.csv', group: CLIMATE, title: 'Sea level (CSIRO, satellite altimetry), yearly', units: { 'GMSL (yearly)': 'MilliM' } },
   { repo: 'glacier-mass-balance', path: 'data/glaciers.csv', group: CLIMATE, title: 'Mass balance of reference glaciers', units: { 'Number of observations': 'NUM' } },
   { repo: 'london-air-quality', path: 'data/monthly-averages.csv', group: CLIMATE, title: 'Air quality in London, monthly', unitsFromDescriptions: true },
@@ -309,12 +318,17 @@ async function describe(entry: Entry): Promise<{ turtle: string; rows: number; d
   const definitions: string[] = [];
   const usedUnits = new Set<string>();
   const ids = new Set(['time', 'date']);
-  const idOf = (column: string) => {
+  const idByColumn = new Map<string, string>();
+  for (const [index, column] of header.entries()) {
+    if (index === at) continue;
     let id = slug(column);
     while (ids.has(id)) id += '-';
     ids.add(id);
-    return id;
-  };
+    idByColumn.set(column, id);
+  }
+  for (const [column, d] of Object.entries(entry.describes ?? {})) {
+    if (!idByColumn.has(column) || !idByColumn.has(d.column)) throw new Error(`${entry.path}: no column ${idByColumn.has(column) ? d.column : column} for describes`);
+  }
   for (const [index, column] of header.entries()) {
     if (index === at) continue;
     const values = rows.map((r) => r[index] ?? '');
@@ -324,21 +338,23 @@ async function describe(entry: Entry): Promise<{ turtle: string; rows: number; d
       if (new Set(values).size > 1) throw new Error(`${entry.path}: ${column} is text with several values: the file holds several series`);
       continue;
     }
-    const id = idOf(column);
+    const id = idByColumn.get(column)!;
     fields.push(`<#${id}>`);
-    const meta = entry.meta?.includes(column);
+    const describes = entry.describes?.[column];
+    const context = describes !== undefined || entry.context?.includes(column);
     const unit = entry.unitsFromDescriptions ? unitFromDescription(`${column} ${description ?? ''}`) : entry.units?.[column];
     if (unit) usedUnits.add(unit);
-    const lines = [
-      `<#${id}>`,
-      `    a ${meta ? 'tss:MetaField' : 'tss:ValueField'} ;`,
-      `    rdfs:label ${literal(column)}@en ;`,
-      ...(description ? [`    rdfs:comment ${literal(description)}@en ;`] : []),
-      `    tss:columnName ${literal(column)} ;`,
-      `    tss:datatype ${datatype}${unit ? ' ;' : ' .'}`,
-      ...(unit ? [`    tss:unit ${unit in LOCAL_UNITS ? `<#${unit}>` : `unit:${unit}`} .`] : []),
+    const statements = [
+      `a ${context ? 'tss:ContextField' : 'tss:ValueField'}`,
+      `rdfs:label ${literal(column)}@en`,
+      ...(description ? [`rdfs:comment ${literal(description)}@en`] : []),
+      `tss:columnName ${literal(column)}`,
+      `tss:datatype ${datatype}`,
+      // the value of a describing field is stated on the point of the reading it describes
+      ...(describes ? [`tss:describesField <#${idByColumn.get(describes.column)}>`, `tss:property qudt:${describes.property}`] : []),
+      ...(unit ? [`tss:unit ${unit in LOCAL_UNITS ? `<#${unit}>` : `unit:${unit}`}`] : []),
     ];
-    definitions.push(lines.join('\n'));
+    definitions.push(`<#${id}>\n${statements.map((t) => `    ${t}`).join(' ;\n')} .`);
   }
   for (const column of Object.keys(entry.units ?? {})) {
     if (!header.includes(column)) throw new Error(`${entry.path}: no column ${column} to give a unit`);
@@ -368,6 +384,7 @@ async function describe(entry: Entry): Promise<{ turtle: string; rows: number; d
 @prefix unit: <http://qudt.org/vocab/unit/> .
 @prefix prefix: <http://qudt.org/vocab/prefix/> .
 @prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+@prefix qkdv: <http://qudt.org/vocab/dimensionvector/> .
 
 # ${entry.path} of the data package ${dp.title ? `"${dp.title}" ` : ''}on GitHub (https://github.com/datasets/${entry.repo}).
 # This document only describes the CSV file: the rows are read from where the data package
@@ -392,12 +409,12 @@ ${license ? `    dcterms:license <${license}> ;\n` : ''}    rdfs:seeAlso <${pack
 
 # The time field: computed from the position of the row, so it has no column.
 <#time>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Time"@en ;
     tss:datatype xsd:dateTime .
 
 <#date>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label ${literal(`${timeColumn} as written in the file`)}@en ;
     rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
     tss:columnName ${literal(timeColumn)} ;

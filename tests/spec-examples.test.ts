@@ -40,14 +40,13 @@ ex:source
         ex:value-field .
 
 ex:time-field
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Observation time"@en ;
     tss:datatype xsd:dateTime .
 
 ex:value-field
     a tss:ValueField ;
     rdfs:label "Electrical conductivity"@en ;
-    tss:property ex:conductivity ;
     tss:datatype xsd:double ;
     tss:minimum "0"^^xsd:double ;
     tss:maximum "10000"^^xsd:double ;
@@ -56,32 +55,30 @@ ex:value-field
     tss:sensor ex:sensor-1 ;
     tss:featureOfInterest ex:feature-1 .
 
-ex:conductivity
-    rdfs:subPropertyOf tss:value .
 MESSAGE
 ex:source tss:hasPoint [
     tss:time "2024-05-12T08:00:00Z"^^xsd:dateTime ;
-    ex:conductivity "4810.5"^^xsd:double
+    tss:value "4810.5"^^xsd:double
 ] .
 MESSAGE
 ex:source tss:hasPoint [
     tss:time "2024-05-12T08:15:00Z"^^xsd:dateTime ;
-    ex:conductivity "4722.4"^^xsd:double
+    tss:value "4722.4"^^xsd:double
 ] .
 MESSAGE
 ex:source tss:hasPoint [
     tss:time "2024-05-12T08:30:00Z"^^xsd:dateTime ;
-    ex:conductivity "4751.9"^^xsd:double
+    tss:value "4751.9"^^xsd:double
 ] .
 MESSAGE
 ex:source tss:hasPoint [
     tss:time "2024-05-12T09:15:00Z"^^xsd:dateTime ;
-    ex:conductivity "4719.3"^^xsd:double
+    tss:value "4719.3"^^xsd:double
 ] .
 MESSAGE
 ex:source tss:hasPoint [
     tss:time "2024-05-12T09:45:00Z"^^xsd:dateTime ;
-    ex:conductivity "4783.6"^^xsd:double
+    tss:value "4783.6"^^xsd:double
 ] .
 MESSAGE
 `;
@@ -117,12 +114,11 @@ ex:weather-source
         ex:humidity-field .
 
 ex:weather-time-field
-    a tss:MetaField ;
+    a tss:ContextField ;
     tss:datatype xsd:dateTime .
 
 ex:temperature-field
     a tss:ValueField ;
-    tss:property ex:temperature ;
     tss:datatype xsd:double ;
     tss:observedProperty quantitykind:Temperature ;
     tss:unit unit:DEG_C ;
@@ -131,7 +127,6 @@ ex:temperature-field
 
 ex:humidity-field
     a tss:ValueField ;
-    tss:property ex:humidity ;
     tss:datatype xsd:double ;
     tss:minimum "0"^^xsd:double ;
     tss:maximum "100"^^xsd:double ;
@@ -141,24 +136,29 @@ ex:humidity-field
     tss:featureOfInterest ex:outside-air .
 
 ex:weather-source tss:hasPoint [
+    tss:field ex:temperature-field ;
     tss:time "2024-05-12T08:00:00Z"^^xsd:dateTime ;
-    ex:temperature "18.2"^^xsd:double
+    tss:value "18.2"^^xsd:double
 ], [
+    tss:field ex:humidity-field ;
     tss:time "2024-05-12T08:00:00Z"^^xsd:dateTime ;
-    ex:humidity "61.0"^^xsd:double
+    tss:value "61.0"^^xsd:double
 ] .
 
 ex:weather-source tss:hasPoint [
+    tss:field ex:temperature-field ;
     tss:time "2024-05-12T08:10:00Z"^^xsd:dateTime ;
-    ex:temperature "18.4"^^xsd:double
+    tss:value "18.4"^^xsd:double
 ] .
 
 ex:weather-source tss:hasPoint [
+    tss:field ex:temperature-field ;
     tss:time "2024-05-12T08:20:00Z"^^xsd:dateTime ;
-    ex:temperature "18.9"^^xsd:double
+    tss:value "18.9"^^xsd:double
 ], [
+    tss:field ex:humidity-field ;
     tss:time "2024-05-12T08:20:00Z"^^xsd:dateTime ;
-    ex:humidity "59.5"^^xsd:double
+    tss:value "59.5"^^xsd:double
 ] .
 `;
 
@@ -175,31 +175,30 @@ ex:two-series-source
         ex:two-series-status-field .
 
 ex:two-series-time-field
-    a tss:MetaField ;
+    a tss:ContextField ;
     tss:datatype xsd:dateTime .
 
 ex:two-series-value-field
     a tss:ValueField ;
-    tss:property ex:conductivity ;
     tss:datatype xsd:double ;
     tss:observedProperty quantitykind:ElectricConductivity ;
     tss:unit unit:MicroS-PER-CentiM .
 
 ex:two-series-status-field
-    a tss:MetaField ;
+    a tss:ContextField ;
     tss:property ex:status ;
     tss:datatype xsd:string ;
     tss:describesField ex:two-series-value-field .
 
 ex:two-series-source tss:hasPoint [
     tss:time "2024-05-12T08:00:00Z"^^xsd:dateTime ;
-    ex:conductivity "4810.5"^^xsd:double ;
+    tss:value "4810.5"^^xsd:double ;
     ex:status "ok"^^xsd:string
 ] .
 
 ex:two-series-source tss:hasPoint [
     tss:time "2024-05-12T08:15:00Z"^^xsd:dateTime ;
-    ex:conductivity "4722.4"^^xsd:double ;
+    tss:value "4722.4"^^xsd:double ;
     ex:status "estimated"^^xsd:string
 ] .
 `;
@@ -216,7 +215,7 @@ ex:json-source
     tss:points """${rows}"""^^rdf:JSON .
 
 ex:json-time-field
-    a tss:MetaField ;
+    a tss:ContextField ;
     tss:columnName "time" ;
     tss:datatype xsd:dateTime .
 
@@ -239,7 +238,7 @@ ex:position-source
         ex:position-value-field .
 
 ex:position-time-field
-    a tss:MetaField ;
+    a tss:ContextField ;
     tss:datatype xsd:dateTime .
 
 ex:position-value-field
@@ -265,7 +264,7 @@ ex:csv-source
         ex:csv-value-field .
 
 ex:csv-time-field
-    a tss:MetaField ;
+    a tss:ContextField ;
     tss:columnName "time" ;
     tss:datatype xsd:dateTime .
 
@@ -308,14 +307,14 @@ describe('examples of the specification', () => {
     await cleanup();
   });
 
-  it('the embedded example: an RDF Message Log of points, read in time order with the field property', async () => {
+  it('the embedded example: an RDF Message Log of points, read in time order, with tss:time and tss:value', async () => {
     const source = await open('embedded.ttl', EMBEDDED_EXAMPLE);
     expect(source.id).toBe(`${EX}source`);
     expect(source.metadata.immutable).toBe(false);
     expect(source.metadata.labels).toEqual(['Conductivity readings']);
     expect(source.metadata.fields.map((f) => [f.localName, f.kind, f.property, f.defaultProperty])).toEqual([
-      ['time-field', 'meta', `${TSS}time`, true],
-      ['value-field', 'value', `${EX}conductivity`, false],
+      ['time-field', 'context', undefined, true],
+      ['value-field', 'value', undefined, true],
     ]);
     const rows = await all(source.read());
     expect(rows.map((r) => r.time)).toEqual([
@@ -382,20 +381,19 @@ describe('examples of the specification', () => {
     expect((await date.validate()).results.map((r) => r.rule)).toContain('time-datatype');
   });
 
-  it('the expanded point: each point links to its field, and the time field gets its default property', async () => {
+  it('the expanded point: every point links to its field, also when the source has one value field', async () => {
     const source = await open('expanded.ttl', EMBEDDED_EXAMPLE);
     const messages = await all(source.expand());
     expect(messages).toHaveLength(6);
     const [head, first] = await ntriples(messages.slice(0, 2));
-    expect(head).toContain(`<${EX}time-field> <${TSS}property> <${TSS}time>`);
-    // ex:conductivity is the publisher's own property: the expansion does not align it, the metadata does
-    expect(head.match(/<https:\/\/example.org\/ex#value-field> <https:\/\/w3id.org\/tss#property>/g)).toHaveLength(1);
-    expect(head).toContain(`<${EX}conductivity> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <${TSS}value>`);
+    // no default properties for the time field and the value fields any more
+    expect(head).not.toContain(`<${TSS}property>`);
+    expect(head).not.toContain('subPropertyOf');
     expect(head).not.toContain(`<${TSS}hasPoint>`);
     expect(first).toContain(`<${EX}source> <${TSS}hasPoint> _:`);
     expect(first).toContain(`<${TSS}field> <${EX}value-field>`);
     expect(first).toContain(`<${TSS}time> "2024-05-12T08:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime>`);
-    expect(first).toContain(`<${EX}conductivity> "4810.5"^^<http://www.w3.org/2001/XMLSchema#double>`);
+    expect(first).toContain(`<${TSS}value> "4810.5"^^<http://www.w3.org/2001/XMLSchema#double>`);
     expect(first).not.toContain('sosa');
   });
 
@@ -414,11 +412,31 @@ describe('examples of the specification', () => {
     expect(first).toContain('<https://saref.etsi.org/core/isMeasuredIn> <http://qudt.org/vocab/unit/MicroS-PER-CentiM>');
   });
 
-  it('a property the publisher does not align is not a result', async () => {
-    const source = await open('unaligned.ttl', EMBEDDED_EXAMPLE.replace('ex:conductivity\n    rdfs:subPropertyOf tss:value .\n', ''));
-    const [, first] = await ntriples(await all(source.expand({ align: 'sosa' })));
-    expect(first).toContain('<http://www.w3.org/ns/sosa/resultTime>');
-    expect(first).not.toContain('hasSimpleResult');
+  it('a point states its value field, unless the source has one: the multi-sensor points need tss:field', async () => {
+    const source = await open('no-field.ttl', MULTI_SENSOR.replaceAll('    tss:field ex:humidity-field ;\n', ''));
+    expect((await source.validate()).results.map((r) => r.rule)).toContain('point-field');
+    await expect(all(source.read())).rejects.toThrow(/states no tss:field, and the source has several value fields/);
+  });
+
+  it('the property of a describing field is not a TSS term, and only a describing field states one', async () => {
+    const tssTerm = await open('tss-term.ttl', DESCRIBING.replace('tss:property ex:status', 'tss:property tss:value'));
+    expect((await tssTerm.validate()).results.map((r) => r.message)).toContain('the field property is not rdf:type or a term of the TSS vocabulary, such as https://w3id.org/tss#value');
+    const onValue = await open('value-property.ttl', DESCRIBING.replace('ex:two-series-value-field\n    a tss:ValueField ;\n', 'ex:two-series-value-field\n    a tss:ValueField ;\n    tss:property ex:conductivity ;\n'));
+    expect((await onValue.validate()).results.map((r) => r.rule)).toEqual(['property']);
+    // the default property of a describing field of an embedded RDF source needs its column name
+    const noName = await open('no-name.ttl', DESCRIBING.replace('    tss:property ex:status ;\n', ''));
+    expect((await noName.validate()).results.map((r) => r.rule)).toContain('column-name');
+  });
+
+  it('tss:MetaField, the name of earlier drafts, is read as tss:ContextField and reported', async () => {
+    const source = await open('meta-field.ttl', DESCRIBING.replaceAll('tss:ContextField', 'tss:MetaField'));
+    expect(source.metadata.fields.map((f) => f.kind)).toEqual(['context', 'value', 'context']);
+    expect(values(await all(source.read()), 'two-series-status-field')).toEqual(['ok', 'estimated']);
+    const report = await source.validate();
+    expect(report.results.map((r) => [r.rule, r.message])).toEqual([
+      ['removed-term', 'tss:MetaField was renamed to tss:ContextField'],
+      ['removed-term', 'tss:MetaField was renamed to tss:ContextField'],
+    ]);
   });
 
   it('the multi-sensor example: three rows of five points, one row without humidity', async () => {
@@ -434,16 +452,24 @@ describe('examples of the specification', () => {
 
   it('the describing field: the status is read with its row, and stated on the point of the value', async () => {
     const source = await open('describing.ttl', DESCRIBING);
-    expect(source.metadata.fields.map((f) => f.kind)).toEqual(['meta', 'value', 'meta']);
+    expect(source.metadata.fields.map((f) => f.kind)).toEqual(['context', 'value', 'context']);
     const rows = await all(source.read());
     expect(values(rows, 'two-series-status-field')).toEqual(['ok', 'estimated']);
     const [, first] = await ntriples(await all(source.expand()));
     expect(first).toMatch(/_:(\S+) <https:\/\/example.org\/ex#status> "ok"/);
     expect(first.match(/<https:\/\/w3id.org\/tss#hasPoint>/g)).toHaveLength(1);
+    expect(first).toContain(`<${TSS}value> "4810.5"`);
     expect((await source.validate()).results).toEqual([]);
+    // the default property of a describing field is made from its column name
+    const byName = await open('describing-default.ttl', DESCRIBING.replace('tss:property ex:status ;', 'tss:columnName "status" ;').replaceAll('ex:status "', '<#status> "'));
+    expect(byName.resolveField('two-series-status-field').property).toBe(`${server.url}/describing-default.ttl#status`);
+    expect(values(await all(byName.read()), 'two-series-status-field')).toEqual(['ok', 'estimated']);
+    const [byNameHead] = await ntriples(await all(byName.expand()));
+    expect(byNameHead).toContain(`<${EX}two-series-status-field> <${TSS}property> <${server.url}/describing-default.ttl#status>`);
+    expect((await byName.validate()).results).toEqual([]);
   });
 
-  it('the JSON rows: the default field property is made from the metadata document and its column name', async () => {
+  it('the JSON rows: expanded, each row is one point, which states its reading with tss:value', async () => {
     const source = await open(
       'json.ttl',
       JSON_ROWS(`[
@@ -454,14 +480,13 @@ describe('examples of the specification', () => {
         { "time": "2024-05-12T09:45:00Z", "value": "4783.6" }
       ]`),
     );
-    const property = `${server.url}/json.ttl#value`;
-    expect(source.resolveField('json-value-field').property).toBe(property);
+    expect(source.resolveField('json-value-field').property).toBeUndefined();
     expect(values(await all(source.read()), 'json-value-field')).toEqual(['4810.5', '4722.4', '4751.9', '4719.3', '4783.6']);
     const [head, first] = await ntriples(await all(source.expand()));
     expect(head).not.toContain(`<${TSS}points>`);
-    expect(head).toContain(`<${EX}json-value-field> <${TSS}property> <${property}>`);
-    expect(head).toContain(`<${property}> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <${TSS}value>`);
-    expect(first).toContain(`<${property}> "4810.5"^^<http://www.w3.org/2001/XMLSchema#double>`);
+    expect(head).not.toContain(`<${TSS}property>`);
+    expect(first).toContain(`<${TSS}field> <${EX}json-value-field>`);
+    expect(first).toContain(`<${TSS}value> "4810.5"^^<http://www.w3.org/2001/XMLSchema#double>`);
     expect((await source.validate()).results).toEqual([]);
   });
 
@@ -478,19 +503,16 @@ describe('examples of the specification', () => {
     expect(values(await all(source.read()), 'json-value-field')).toEqual(['4810.5', '4751.9', undefined, undefined]);
   });
 
-  it('the CSV example and its expansion, with the data file as base of the default property', async () => {
+  it('the CSV example and its expansion', async () => {
     const source = await open('csv.ttl', CSV_EXAMPLE);
     const rows = await all(source.read());
     expect(rows.map((r) => r.time)).toEqual(['2024-05-01T00:00:00Z', '2024-05-01T00:15:00Z', '2024-05-01T00:30:00Z']);
     expect(values(rows, 'csv-value-field')).toEqual(['12.5', undefined, '12.7']);
-    const property = `${server.url}/data.csv#value`;
     const [head, first, second] = await ntriples(await all(source.expand()));
-    expect(head).toContain(`<${EX}csv-time-field> <${TSS}property> <${TSS}time>`);
-    expect(head).toContain(`<${EX}csv-value-field> <${TSS}property> <${property}>`);
-    expect(head).toContain(`<${property}> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <${TSS}value>`);
+    expect(head).not.toContain(`<${TSS}property>`);
     expect(first).toContain(`<${EX}csv-source> <${TSS}hasPoint>`);
     expect(first).toContain(`<${TSS}field> <${EX}csv-value-field>`);
-    expect(first).toContain(`<${property}> "12.5"^^<http://www.w3.org/2001/XMLSchema#double>`);
+    expect(first).toContain(`<${TSS}value> "12.5"^^<http://www.w3.org/2001/XMLSchema#double>`);
     // the empty cell is no point
     expect(second).toContain('"12.7"');
     expect((await source.validate()).results).toEqual([]);
@@ -513,7 +535,7 @@ describe('examples of the specification', () => {
       external(
         'CSVSource',
         `    tss:dataFile <data-no-header.csv> ; tss:header false ; tss:timeField ex:t ; tss:hasField ex:t, ex:v .
-ex:t a tss:MetaField ; tss:columnName "time" ; tss:columnIndex 0 ; tss:datatype xsd:dateTime .
+ex:t a tss:ContextField ; tss:columnName "time" ; tss:columnIndex 0 ; tss:datatype xsd:dateTime .
 ex:v a tss:ValueField ; tss:columnName "value" ; tss:columnIndex 1 ; tss:datatype xsd:double .`,
       ),
     );
@@ -528,8 +550,8 @@ ex:v a tss:ValueField ; tss:columnName "value" ; tss:columnIndex 1 ; tss:datatyp
         `    tss:from "2024-05-12T08:00:00Z"^^xsd:dateTime ; tss:until "2024-05-13T00:00:00Z"^^xsd:dateTime ;
     tss:dataFile <grid.csv> ; tss:timeBase "2024-05-12T08:00:00Z"^^xsd:dateTime ; tss:timeStep "PT15M"^^xsd:duration ;
     tss:timeField ex:t ; tss:stepField ex:s ; tss:key ex:t ; tss:hasField ex:t, ex:s, ex:v .
-ex:t a tss:MetaField ; tss:datatype xsd:dateTime .
-ex:s a tss:MetaField ; tss:columnName "step" ; tss:datatype xsd:integer .
+ex:t a tss:ContextField ; tss:datatype xsd:dateTime .
+ex:s a tss:ContextField ; tss:columnName "step" ; tss:datatype xsd:integer .
 ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double .`,
       ),
     );
@@ -542,7 +564,7 @@ ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double .`,
       '2024-05-12T09:45:00Z',
     ]);
     expect([...rows[0].fields()].map(([id]) => id)).toEqual(['https://example.org/ex#v']);
-    // the step is a meta field: it is not stated on the points
+    // the step is a context field: it is not stated on the points
     const [, first] = await ntriples(await all(source.expand()));
     expect(first).not.toContain('#step');
     expect((await source.validate()).results).toEqual([]);
@@ -578,7 +600,7 @@ ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double .`,
       external(
         'CSVSource',
         `    tss:dataFile <delta.csv> ; tss:timeField ex:t ; tss:key ex:t ; tss:hasField ex:t, ex:v .
-ex:t a tss:MetaField ; tss:columnName "time" ; tss:datatype xsd:dateTime .
+ex:t a tss:ContextField ; tss:columnName "time" ; tss:datatype xsd:dateTime .
 ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double ;
     tss:valueEncoding tss:DeltaFromBaseline ; tss:baseline "4750"^^xsd:double .`,
       ),
@@ -596,7 +618,7 @@ ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double ;
         'CSVSource',
         `    tss:from "2024-05-01T00:10:00Z"^^xsd:dateTime ; tss:until "2024-05-01T00:30:00Z"^^xsd:dateTime ;
     tss:dataFile <data.csv> ; tss:delimiter ";" ; tss:timeField ex:t ; tss:hasField ex:t, ex:v .
-ex:t a tss:MetaField ; tss:columnName "time" ; tss:datatype xsd:dateTime .
+ex:t a tss:ContextField ; tss:columnName "time" ; tss:datatype xsd:dateTime .
 ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double .`,
       ),
     );
@@ -607,7 +629,7 @@ ex:v a tss:ValueField ; tss:columnName "value" ; tss:datatype xsd:double .`,
     const turtle = external(
       'CSVSource',
       `    tss:dataFile <file:///etc/hostname> ; tss:timeField ex:t ; tss:hasField ex:t .
-ex:t a tss:MetaField ; tss:columnName "time" ; tss:datatype xsd:dateTime .`,
+ex:t a tss:ContextField ; tss:columnName "time" ; tss:datatype xsd:dateTime .`,
     );
     await writeFile(join(dir, 'local.ttl'), turtle);
     const source = await Source.fetch(`${server.url}/local.ttl`);
@@ -632,13 +654,13 @@ ex:s a tss:EmbeddedRDFSource ; tss:mutable true ; tss:committedUntil "2024-05-12
   tss:until "2024-05-12T09:00:00Z"^^xsd:dateTime ; tss:dataFile <x.csv> ; tss:snippetDescription [] .
 ex:t a tss:ValueField ; tss:datatype xsd:dateTime .
 ex:v a tss:ValueField ; tss:property ex:v-value ; tss:datatype xsd:double .
-ex:w a tss:Field ; tss:property ex:w-value ; tss:datatype xsd:double ; tss:aboutUrl "w/{t}" .
+ex:w a tss:Field ; tss:datatype xsd:double ; tss:aboutUrl "w/{t}" .
 ex:q a tss:MetaField ; tss:property tss:value ; tss:datatype xsd:string ; tss:sensor ex:sensor ; tss:describesField ex:nothing .
-ex:s tss:hasPoint [ tss:time "2024-05-12T08:00:00Z"^^xsd:dateTime ; ex:v-value "twelve"^^xsd:double ] .
-ex:s tss:hasPoint [ tss:time "2024-05-12T08:00:00Z"^^xsd:dateTime ; ex:v-value "12"^^xsd:double ] .
-ex:s tss:hasPoint [ tss:time "2024-05-12T08:10:00Z"^^xsd:dateTime ; ex:v-value "1"^^xsd:double ; ex:w-value "2"^^xsd:double ] .
-ex:s tss:hasPoint [ tss:time "2024-05-12T10:00:00Z"^^xsd:dateTime ; ex:v-value "1"^^xsd:integer ] .
-ex:s tss:hasPoint [ tss:time "2024-05-12T08:20:00Z"^^xsd:dateTime ; ex:v "3"^^xsd:double ] .`,
+ex:s tss:hasPoint [ tss:field ex:v ; tss:time "2024-05-12T08:00:00Z"^^xsd:dateTime ; tss:value "twelve"^^xsd:double ] .
+ex:s tss:hasPoint [ tss:field ex:v ; tss:time "2024-05-12T08:00:00Z"^^xsd:dateTime ; tss:value "12"^^xsd:double ] .
+ex:s tss:hasPoint [ tss:field ex:w ; tss:time "2024-05-12T08:10:00Z"^^xsd:dateTime ; tss:value "1"^^xsd:double ] .
+ex:s tss:hasPoint [ tss:field ex:v ; tss:time "2024-05-12T10:00:00Z"^^xsd:dateTime ; tss:value "1"^^xsd:integer ] .
+ex:s tss:hasPoint [ tss:field ex:v ; tss:time "2024-05-12T08:20:00Z"^^xsd:dateTime ; ex:v "3"^^xsd:double ] .`,
       ),
     );
     const report = await source.validate();
@@ -652,7 +674,7 @@ ex:s tss:hasPoint [ tss:time "2024-05-12T08:20:00Z"^^xsd:dateTime ; ex:v "3"^^xs
         'window',
         'value-datatype',
         'field-kind',
-        'meta-field',
+        'context-field',
         'property',
         'describes-field',
         'about-url',

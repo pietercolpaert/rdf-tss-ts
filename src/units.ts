@@ -1,4 +1,6 @@
-import { Parser } from 'n3';
+import { Parser, Writer } from 'n3';
+import type { Dataset, Quad } from './rdf.js';
+import { namedNode } from './rdf.js';
 import { UnitConversionError } from './errors.js';
 import { roundNumber } from './lexical.js';
 import { QUDT } from './ns.js';
@@ -9,14 +11,49 @@ export interface UnitConversion {
   /** The unit the converted numbers are in. */
   unit: string;
   convert(value: number): number;
+  /**
+   * Converts a difference of two values, such as a standard uncertainty: with the scale of the
+   * conversion, but without its offset (0.5 °C more is 0.5 K more, not 273.65 K).
+   */
+  convertDifference?(value: number): number;
+}
+
+export interface UnitConversionOptions {
+  /**
+   * RDF (Turtle or N-Triples) that defines units the catalog does not have, such as the
+   * metadata's own `qudt:DerivedUnit` made of QUDT units with `qudt:hasFactorUnit`, or a unit
+   * with `qudt:conversionMultiplier` and `qudt:hasDimensionVector`.
+   */
+  definitions?: string;
 }
 
 export interface UnitConverter {
   /**
-   * The conversion from the unit `from` (a QUDT unit IRI) to `to`: the QUDT normalized
-   * (SI) unit when `to` is `'qudt'`, or else a unit IRI.
+   * The conversion from the unit `from` (a QUDT unit IRI, or a unit `definitions` defines) to
+   * `to`: the QUDT normalized (SI) unit when `to` is `'qudt'`, or else a unit IRI.
    */
-  conversion(from: string, to: 'qudt' | string): Promise<UnitConversion>;
+  conversion(from: string, to: 'qudt' | string, options?: UnitConversionOptions): Promise<UnitConversion>;
+}
+
+/**
+ * The description of a unit in a document, as N-Triples: its statements and those of the nodes
+ * it is made of that the document describes too (factor units, the unit it scales), for a unit
+ * the QUDT catalog does not have. Empty for a unit the document does not describe.
+ */
+export function unitDefinitions(ds: Dataset, unit: string): string {
+  const quads: Quad[] = [];
+  const seen = new Set<string>();
+  const visit = (term: Quad['subject'] | Quad['object']) => {
+    const key = `${term.termType}:${term.value}`;
+    if (seen.has(key) || (term.termType !== 'NamedNode' && term.termType !== 'BlankNode')) return;
+    seen.add(key);
+    for (const q of ds.match(term as Quad['subject'], null, null, null)) {
+      quads.push(q);
+      if (q.predicate.value.startsWith(QUDT)) visit(q.object);
+    }
+  };
+  visit(namedNode(unit));
+  return quads.length ? new Writer({ format: 'N-Triples' }).quadsToString(quads) : '';
 }
 
 /** The entry point of the eyemind command line, which can also be called in-process. */
@@ -88,20 +125,21 @@ export class EyemindUnitConverter implements UnitConverter {
     return run;
   }
 
-  private affine(unit: string): Promise<Affine> {
-    let found = this.cache.get(unit);
+  private affine(unit: string, definitions = ''): Promise<Affine> {
+    const key = `${unit}\n${definitions}`;
+    let found = this.cache.get(key);
     if (!found) {
-      found = this.serial(() => this.probe(unit));
-      this.cache.set(unit, found);
-      found.catch(() => this.cache.delete(unit));
+      found = this.serial(() => this.probe(unit, definitions));
+      this.cache.set(key, found);
+      found.catch(() => this.cache.delete(key));
     }
     return found;
   }
 
-  private async probe(unit: string): Promise<Affine> {
+  private async probe(unit: string, definitions: string): Promise<Affine> {
     this.main ??= await loadEyemindMain();
     const quantity = (n: number, value: number) => `p:x${n} [ a qudt:QuantityValue ; qudt:numericValue ${value} ; qudt:unit <${unit}> ] .`;
-    const input = `@prefix qudt: <${QUDT}> .\n@prefix p: <${PROBE}> .\n${PROBE_VALUES.map((value, n) => `p:s ${quantity(n, value)}`).join('\n')}\n`;
+    const input = `@prefix qudt: <${QUDT}> .\n@prefix p: <${PROBE}> .\n${definitions}\n${PROBE_VALUES.map((value, n) => `p:s ${quantity(n, value)}`).join('\n')}\n`;
     let out = '';
     let err = '';
     const code = await this.main(['--qudt', '--to', 'turtle', 'probe.ttl'], {
@@ -124,7 +162,7 @@ export class EyemindUnitConverter implements UnitConverter {
     }
     const results = PROBE_VALUES.map((_, n) => [...byBlank.values()].find((e) => e.source === `${PROBE}x${n}`));
     if (results.some((r) => r?.value === undefined || r.unit === undefined)) {
-      throw new UnitConversionError(`unknown unit ${unit}: it is not in the QUDT catalog of eyemind`);
+      throw new UnitConversionError(`unknown unit ${unit}: it is not in the QUDT catalog of eyemind, nor made of units that are, or it has no fixed conversion, as a currency`);
     }
     const [y0, y1, y2] = results.map((r) => r!.value!);
     const si = results[0]!.unit!;
@@ -135,17 +173,25 @@ export class EyemindUnitConverter implements UnitConverter {
     return { scale, offset: y0, si };
   }
 
-  async conversion(from: string, to: 'qudt' | string): Promise<UnitConversion> {
-    if (from === to) return { unit: from, convert: (x) => x };
-    const source = await this.affine(from);
+  async conversion(from: string, to: 'qudt' | string, options: UnitConversionOptions = {}): Promise<UnitConversion> {
+    if (from === to) return { unit: from, convert: (x) => x, convertDifference: (x) => x };
+    const source = await this.affine(from, options.definitions);
     if (to === 'qudt') {
-      return { unit: source.si, convert: (x) => roundNumber(source.scale * x + source.offset, DIGITS) };
+      return {
+        unit: source.si,
+        convert: (x) => roundNumber(source.scale * x + source.offset, DIGITS),
+        convertDifference: (x) => roundNumber(source.scale * x, DIGITS),
+      };
     }
-    const target = await this.affine(to);
+    const target = await this.affine(to, options.definitions);
     if (target.si !== source.si) {
       throw new UnitConversionError(`cannot convert ${from} (SI unit ${source.si}) to ${to} (SI unit ${target.si}): different dimensions`);
     }
-    return { unit: to, convert: (x) => roundNumber((source.scale * x + source.offset - target.offset) / target.scale, DIGITS) };
+    return {
+      unit: to,
+      convert: (x) => roundNumber((source.scale * x + source.offset - target.offset) / target.scale, DIGITS),
+      convertDifference: (x) => roundNumber((source.scale * x) / target.scale, DIGITS),
+    };
   }
 }
 

@@ -113,8 +113,8 @@ ex:weather-grid a tss:CSVSource ;
     tss:stepField ex:step ;
     tss:hasField ex:time, ex:step, ex:temperature, ex:humidity .
 
-ex:time a tss:MetaField ; tss:datatype xsd:dateTime .
-ex:step a tss:MetaField ; tss:columnName "step" ; tss:datatype xsd:integer .
+ex:time a tss:ContextField ; tss:datatype xsd:dateTime .
+ex:step a tss:ContextField ; tss:columnName "step" ; tss:datatype xsd:integer .
 ex:temperature a tss:ValueField ; rdfs:label "Air temperature" ; tss:columnName "temp" ; tss:datatype xsd:double ;
     tss:observedProperty qk:Temperature ; tss:unit unit:DEG_C .
 ex:humidity a tss:ValueField ; rdfs:label "Relative humidity" ; tss:columnName "hum" ; tss:datatype xsd:integer ;

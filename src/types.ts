@@ -19,10 +19,10 @@ export interface FieldSummary {
 
 /**
  * Whether the values of a field are readings (`tss:ValueField`: each value is a point) or
- * say something about a row or its points (`tss:MetaField`: the time field, the step field,
+ * give the context of a row or its points (`tss:ContextField`: the time field, the step field,
  * a describing field, an identifier, …).
  */
-export type FieldKind = 'value' | 'meta';
+export type FieldKind = 'value' | 'context';
 
 /** What the metadata says about one field (column) of a source. */
 export interface FieldMetadata {
@@ -31,9 +31,10 @@ export interface FieldMetadata {
   /** The part of the IRI after the last `#` or `/`: the short way to name the field. */
   localName: string;
   /**
-   * `tss:ValueField` or `tss:MetaField`. A field that states neither is read as a meta field
-   * when it is the time field, the step field or a describing field, else as a value field
-   * (and `validate()` reports it).
+   * `tss:ValueField` or `tss:ContextField`. A field that states neither is read as a context
+   * field when it is the time field, the step field or a describing field, else as a value field
+   * (and `validate()` reports it). `tss:MetaField`, the name of earlier drafts, is read as a
+   * context field (and `validate()` reports it).
    */
   kind: FieldKind;
   labels: string[];
@@ -43,11 +44,12 @@ export interface FieldMetadata {
   columnName?: string;
   columnIndex?: number;
   /**
-   * The field property: the RDF property that states the values of the field, in the points
-   * of an embedded RDF source and in the expansion. Its `tss:property`, or else the default:
-   * `tss:time` for the time field, and otherwise `<base#columnName>`, with the data file
-   * (external) or the metadata document (embedded) as base. `undefined` when there is no
-   * base IRI to make the default with.
+   * The field property of a describing field: the RDF property that states its values on the
+   * points it describes, in the points of an embedded RDF source and in the expansion. Its
+   * `tss:property`, or else the default `<base#columnName>`, with the data file (external) or
+   * the metadata document (embedded) as base. `undefined` for the other fields: a point states
+   * its value field, time and reading with `tss:field`, `tss:time` and `tss:value`. Also
+   * `undefined` when there is no base IRI to make the default with.
    */
   property?: string;
   /** `true` when the property is the default one, made by the specification, not stated with `tss:property`. */
@@ -58,7 +60,7 @@ export interface FieldMetadata {
   unit?: string;
   sensor?: string;
   featureOfInterest?: string;
-  /** IRIs of the value fields this (meta) field says something about. */
+  /** IRIs of the value fields this (context) field says something about. */
   describesField: string[];
   minimum?: string;
   maximum?: string;
@@ -130,16 +132,16 @@ export interface RowInput {
 export interface CreateField {
   id: string;
   /**
-   * `'value'` (`tss:ValueField`, its values are readings) or `'meta'` (`tss:MetaField`).
-   * Default: `'meta'` for a field with `describesField`, else `'value'`.
+   * `'value'` (`tss:ValueField`, its values are readings) or `'context'` (`tss:ContextField`).
+   * Default: `'context'` for a field with `describesField`, else `'value'`.
    */
   kind?: FieldKind;
   columnName?: string;
   columnIndex?: number;
   /**
-   * The RDF property that states the values (`tss:property`). Without it, the field gets the
-   * default property `<base#columnName>`. A property you state keeps the meaning of its own
-   * vocabulary: add `<property> rdfs:subPropertyOf tss:value` to align its readings.
+   * For a describing field only: the RDF property that states its values on the points it
+   * describes (`tss:property`). Without it, the field gets the default property
+   * `<base#columnName>`. A property you state keeps the meaning of its own vocabulary.
    */
   property?: string;
   /** A URI template (`tss:aboutUrl`) for the IRI of each point of a value field, e.g. `'obs/temp/{time}'`. */
@@ -151,7 +153,7 @@ export interface CreateField {
   unit?: string;
   sensor?: string;
   featureOfInterest?: string;
-  /** The value field(s) this meta field says something about. */
+  /** The value field(s) this context field says something about. */
   describesField?: string | string[];
   minimum?: string | number;
   maximum?: string | number;
@@ -172,7 +174,7 @@ export interface CreateOptions {
   /** The time window of a growing source is fixed: every row has to lie in it. */
   from?: string;
   until?: string;
-  timeField: { id: string; columnName?: string; columnIndex?: number; property?: string };
+  timeField: { id: string; columnName?: string; columnIndex?: number };
   fields: CreateField[];
   /** Add a stored summary of every field when the source is ended. Default `true`. */
   summaries?: boolean;

@@ -1,4 +1,4 @@
-import { KIND_BY_CLASS, LEGACY_SOURCE_CLASSES, META_FIELD, RDF, RDFS, SOURCE_CLASSES, VALUE_FIELD, isExternalKind, tss, xsd } from './ns.js';
+import { CONTEXT_FIELD, KIND_BY_CLASS, LEGACY_META_FIELD, LEGACY_SOURCE_CLASSES, RDF, RDFS, SOURCE_CLASSES, VALUE_FIELD, isExternalKind, tss, xsd } from './ns.js';
 import type { Dataset, Term } from './rdf.js';
 import { namedNode, objectOf, objectsOf, subjectsOf, termId } from './rdf.js';
 import { ValidationError } from './errors.js';
@@ -56,15 +56,21 @@ function parseSummary(ds: Dataset, node: Term): FieldSummary {
   return summary;
 }
 
-/** Whether a field states `tss:ValueField` or `tss:MetaField`, and which. */
+/**
+ * Whether a field states `tss:ValueField` or `tss:ContextField`, and which. `tss:MetaField`,
+ * the name of earlier drafts, counts as `tss:ContextField`.
+ */
 export function statedFieldKinds(ds: Dataset, term: Term): FieldKind[] {
   const kinds: FieldKind[] = [];
   for (const type of objectsOf(ds, term, RDF + 'type')) {
     if (type.value === VALUE_FIELD) kinds.push('value');
-    if (type.value === META_FIELD) kinds.push('meta');
+    if (type.value === CONTEXT_FIELD || type.value === LEGACY_META_FIELD) kinds.push('context');
   }
   return kinds;
 }
+
+/** A property that is not the field property of a describing field: `rdf:type` and the terms of the TSS vocabulary. */
+export const isReservedProperty = (iri: string) => iri === RDF + 'type' || iri.startsWith(tss(''));
 
 function parseField(ds: Dataset, term: Term, inferredKind: FieldKind): FieldMetadata {
   const id = termId(term);
@@ -85,8 +91,9 @@ function parseField(ds: Dataset, term: Term, inferredKind: FieldKind): FieldMeta
   set('language', text(ds, term, tss('language')));
   set('columnName', columnName);
   set('columnIndex', number(text(ds, term, tss('columnIndex'))));
+  // only a describing field has a field property
   const property = objectOf(ds, term, tss('property'));
-  if (property?.termType === 'NamedNode') {
+  if (property?.termType === 'NamedNode' && field.describesField.length > 0 && !isReservedProperty(property.value)) {
     field.property = property.value;
     field.defaultProperty = false;
   }
@@ -105,7 +112,7 @@ function parseField(ds: Dataset, term: Term, inferredKind: FieldKind): FieldMeta
 }
 
 /**
- * The base IRI of the default field properties and the point IRIs of a source: its data file
+ * The base IRI of the default field properties (of describing fields) and the point IRIs of a source: its data file
  * (external), or the metadata document (embedded).
  */
 export function propertyBase(metadata: Pick<SourceMetadata, 'kind' | 'dataFile'>, documentIri?: string): string | undefined {
@@ -161,7 +168,7 @@ export function parseSource(ds: Dataset, options: ParseOptions = {}): ParsedSour
   for (const fieldTerm of fieldTermList) {
     const id = termId(fieldTerm);
     if (fieldTerms.has(id)) continue;
-    const inferred: FieldKind = id === timeField || id === stepField || describing.has(id) ? 'meta' : 'value';
+    const inferred: FieldKind = id === timeField || id === stepField || describing.has(id) ? 'context' : 'value';
     fieldTerms.set(id, fieldTerm);
     fields.push(parseField(ds, fieldTerm, inferred));
   }
@@ -194,12 +201,11 @@ export function parseSource(ds: Dataset, options: ParseOptions = {}): ParsedSour
   set('dataFile', iriOrUndefined(ds, term, tss('dataFile')));
   set('producedBy', iriOrUndefined(ds, term, tss('producedBy')));
 
-  // the default field properties
+  // the default field properties of the describing fields
   const base = propertyBase(metadata, options.baseIRI);
   for (const f of fields) {
-    if (!f.defaultProperty) continue;
-    if (f.id === timeField) f.property = tss('time');
-    else if (f.columnName !== undefined && f.columnName !== '' && base) f.property = defaultPropertyIri(base, f.columnName);
+    if (!f.defaultProperty || f.describesField.length === 0) continue;
+    if (f.columnName !== undefined && f.columnName !== '' && base) f.property = defaultPropertyIri(base, f.columnName);
   }
   return { term, metadata, fieldTerms };
 }

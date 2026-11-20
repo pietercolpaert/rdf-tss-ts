@@ -41,13 +41,17 @@ try {
   page.on('pageerror', (error) => problems.push(`page error: ${error.message}`));
   page.on('console', (message) => message.type() === 'error' && problems.push(`console error: ${message.text()}`));
   page.on('requestfailed', (request) => problems.push(`request failed: ${request.url()}`));
-  // the gold prices are read from GitHub: answer with three years of months, so the test runs offline
+  // the gold prices and the CO₂ increase are read from GitHub: answer with stand-ins, so the test runs offline
   const GOLD = 'https://raw.githubusercontent.com/datasets/gold-prices/';
+  const CO2 = 'https://raw.githubusercontent.com/datasets/co2-ppm/main/data/co2-gr-gl.csv';
   const goldMonths = Array.from({ length: 36 }, (_, n) => `${1833 + Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, '0')}-01,${(18.93 + n / 10).toFixed(3)}`);
+  const co2Years = Array.from({ length: 20 }, (_, n) => `${1959 + n},${(0.9 + n / 10).toFixed(2)},${n < 10 ? '0.26' : '0.07'}`);
+  const stand = { [GOLD]: `Date,Price\n${goldMonths.join('\n')}\n`, [CO2]: `Year,Annual Increase,Uncertainty\n${co2Years.join('\n')}\n` };
   await page.setRequestInterception(true);
   page.on('request', (request) => {
-    if (!request.url().startsWith(GOLD)) return request.continue();
-    request.respond({ status: 200, contentType: 'text/plain', headers: { 'Access-Control-Allow-Origin': '*' }, body: `Date,Price\n${goldMonths.join('\n')}\n` });
+    const url = Object.keys(stand).find((prefix) => request.url().startsWith(prefix));
+    if (!url) return request.continue();
+    request.respond({ status: 200, contentType: 'text/plain', headers: { 'Access-Control-Allow-Origin': '*' }, body: stand[url] });
   });
 
   const ready = () => page.waitForFunction(() => !document.getElementById('result').hidden && document.querySelector('#panel-chart svg'), { timeout: 20000 });
@@ -99,6 +103,21 @@ try {
   ]);
   console.log(`  ok gold: the rows are at their month; ${goldRows[1].join(' ')}`);
   await page.click('#tab-chart');
+
+  // the uncertainty of the CO₂ increase describes its value (qudt:standardUncertainty): a band, not a line
+  await choose('datahub-co2-ppm-co2-gr-gl');
+  assert.equal(await page.$$eval('#panel-chart .legend label', (l) => l.length), 1, 'one series: the uncertainty is no line of its own');
+  assert.equal((await page.$$('#panel-chart path.band')).length, 1, 'the uncertainty is a band');
+  assert.match(await text('#panel-chart .chart'), /The band around Annual Increase is its standard uncertainty/);
+  // ±1σ around 0.9: from 0.64 to 1.16 ppm, at the start of the axis
+  const tip = await page.$eval('#panel-chart .chart', (chart) => {
+    const overlay = chart.querySelector('rect.overlay');
+    const box = overlay.getBoundingClientRect();
+    overlay.dispatchEvent(new PointerEvent('pointermove', { clientX: box.left + 1, clientY: box.top + 10, bubbles: true }));
+    return chart.querySelector('.tooltip').textContent;
+  });
+  assert.match(tip, /0\.9 ppm \(0\.64 to 1\.16, standard uncertainty/);
+  console.log(`  ok CO₂: the uncertainty is a band around the value; ${tip}`);
 
   // units: temperature in Fahrenheit, with QUDT through eyemind
   await choose('weather-csv');
@@ -217,7 +236,11 @@ try {
   assert.match(await text('#panel-messages'), /tss:hasPoint/);
   assert.match(await text('#panel-messages'), /tss:field/);
   await page.select('#msg-align', 'sosa');
-  await page.waitForFunction(() => /sosa:Observation/.test(document.querySelector('#panel-messages').textContent));
+  // derived in the browser by rdfjs-inference-engine, from the TSS vocabulary: the chains over tss:field too
+  await page.waitForFunction(() => /each next row/.test(document.querySelector('#panel-messages').textContent), { timeout: 60000 });
+  const messages = await text('#panel-messages');
+  for (const derived of [/a sosa:Observation/, /sosa:hasSimpleResult/, /sosa:resultTime/, /sosa:observedProperty/]) assert.match(messages, derived);
+  console.log(`  ok alignment: ${messages.match(/so the background is closed once: .*?each next row\./)?.[0]}`);
   await page.click('#tab-validate');
   await page.waitForFunction(() => document.querySelector('#panel-validate .badge'));
   assert.match(await text('#panel-validate'), /conforms/);

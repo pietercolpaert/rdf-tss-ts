@@ -253,9 +253,11 @@ export class WritableSource extends ReadableSource {
       // a point states the time, its reading and the values of the describing fields of its field
       for (const id of values.keys()) {
         const f = this.metadata.fields.find((x) => x.id === id)!;
-        if (f.kind !== 'meta') continue;
+        if (f.kind !== 'context') continue;
         if (f.describesField.length === 0) {
-          problems.push({ rule: 'not-stated', node: f.id, message: `${where}: the points of an embedded RDF source cannot state the values of ${f.localName}, a meta field that describes no value field` });
+          problems.push({ rule: 'not-stated', node: f.id, message: `${where}: the points of an embedded RDF source cannot state the values of ${f.localName}, a context field that describes no value field` });
+        } else if (!f.property) {
+          problems.push({ rule: 'not-stated', node: f.id, message: `${where}: ${f.localName} has no field property (tss:property, or a tss:columnName to make the default) to state its values on the points with` });
         } else if (!f.describesField.some((target) => values.has(target))) {
           problems.push({ rule: 'not-stated', node: f.id, message: `${where}: ${f.localName} describes a value field that has no value in this row, so there is no point to state it on` });
         }
@@ -385,14 +387,14 @@ export class WritableSource extends ReadableSource {
 
   /**
    * One message for each row, appended to the RDF Message Log: the source links with
-   * `tss:hasPoint` to one point for each value field with a value, which states the time, the
-   * value, and the values of the describing fields that describe its field.
+   * `tss:hasPoint` to one point for each value field with a value, which states its value field
+   * (`tss:field`, left out when the source has one value field), its time (`tss:time`), its
+   * reading (`tss:value`), and the values of the describing fields that describe its field.
    */
   private async appendMessages(rows: NormalizedRow[]): Promise<void> {
-    const { time, fields } = pointFields(this.parsed);
+    const { time, valueFields, describing } = pointFields(this.parsed);
     const source = this.parsed.term;
-    const valueFields = fields.filter((f) => f.kind === 'value');
-    const describers = (id: string) => fields.filter((f) => f.kind === 'meta' && f.describesField.includes(id));
+    const describers = (id: string) => describing.filter((f) => f.describesField.includes(id));
     const added: Quad[][] = [];
     for (const row of rows) {
       const quads: Quad[] = [];
@@ -400,10 +402,11 @@ export class WritableSource extends ReadableSource {
         const text = row.values.get(f.id);
         if (text === undefined) continue;
         const point = blankNode();
+        quads.push(quad(source as NamedNode, namedNode(tss('hasPoint')), point));
+        if (valueFields.length > 1) quads.push(quad(point, namedNode(tss('field')), (f.id.startsWith('_:') ? blankNode(f.id.slice(2)) : namedNode(f.id)) as NamedNode));
         quads.push(
-          quad(source as NamedNode, namedNode(tss('hasPoint')), point),
-          quad(point, namedNode(time.property), literal(row.time, namedNode(time.datatype === xsd('dateTimeStamp') ? xsd('dateTimeStamp') : xsd('dateTime')))),
-          quad(point, namedNode(f.property), this.literalOf(f, text)),
+          quad(point, namedNode(tss('time')), literal(row.time, namedNode(time.datatype === xsd('dateTimeStamp') ? xsd('dateTimeStamp') : xsd('dateTime')))),
+          quad(point, namedNode(tss('value')), this.literalOf(f, text)),
         );
         for (const d of describers(f.id)) {
           const described = row.values.get(d.id);
@@ -431,7 +434,7 @@ export class WritableSource extends ReadableSource {
    */
   private relative(quads: Iterable<Quad>): Quad[] {
     const base = this.baseIRI?.replace(/#.*$/, '');
-    const own = new Set(this.metadata.fields.filter((f) => f.defaultProperty && f.property && f.id !== this.metadata.timeField).map((f) => f.property!));
+    const own = new Set(this.metadata.fields.filter((f) => f.defaultProperty && f.property).map((f) => f.property!));
     const list = [...quads];
     if (!base || own.size === 0 || (this.metadata.kind !== 'EmbeddedRDF' && this.metadata.kind !== 'EmbeddedJSON')) return list;
     const map = <T extends Quad['predicate'] | Quad['object']>(term: T): T =>

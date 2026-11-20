@@ -29,6 +29,7 @@
     "examples:telraam": "node scripts/fetch-telraam.mjs",
     "examples:telraam-months": "tsx scripts/telraam-log.ts",
     "examples:datahub": "tsx scripts/datahub.ts",
+    "vocabulary": "tsx scripts/vocabulary.ts",
     "build:playground": "tsx scripts/build-playground.ts",
     "build:site": "npm run examples && npm run build:playground",
     "serve": "npm run build:site && npx --yes http-server _site -c-1 -o"
@@ -43,9 +44,10 @@
   },
   "peerDependencies": {
     "apache-arrow": ">=17",
-    "eyemind": "0.8.4",
+    "eyemind": "0.8.15",
     "hyparquet": ">=1.30",
-    "hyparquet-writer": ">=0.18"
+    "hyparquet-writer": ">=0.18",
+    "rdfjs-inference-engine": "^0.2.3"
   },
   "peerDependenciesMeta": {
     "apache-arrow": {
@@ -59,6 +61,9 @@
     },
     "hyparquet-writer": {
       "optional": true
+    },
+    "rdfjs-inference-engine": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -68,12 +73,13 @@
     "apache-arrow": "^21.0.0",
     "buffer": "^6.0.3",
     "esbuild": "^0.28.2",
-    "eyemind": "0.8.4",
+    "eyemind": "0.8.15",
     "https-browserify": "^1.0.0",
     "hyparquet": "^1.33.1",
     "hyparquet-writer": "^0.18.0",
     "process": "^0.11.10",
     "puppeteer-core": "^25.18.1",
+    "rdfjs-inference-engine": "0.2.3",
     "stream-browserify": "^3.0.0",
     "stream-http": "^3.2.0",
     "tsx": "^4.20.0",

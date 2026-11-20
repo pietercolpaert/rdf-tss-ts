@@ -6,6 +6,7 @@
 @prefix unit: <http://qudt.org/vocab/unit/> .
 @prefix prefix: <http://qudt.org/vocab/prefix/> .
 @prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+@prefix qkdv: <http://qudt.org/vocab/dimensionvector/> .
 
 # data/co2-gr-gl.csv of the data package "CO2 PPM - Trends in Atmospheric Carbon Dioxide" on GitHub (https://github.com/datasets/co2-ppm).
 # This document only describes the CSV file: the rows are read from where the data package
@@ -33,12 +34,12 @@
 
 # The time field: computed from the position of the row, so it has no column.
 <#time>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Time"@en ;
     tss:datatype xsd:dateTime .
 
 <#date>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Year as written in the file"@en ;
     rdfs:comment "A date without a time of day and a timezone, so it is not the time of the row."@en ;
     tss:columnName "Year" ;
@@ -53,9 +54,11 @@
     tss:unit unit:PPM .
 
 <#uncertainty>
-    a tss:ValueField ;
+    a tss:ContextField ;
     rdfs:label "Uncertainty"@en ;
     rdfs:comment "The uncertainty in the global annual mean growth rate is estimated using a monte carlo technique that computes 100 time series of global annual growth rates, each time using measurement records from a different sampling of sites from the NOAA ESRL cooperative air sampling network. Each year has a different uncertainty. Please see Conway et al., 1994, JGR, vol. 99, no. D11. for a complete discussion. The last one or two years listed could have preliminary uncertainties set equal to the average uncertainty since 1980. Before 1980 the global growth rate has been approximated by taking the average of Mauna Loa and the South Pole, correcting for the offset between (MLO+SPO)/2 and the global Marine Boundary Layer, as described in Ballantyne et al, 2012."@en ;
     tss:columnName "Uncertainty" ;
     tss:datatype xsd:decimal ;
+    tss:describesField <#annual-increase> ;
+    tss:property qudt:standardUncertainty ;
     tss:unit unit:PPM .

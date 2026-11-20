@@ -30,7 +30,7 @@
 
 # The time field: computed from the position of the row, so it has no column.
 <#month>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Month"@en ;
     tss:datatype xsd:dateTime .
 
@@ -62,7 +62,7 @@
     ] .
 
 <#date>
-    a tss:MetaField ;
+    a tss:ContextField ;
     rdfs:label "Date as written in the file"@en ;
     rdfs:comment "The first day of the month, YYYY-MM-DD. A date has no time of day and no timezone, so it is not the time of the row."@en ;
     tss:columnName "Date" ;

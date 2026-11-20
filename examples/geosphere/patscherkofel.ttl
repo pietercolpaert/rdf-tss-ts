@@ -1,0 +1,104 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
+
+# The hourly weather of 2025 at Patscherkofel (Tirol, 2251 m), from the
+# dataset klima-v2-1h of GeoSphere Austria, as CSV from its dataset API. This document only
+# describes it. Written by scripts/geosphere.ts.
+#
+# The times of the API have no seconds, so they are no xsd:dateTime: the file has one row per
+# hour, without gaps, so the time of a row is its step on a time grid of PT1H from 2025-01-01T00:00:00Z.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Hourly weather of 2025, Patscherkofel"@en ;
+    rdfs:comment "Measurements of the weather station Patscherkofel of GeoSphere Austria, at 2251 m above sea level, one row per hour of 2025."@en ;
+    dcterms:publisher <https://www.geosphere.at> ;
+    dcterms:source <https://data.hub.geosphere.at/dataset/klima-v2-1h> ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    tss:immutable true ;
+    tss:from "2025-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:until "2026-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://dataset.api.hub.geosphere.at/v1/station/historical/klima-v2-1h?parameters=tl,rf,p,ff,rr,so_h,cglo&station_ids=14812&start=2025-01-01T00:00&end=2025-12-31T23:00&output_format=csv> ;
+    tss:timeBase "2025-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "PT1H"^^xsd:duration ;
+    tss:timeField <#hour> ;
+    tss:hasField <#hour>,
+        <#time>,
+        <#tl>,
+        <#rf>,
+        <#p>,
+        <#ff>,
+        <#rr>,
+        <#so_h>,
+        <#cglo> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#hour>
+    a tss:ContextField ;
+    rdfs:label "Time"@en ;
+    tss:datatype xsd:dateTime .
+
+<#time>
+    a tss:ContextField ;
+    rdfs:label "Time as written by the API"@en ;
+    rdfs:comment "The start of the hour, such as 2025-01-01T00:00+00:00: without seconds, so not an xsd:dateTime, and not the time of the row."@en ;
+    tss:columnName "time" ;
+    tss:datatype xsd:string .
+
+<#tl>
+    a tss:ValueField ;
+    rdfs:label "Air temperature 2 m above ground"@en, "Lufttemperatur 2m"@de ;
+    rdfs:comment "Lufttemperatur in 2m Höhe, Stunden-Messwert"@de ;
+    tss:columnName "tl" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:DEG_C .
+
+<#rf>
+    a tss:ValueField ;
+    rdfs:label "Relative humidity"@en, "Relative Feuchte"@de ;
+    rdfs:comment "Relative Feuchte, Stunden-Messwert"@de ;
+    tss:columnName "rf" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:PERCENT .
+
+<#p>
+    a tss:ValueField ;
+    rdfs:label "Air pressure"@en, "Luftdruck"@de ;
+    rdfs:comment "Luftdruck in Stationsniveau, Stunden-Messwert"@de ;
+    tss:columnName "p" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:HectoPA .
+
+<#ff>
+    a tss:ValueField ;
+    rdfs:label "Wind speed"@en, "Windgeschwindigkeit"@de ;
+    rdfs:comment "Windgeschwindigkeit, vektorieller Stundenmittelwert"@de ;
+    tss:columnName "ff" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:M-PER-SEC .
+
+<#rr>
+    a tss:ValueField ;
+    rdfs:label "Precipitation"@en, "Niederschlag"@de ;
+    rdfs:comment "Niederschlag, Stundensumme"@de ;
+    tss:columnName "rr" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:MilliM .
+
+<#so_h>
+    a tss:ValueField ;
+    rdfs:label "Sunshine duration"@en, "Sonnenscheindauer"@de ;
+    rdfs:comment "Sonnenscheindauer, Stundensumme"@de ;
+    tss:columnName "so_h" ;
+    tss:datatype xsd:decimal ;
+    tss:unit unit:HR .
+
+<#cglo>
+    a tss:ValueField ;
+    rdfs:label "Global radiation, mean"@en, "Globalstrahlung Mittelwert"@de ;
+    rdfs:comment "Globalstrahlung, kalibrierter Stunden-Mittelwert"@de ;
+    tss:columnName "cglo" ;
+    tss:datatype xsd:integer ;
+    tss:unit unit:W-PER-M2 .

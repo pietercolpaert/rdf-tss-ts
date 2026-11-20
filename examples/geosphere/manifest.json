@@ -1,0 +1,112 @@
+[
+  {
+    "id": "geosphere-wien-hohe-warte",
+    "title": "Hourly weather of 2025, Wien Hohe Warte",
+    "path": [
+      "Austria · GeoSphere",
+      "Hourly weather of 2025",
+      "Wien Hohe Warte (198 m)"
+    ],
+    "description": "The 8760 hours of 2025 at the weather station Wien Hohe Warte (Wien) of GeoSphere Austria, read from its dataset API as CSV. The times of the API have no seconds, so they are no xsd:dateTime: the time of a row is its position on a time grid of an hour. The weather has seasons: see the patterns tab.",
+    "metadata": "wien-hohe-warte.ttl"
+  },
+  {
+    "id": "geosphere-innsbruck-universitat",
+    "title": "Hourly weather of 2025, Innsbruck Universität",
+    "path": [
+      "Austria · GeoSphere",
+      "Hourly weather of 2025",
+      "Innsbruck Universität (578 m)"
+    ],
+    "description": "The 8760 hours of 2025 at the weather station Innsbruck Universität (Tirol) of GeoSphere Austria, read from its dataset API as CSV. The times of the API have no seconds, so they are no xsd:dateTime: the time of a row is its position on a time grid of an hour. The weather has seasons: see the patterns tab.",
+    "metadata": "innsbruck-universitat.ttl"
+  },
+  {
+    "id": "geosphere-salzburg-flughafen",
+    "title": "Hourly weather of 2025, Salzburg Flughafen",
+    "path": [
+      "Austria · GeoSphere",
+      "Hourly weather of 2025",
+      "Salzburg Flughafen (430 m)"
+    ],
+    "description": "The 8760 hours of 2025 at the weather station Salzburg Flughafen (Salzburg) of GeoSphere Austria, read from its dataset API as CSV. The times of the API have no seconds, so they are no xsd:dateTime: the time of a row is its position on a time grid of an hour. The weather has seasons: see the patterns tab.",
+    "metadata": "salzburg-flughafen.ttl"
+  },
+  {
+    "id": "geosphere-graz-universitat-heinrichstrasse",
+    "title": "Hourly weather of 2025, Graz Universität/Heinrichstraße",
+    "path": [
+      "Austria · GeoSphere",
+      "Hourly weather of 2025",
+      "Graz Universität/Heinrichstraße (366 m)"
+    ],
+    "description": "The 8760 hours of 2025 at the weather station Graz Universität/Heinrichstraße (Steiermark) of GeoSphere Austria, read from its dataset API as CSV. The times of the API have no seconds, so they are no xsd:dateTime: the time of a row is its position on a time grid of an hour. The weather has seasons: see the patterns tab.",
+    "metadata": "graz-universitat-heinrichstrasse.ttl"
+  },
+  {
+    "id": "geosphere-klagenfurt-flughafen",
+    "title": "Hourly weather of 2025, Klagenfurt Flughafen",
+    "path": [
+      "Austria · GeoSphere",
+      "Hourly weather of 2025",
+      "Klagenfurt Flughafen (450 m)"
+    ],
+    "description": "The 8760 hours of 2025 at the weather station Klagenfurt Flughafen (Kärnten) of GeoSphere Austria, read from its dataset API as CSV. The times of the API have no seconds, so they are no xsd:dateTime: the time of a row is its position on a time grid of an hour. The weather has seasons: see the patterns tab.",
+    "metadata": "klagenfurt-flughafen.ttl"
+  },
+  {
+    "id": "geosphere-linz-stadt",
+    "title": "Hourly weather of 2025, Linz Stadt",
+    "path": [
+      "Austria · GeoSphere",
+      "Hourly weather of 2025",
+      "Linz Stadt (262 m)"
+    ],
+    "description": "The 8760 hours of 2025 at the weather station Linz Stadt (Oberösterreich) of GeoSphere Austria, read from its dataset API as CSV. The times of the API have no seconds, so they are no xsd:dateTime: the time of a row is its position on a time grid of an hour. The weather has seasons: see the patterns tab.",
+    "metadata": "linz-stadt.ttl"
+  },
+  {
+    "id": "geosphere-bregenz",
+    "title": "Hourly weather of 2025, Bregenz",
+    "path": [
+      "Austria · GeoSphere",
+      "Hourly weather of 2025",
+      "Bregenz (424 m)"
+    ],
+    "description": "The 8760 hours of 2025 at the weather station Bregenz (Vorarlberg) of GeoSphere Austria, read from its dataset API as CSV. The times of the API have no seconds, so they are no xsd:dateTime: the time of a row is its position on a time grid of an hour. The weather has seasons: see the patterns tab.",
+    "metadata": "bregenz.ttl"
+  },
+  {
+    "id": "geosphere-eisenstadt-nordost",
+    "title": "Hourly weather of 2025, Eisenstadt Nordost",
+    "path": [
+      "Austria · GeoSphere",
+      "Hourly weather of 2025",
+      "Eisenstadt Nordost (184 m)"
+    ],
+    "description": "The 8760 hours of 2025 at the weather station Eisenstadt Nordost (Burgenland) of GeoSphere Austria, read from its dataset API as CSV. The times of the API have no seconds, so they are no xsd:dateTime: the time of a row is its position on a time grid of an hour. The weather has seasons: see the patterns tab.",
+    "metadata": "eisenstadt-nordost.ttl"
+  },
+  {
+    "id": "geosphere-patscherkofel",
+    "title": "Hourly weather of 2025, Patscherkofel",
+    "path": [
+      "Austria · GeoSphere",
+      "Hourly weather of 2025",
+      "Patscherkofel (2251 m)"
+    ],
+    "description": "The 8760 hours of 2025 at the weather station Patscherkofel (Tirol) of GeoSphere Austria, read from its dataset API as CSV. The times of the API have no seconds, so they are no xsd:dateTime: the time of a row is its position on a time grid of an hour. The weather has seasons: see the patterns tab.",
+    "metadata": "patscherkofel.ttl"
+  },
+  {
+    "id": "geosphere-sonnblick",
+    "title": "Hourly weather of 2025, Sonnblick",
+    "path": [
+      "Austria · GeoSphere",
+      "Hourly weather of 2025",
+      "Sonnblick (3109 m)"
+    ],
+    "description": "The 8760 hours of 2025 at the weather station Sonnblick (Salzburg) of GeoSphere Austria, read from its dataset API as CSV. The times of the API have no seconds, so they are no xsd:dateTime: the time of a row is its position on a time grid of an hour. The weather has seasons: see the patterns tab.",
+    "metadata": "sonnblick.ttl"
+  }
+]

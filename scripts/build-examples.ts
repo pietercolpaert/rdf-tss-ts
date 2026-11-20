@@ -19,6 +19,8 @@ import { Source, type CreateOptions, type RowInput, type SourceKind } from '../s
 import { convertLocation, ldesSize, readMembers, sourceSize, type Member } from './telraam.js';
 import { DATAHUB_GROUPS, type DatahubExample } from './datahub.js';
 import { EUROSTAT, type EurostatExample } from './eurostat.js';
+import { GEOSPHERE } from './geosphere.js';
+import { METEOSWISS } from './meteoswiss.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = resolve(process.argv[2] ?? join(root, '_site', 'examples'));
@@ -191,13 +193,13 @@ interface MonthsEntry {
 
 const GOLD = DATAHUB_GROUPS[0];
 
-/** Time series of Eurostat, described by scripts/eurostat.ts. */
-async function eurostat(): Promise<void> {
-  const source = join(root, 'examples', 'eurostat');
+/** Series described by a script into examples/<directory>, with a manifest of their places in the menu. */
+async function described(directory: string, group: string): Promise<void> {
+  const source = join(root, 'examples', directory);
   if (!existsSync(join(source, 'manifest.json'))) return;
-  await cp(source, join(out, 'eurostat'), { recursive: true });
+  await cp(source, join(out, directory), { recursive: true });
   const entries: EurostatExample[] = JSON.parse(await readFile(join(source, 'manifest.json'), 'utf8'));
-  for (const entry of entries) add({ ...entry, group: EUROSTAT, metadata: `eurostat/${entry.metadata}`, kind: 'CSV (time grid)', remote: true });
+  for (const entry of entries) add({ ...entry, group, metadata: `${directory}/${entry.metadata}`, kind: 'CSV (time grid)', remote: true });
 }
 
 /**
@@ -274,7 +276,10 @@ await telraam();
 await telraamMonths();
 await gold();
 await datahub();
-await eurostat();
+// by scripts/eurostat.ts, scripts/meteoswiss.ts and scripts/geosphere.ts
+await described('eurostat', EUROSTAT);
+await described('meteoswiss', METEOSWISS);
+await described('geosphere', GEOSPHERE);
 
 // the menu: a publisher, a dataset and, for a dataset of several series, the series
 const TELRAAM = 'Belgium · Telraam';
@@ -291,7 +296,7 @@ for (const e of examples) {
           : [WEATHER, e.title];
 }
 // in this order, with the months of Telraam first; within a dataset, as they were added
-const order = [TELRAAM, EUROSTAT, GITHUB, WEATHER];
+const order = [TELRAAM, METEOSWISS, GEOSPHERE, EUROSTAT, GITHUB, WEATHER];
 const first = (e: Example) => (e.group === TELRAAM_DAY ? 1 : 0);
 examples.sort((a, b) => order.indexOf(a.path![0]) - order.indexOf(b.path![0]) || first(a) - first(b));
 await writeFile(join(out, 'index.json'), JSON.stringify(examples, null, 2));

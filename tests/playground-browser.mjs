@@ -49,7 +49,15 @@ try {
   // a Eurostat series as SDMX-CSV: two years of months, the flag p on the last
   const EUROSTAT = 'https://ec.europa.eu/eurostat/api/';
   const eurostatMonths = Array.from({ length: 24 }, (_, n) => `ESTAT:X(1.0),M,${2000 + Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, '0')},${(2 + Math.sin(n / 3)).toFixed(1)},${n === 23 ? 'p' : ''}`);
+  // the daily weather of Zürich since 1864 at MeteoSwiss: 40 days of a mean, a minimum and a maximum
+  const METEOSWISS = 'https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/sma/ogd-smn_sma_d_historical.csv';
+  const swissDays = Array.from({ length: 40 }, (_, n) => {
+    const day = new Date(Date.UTC(1864, 0, 1 + n));
+    const stamp = `${String(day.getUTCDate()).padStart(2, '0')}.${String(day.getUTCMonth() + 1).padStart(2, '0')}.1864 00:00`;
+    return `SMA;${stamp};${(n / 10).toFixed(1)};${(n / 10 - 3).toFixed(1)};${(n / 10 + 4).toFixed(1)};80;950;2;0;50;120`;
+  });
   const stand = {
+    [METEOSWISS]: `station_abbr;reference_timestamp;tre200d0;tre200dn;tre200dx;ure200d0;prestad0;fkl010d0;rre150d0;gre000d0;sre000d0\n${swissDays.join('\n')}\n`,
     [GOLD]: `Date,Price\n${goldMonths.join('\n')}\n`,
     [CO2]: `Year,Annual Increase,Uncertainty\n${co2Years.join('\n')}\n`,
     [EUROSTAT]: `DATAFLOW,freq,TIME_PERIOD,OBS_VALUE,OBS_FLAG\n${eurostatMonths.join('\n')}\n`,
@@ -153,6 +161,14 @@ try {
   });
   assert.match(tip, /0\.9 ppm \(0\.64 to 1\.16, standard uncertainty/);
   console.log(`  ok CO₂: the uncertainty is a band around the value; ${tip}`);
+
+  // the minimum and the maximum of the daily temperature at MeteoSwiss (schema:minValue, schema:maxValue): a band
+  await choose('meteoswiss-d-sma');
+  const swiss = await page.$eval('#panel-chart .chart', (chart) => [chart.querySelector('h3').textContent, chart.querySelectorAll('path.band').length, chart.querySelector('.chart-status').textContent]);
+  assert.equal(swiss[0], 'Air temperature 2 m above ground; daily mean (°C)');
+  assert.equal(swiss[1], 1);
+  assert.match(swiss[2], /The band around Air temperature 2 m above ground; daily mean is its minimum and maximum/);
+  console.log('  ok MeteoSwiss: the daily minimum and maximum are a band around the mean');
 
   // units: temperature in Fahrenheit, with QUDT through eyemind
   await choose('weather-csv');

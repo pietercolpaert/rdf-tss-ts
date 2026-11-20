@@ -46,11 +46,12 @@ const SYMBOLS: Record<string, string> = {
   KiloPA: 'kPa', PA: 'Pa', BAR: 'bar', M: 'm', KiloM: 'km', CentiM: 'cm', MilliM: 'mm', IN: 'in', FT: 'ft', MI: 'mi', SEC: 's', MIN: 'min', HR: 'h', DAY: 'd',
   KiloGM: 'kg', GM: 'g', LB: 'lb', J: 'J', KiloJ: 'kJ', W: 'W', KiloW: 'kW', L: 'L', MilliL: 'mL', M2: 'm²', M3: 'm³',
   TONNE: 't', MegaTONNE: 'Mt', PPM: 'ppm', NUM: 'count', 'MicroGM-PER-M3': 'µg/m³', CCY_USD: '$', CCY_GBP: '£', CCY_EUR: '€',
+  HectoPA: 'hPa', 'W-PER-M2': 'W/m²',
 };
 const FAMILIES = [
   ['DEG_C', 'DEG_F', 'K'],
   ['KiloM-PER-HR', 'M-PER-SEC', 'MI-PER-HR', 'KN'],
-  ['KiloPA', 'PA', 'BAR'],
+  ['HectoPA', 'KiloPA', 'PA', 'BAR'],
   ['PERCENT', 'UNITLESS'],
   ['M', 'KiloM', 'CentiM', 'MilliM', 'IN', 'FT', 'MI'],
   ['SEC', 'MIN', 'HR', 'DAY'],
@@ -164,23 +165,34 @@ const convertible = (iri?: string) => {
 };
 
 const QUDT_SCHEMA = 'http://qudt.org/schema/qudt/';
-/** What the interval of the values of a field is, by the QUDT property of the describing fields that state it. */
+/** What the interval of the values of a field is, by the property of the describing fields that state it. */
 interface Interval {
-  /** `standardUncertainty`: one standard deviation either side; else the bounds. */
+  /** `qudt:standardUncertainty`: one standard deviation either side; else the bounds. */
   uncertainty?: FieldMetadata;
   lower?: FieldMetadata;
   upper?: FieldMetadata;
+  /** The bounds are `schema:minValue` and `schema:maxValue`, the range of the values over the period, rather than `qudt:lowerBound` and `qudt:upperBound`. */
+  range?: boolean;
 }
+const SCHEMA = 'https://schema.org/';
 
 /** The describing fields that give an interval around the values of `field`: a standard uncertainty, or lower and upper bounds. */
 function intervalOf(field: FieldMetadata): Interval | undefined {
   const describing = state!.source.metadata.fields.filter((f) => f.kind === 'context' && f.describesField.includes(field.id) && isNumeric(f));
-  const by = (name: string) => describing.find((f) => f.property === QUDT_SCHEMA + name);
-  const interval: Interval = { uncertainty: by('standardUncertainty'), lower: by('lowerBound'), upper: by('upperBound') };
-  if (interval.uncertainty || (interval.lower && interval.upper)) return interval;
+  const by = (iri: string) => describing.find((f) => f.property === iri);
+  const uncertainty = by(QUDT_SCHEMA + 'standardUncertainty');
+  if (uncertainty) return { uncertainty };
+  const [lower, upper] = [by(QUDT_SCHEMA + 'lowerBound'), by(QUDT_SCHEMA + 'upperBound')];
+  if (lower && upper) return { lower, upper };
+  const [min, max] = [by(SCHEMA + 'minValue'), by(SCHEMA + 'maxValue')];
+  if (min && max) return { lower: min, upper: max, range: true };
   return undefined;
 }
-const intervalFields = (fields: FieldMetadata[]) => fields.flatMap((f) => Object.values(intervalOf(f) ?? {}).filter((d): d is FieldMetadata => d !== undefined));
+const intervalFields = (fields: FieldMetadata[]) =>
+  fields.flatMap((f) => {
+    const interval = intervalOf(f);
+    return interval ? [interval.uncertainty, interval.lower, interval.upper].filter((d): d is FieldMetadata => d !== undefined) : [];
+  });
 const label = (f: FieldMetadata) => f.labels[0] ?? f.localName;
 const local = (iri: string) => iri.replace(/[#/]+$/, '').split(/[#/]/).pop() ?? iri;
 const esc = (text: string) => text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -296,7 +308,13 @@ function seriesOf(fields: FieldMetadata[]): Series[] {
     return {
       name: label(f),
       // a standard uncertainty is one standard deviation either side of the value
-      interval: interval?.uncertainty ? `standard uncertainty (±1σ, ${label(interval.uncertainty)})` : interval ? `error bounds (${label(interval.lower!)} to ${label(interval.upper!)})` : undefined,
+      interval: interval?.uncertainty
+        ? `standard uncertainty (±1σ, ${label(interval.uncertainty)})`
+        : interval?.range
+          ? `minimum and maximum (${label(interval.lower!)} to ${label(interval.upper!)})`
+          : interval
+            ? `error bounds (${label(interval.lower!)} to ${label(interval.upper!)})`
+            : undefined,
       points: times.map((time, i) => {
         const v = number(f, i);
         if (v === null || !interval) return { t: Date.parse(time), v };

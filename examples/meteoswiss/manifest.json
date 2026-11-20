@@ -1,0 +1,211 @@
+[
+  {
+    "id": "meteoswiss-h-sma",
+    "title": "Hourly weather since 2020, Zürich / Fluntern",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Hourly weather since 2020",
+      "Zürich / Fluntern (604 m)"
+    ],
+    "description": "52608 hours of weather at Zürich / Fluntern, 2020-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of PT1H. The weather has seasons: see the patterns tab.",
+    "metadata": "h_historical_2020-2029/sma.ttl"
+  },
+  {
+    "id": "meteoswiss-h-gve",
+    "title": "Hourly weather since 2020, Genève / Cointrin",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Hourly weather since 2020",
+      "Genève / Cointrin (411 m)"
+    ],
+    "description": "52608 hours of weather at Genève / Cointrin, 2020-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of PT1H. The weather has seasons: see the patterns tab.",
+    "metadata": "h_historical_2020-2029/gve.ttl"
+  },
+  {
+    "id": "meteoswiss-h-bas",
+    "title": "Hourly weather since 2020, Basel / Binningen",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Hourly weather since 2020",
+      "Basel / Binningen (316 m)"
+    ],
+    "description": "52608 hours of weather at Basel / Binningen, 2020-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of PT1H. The weather has seasons: see the patterns tab.",
+    "metadata": "h_historical_2020-2029/bas.ttl"
+  },
+  {
+    "id": "meteoswiss-h-ber",
+    "title": "Hourly weather since 2020, Bern / Zollikofen",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Hourly weather since 2020",
+      "Bern / Zollikofen (553 m)"
+    ],
+    "description": "52608 hours of weather at Bern / Zollikofen, 2020-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of PT1H. The weather has seasons: see the patterns tab.",
+    "metadata": "h_historical_2020-2029/ber.ttl"
+  },
+  {
+    "id": "meteoswiss-h-lug",
+    "title": "Hourly weather since 2020, Lugano",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Hourly weather since 2020",
+      "Lugano (273 m)"
+    ],
+    "description": "52608 hours of weather at Lugano, 2020-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of PT1H. The weather has seasons: see the patterns tab.",
+    "metadata": "h_historical_2020-2029/lug.ttl"
+  },
+  {
+    "id": "meteoswiss-h-sio",
+    "title": "Hourly weather since 2020, Sion",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Hourly weather since 2020",
+      "Sion (482 m)"
+    ],
+    "description": "52608 hours of weather at Sion, 2020-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of PT1H. The weather has seasons: see the patterns tab.",
+    "metadata": "h_historical_2020-2029/sio.ttl"
+  },
+  {
+    "id": "meteoswiss-h-dav",
+    "title": "Hourly weather since 2020, Davos",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Hourly weather since 2020",
+      "Davos (1594 m)"
+    ],
+    "description": "52608 hours of weather at Davos, 2020-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of PT1H. The weather has seasons: see the patterns tab.",
+    "metadata": "h_historical_2020-2029/dav.ttl"
+  },
+  {
+    "id": "meteoswiss-h-sae",
+    "title": "Hourly weather since 2020, Säntis",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Hourly weather since 2020",
+      "Säntis (2501 m)"
+    ],
+    "description": "52608 hours of weather at Säntis, 2020-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of PT1H. The weather has seasons: see the patterns tab.",
+    "metadata": "h_historical_2020-2029/sae.ttl"
+  },
+  {
+    "id": "meteoswiss-h-jun",
+    "title": "Hourly weather since 2020, Jungfraujoch",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Hourly weather since 2020",
+      "Jungfraujoch (3571 m)"
+    ],
+    "description": "52608 hours of weather at Jungfraujoch, 2020-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of PT1H. The weather has seasons: see the patterns tab.",
+    "metadata": "h_historical_2020-2029/jun.ttl"
+  },
+  {
+    "id": "meteoswiss-h-otl",
+    "title": "Hourly weather since 2020, Locarno / Monti",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Hourly weather since 2020",
+      "Locarno / Monti (367 m)"
+    ],
+    "description": "52608 hours of weather at Locarno / Monti, 2020-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of PT1H. The weather has seasons: see the patterns tab.",
+    "metadata": "h_historical_2020-2029/otl.ttl"
+  },
+  {
+    "id": "meteoswiss-d-sma",
+    "title": "Daily weather, the whole record, Zürich / Fluntern",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Daily weather, the whole record",
+      "Zürich / Fluntern (604 m)"
+    ],
+    "description": "59170 days of weather at Zürich / Fluntern, 1864-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of P1D. The weather has seasons: see the patterns tab.",
+    "metadata": "d_historical/sma.ttl"
+  },
+  {
+    "id": "meteoswiss-d-gve",
+    "title": "Daily weather, the whole record, Genève / Cointrin",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Daily weather, the whole record",
+      "Genève / Cointrin (411 m)"
+    ],
+    "description": "27759 days of weather at Genève / Cointrin, 1950-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of P1D. The weather has seasons: see the patterns tab.",
+    "metadata": "d_historical/gve.ttl"
+  },
+  {
+    "id": "meteoswiss-d-bas",
+    "title": "Daily weather, the whole record, Basel / Binningen",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Daily weather, the whole record",
+      "Basel / Binningen (316 m)"
+    ],
+    "description": "59170 days of weather at Basel / Binningen, 1864-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of P1D. The weather has seasons: see the patterns tab.",
+    "metadata": "d_historical/bas.ttl"
+  },
+  {
+    "id": "meteoswiss-d-ber",
+    "title": "Daily weather, the whole record, Bern / Zollikofen",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Daily weather, the whole record",
+      "Bern / Zollikofen (553 m)"
+    ],
+    "description": "59170 days of weather at Bern / Zollikofen, 1864-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of P1D. The weather has seasons: see the patterns tab.",
+    "metadata": "d_historical/ber.ttl"
+  },
+  {
+    "id": "meteoswiss-d-lug",
+    "title": "Daily weather, the whole record, Lugano",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Daily weather, the whole record",
+      "Lugano (273 m)"
+    ],
+    "description": "59170 days of weather at Lugano, 1864-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of P1D. The weather has seasons: see the patterns tab.",
+    "metadata": "d_historical/lug.ttl"
+  },
+  {
+    "id": "meteoswiss-d-sio",
+    "title": "Daily weather, the whole record, Sion",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Daily weather, the whole record",
+      "Sion (482 m)"
+    ],
+    "description": "26482 days of weather at Sion, 1953-07-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of P1D. The weather has seasons: see the patterns tab.",
+    "metadata": "d_historical/sio.ttl"
+  },
+  {
+    "id": "meteoswiss-d-sae",
+    "title": "Daily weather, the whole record, Säntis",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Daily weather, the whole record",
+      "Säntis (2501 m)"
+    ],
+    "description": "52352 days of weather at Säntis, 1882-09-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of P1D. The weather has seasons: see the patterns tab.",
+    "metadata": "d_historical/sae.ttl"
+  },
+  {
+    "id": "meteoswiss-d-jun",
+    "title": "Daily weather, the whole record, Jungfraujoch",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Daily weather, the whole record",
+      "Jungfraujoch (3571 m)"
+    ],
+    "description": "33968 days of weather at Jungfraujoch, 1933-01-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of P1D. The weather has seasons: see the patterns tab.",
+    "metadata": "d_historical/jun.ttl"
+  },
+  {
+    "id": "meteoswiss-d-otl",
+    "title": "Daily weather, the whole record, Locarno / Monti",
+    "path": [
+      "Switzerland · MeteoSwiss",
+      "Daily weather, the whole record",
+      "Locarno / Monti (367 m)"
+    ],
+    "description": "45748 days of weather at Locarno / Monti, 1900-10-01 to 2025-12-31, read from a static CSV file of MeteoSwiss on data.geo.admin.ch. Its times are not xsd:dateTime values, so the time of a row is its position on a time grid of P1D. The weather has seasons: see the patterns tab.",
+    "metadata": "d_historical/otl.ttl"
+  }
+]

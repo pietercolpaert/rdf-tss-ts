@@ -113,6 +113,17 @@ export function parquetCellToLexical(value: unknown, datatype: string): string |
   return String(value);
 }
 
+/**
+ * The decompressors of hyparquet-compressors (ZSTD, Gzip, Brotli, LZ4), when it is installed:
+ * hyparquet itself only reads uncompressed and Snappy pages.
+ */
+let compressors: Promise<Record<string, unknown> | undefined> | undefined;
+const loadCompressors = () =>
+  (compressors ??= import('hyparquet-compressors').then(
+    (module) => (module as { compressors: Record<string, unknown> }).compressors,
+    () => undefined,
+  ));
+
 /** The rows of a Parquet data file. */
 export async function* parquetRows(
   meta: SourceMetadata,
@@ -123,7 +134,15 @@ export async function* parquetRows(
   const convert = makeRowConverter(meta);
   const file = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   const columns = meta.fields.map((f) => f.columnName).filter((name): name is string => name !== undefined);
-  const rows = (await parquetReadObjects({ file, columns })) as Record<string, unknown>[];
+  const extra = await loadCompressors();
+  let rows: Record<string, unknown>[];
+  try {
+    rows = (await parquetReadObjects({ file, columns, ...(extra ? { compressors: extra } : {}) })) as Record<string, unknown>[];
+  } catch (error) {
+    const codec = /unsupported compression codec: (\w+)/.exec((error as Error).message)?.[1];
+    if (codec && !extra) throw new Error(`the Parquet file is compressed with ${codec}: npm install hyparquet-compressors to read it`);
+    throw error;
+  }
   for (let i = 0; i < rows.length; i++) {
     if (i < options.skip) continue;
     const row = rows[i];

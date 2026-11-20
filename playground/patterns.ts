@@ -162,6 +162,8 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
   panel.append(toolbar, status, results);
 
   let grid: Grid | null = null;
+  /** The number of values of the field; more than `MAX_VALUES`, and only the most recent ones are compared. */
+  let total = 0;
   let samplesPerPeriod = 1;
   /** A day or week holds fewer than 3 values (monthly prices, say): there are no contexts to compare. */
   const coarse = () => samplesPerPeriod < 3;
@@ -173,6 +175,14 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
     const numbers = input.values(field).map((v) => (v === undefined ? null : Number(v)));
     grid = toGrid(times, numbers);
     if (!grid) return;
+    total = grid.values.length;
+    if (total > MAX_VALUES) {
+      // too many to compare in the page: the most recent values, from the start of a day
+      let skip = total - MAX_VALUES;
+      const offset = (grid.t0 + skip * grid.step) % DAY;
+      if (offset !== 0) skip += Math.ceil((DAY - offset) / grid.step);
+      grid = { t0: grid.t0 + skip * grid.step, step: grid.step, values: grid.values.slice(skip) };
+    }
     const period = periodSelect.value === 'week' ? 7 * DAY : DAY;
     samplesPerPeriod = Math.round(period / grid.step);
     const shift = Math.min(2, Math.max(0, samplesPerPeriod - 3));
@@ -189,10 +199,6 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
     for (const stop of stops.splice(0)) stop();
     if (!grid) {
       status.textContent = 'This field has no regular time step, which the matrix profile needs.';
-      return;
-    }
-    if (grid.values.length > MAX_VALUES) {
-      status.textContent = `${grid.values.length} values are too many for comparing windows in the page (at most ${MAX_VALUES}).`;
       return;
     }
     const m = Math.min(Math.max(2, Math.round(Number(windowInput.value) || 2)), grid.values.length - 1);
@@ -225,7 +231,8 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
     if (id !== runs) return;
     const gaps = grid.values.reduce((n, v) => n + (Number.isNaN(v) ? 1 : 0), 0);
     const finite = profiles.profile.reduce((n, v) => n + (Number.isNaN(v) ? 0 : 1), 0);
-    status.textContent = `${profiles.windows} windows of ${m} values compared in ${Math.round(performance.now() - started)} ms (${finite} with a match${gaps ? `; ${gaps} of ${grid.values.length} values were missing, and are ${gapSelect.value === 'zero' ? 'counted as zero' : gapSelect.value === 'linear' ? 'filled by a line between their neighbours' : 'left out with the windows around them'}` : ''}).`;
+    const recent = total > grid.values.length ? `The most recent ${grid.values.length} of ${total} values, from ${date(grid.t0)}: more are too many to compare in the page. ` : '';
+    status.textContent = `${recent}${profiles.windows} windows of ${m} values compared in ${Math.round(performance.now() - started)} ms (${finite} with a match${gaps ? `; ${gaps} of ${grid.values.length} values were missing, and are ${gapSelect.value === 'zero' ? 'counted as zero' : gapSelect.value === 'linear' ? 'filled by a line between their neighbours' : 'left out with the windows around them'}` : ''}).`;
     show(grid, filled, m, contexts, profiles);
   }
 

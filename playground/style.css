@@ -86,9 +86,17 @@ pre { background: #1d2b38; color: #e6edf3; padding: .9rem 1rem; border-radius: 6
 .code summary { cursor: pointer; font-weight: bold; color: var(--primary); }
 .toolbar { display: flex; flex-wrap: wrap; gap: .8rem 1.4rem; align-items: center; margin: 0 0 .8rem; font-size: .9rem; }
 .toolbar select, .toolbar input[type=number] { padding: .25rem .4rem; border: 1px solid var(--primary-light); border-radius: 4px; font: inherit; }
-.message { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 .8rem; }
-.message h4 { margin: 0; padding: .35rem .8rem; background: #eef4fb; font-size: .9rem; }
-.message pre { margin: 0; border-radius: 0 0 6px 6px; max-height: 20rem; }
+/* Turtle and TriG, highlighted on the dark code background */
+pre .tk-comment { color: #8b9bab; font-style: italic; }
+pre .tk-keyword { color: #ffb347; font-weight: bold; }
+pre .tk-iri { color: #8cc4ff; }
+pre .tk-pname { color: #b5d3f0; }
+pre .tk-bnode { color: #d2a8ff; }
+pre .tk-string { color: #a5d6a7; }
+pre .tk-lang { color: #a5d6a7; }
+pre .tk-number { color: #f2cc8f; }
+pre .tk-punct { color: #8b9bab; }
+pre.messages { max-height: 40rem; }
 
 /* validation */
 .badge { display: inline-block; padding: .15rem .7rem; border-radius: 999px; color: white; font-weight: bold; font-size: .9rem; }

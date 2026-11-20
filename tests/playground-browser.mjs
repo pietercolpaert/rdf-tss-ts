@@ -136,6 +136,8 @@ try {
   assert.match(code, /unit: \{ temp\w*: unit\('DEG_F'\) \}/, `the code sample: ${code}`);
   const tooltipValues = await page.$$eval('#panel-chart .chart svg', (svgs, i) => svgs[i].querySelectorAll('circle').length, index);
   assert.ok(tooltipValues > 0, 'the converted chart has points');
+  // the hash holds the view: the unit of the chart, by its first field
+  assert.equal(await page.evaluate(() => location.hash), '#weather-csv&unit.temperature=DEG_F');
   console.log(`  ok units: ${before} -> °F (${note.slice(0, 60)}…)`);
   // the table shows the converted numbers: 8 + 5 sin(...) °C at 09:00 is 8 °C = 46.4 °F
   await page.click('#tab-table');
@@ -143,6 +145,11 @@ try {
   const rows = await page.$$eval('#panel-table tbody tr', (trs) => trs.slice(9, 10).map((tr) => [...tr.children].map((td) => td.textContent)));
   assert.equal(rows[0][0], '2026-11-17T09:00:00Z');
   assert.equal(rows[0][1], '46.4', `converted at 09:00: ${rows[0]}`);
+  // a link opens the view it holds: the unit and the zoom
+  await page.evaluate(() => (location.hash = '#weather-csv&unit.temperature=K&from=2026-11-17T06:00:00Z&until=2026-11-17T12:00:00Z'));
+  await page.waitForFunction(() => [...document.querySelectorAll('#panel-chart .chart h3')].some((h) => h.textContent.includes('(K)')), { timeout: 30000 });
+  assert.match(await text('#panel-chart .chart'), /all shown\. Double-click to zoom out/);
+  console.log(`  ok view in the hash: ${await page.evaluate(() => location.hash)}`);
 
   // months of Telraam data in a binary format, with a speed in km/h that converts to m/s
   const months = examples.find((e) => e.id.startsWith('telraam-months-'));
@@ -231,13 +238,20 @@ try {
   await page.waitForFunction(() => document.querySelector('#panel-metadata pre'));
   assert.match(await text('#panel-metadata pre'), /tss:CSVSource/);
   await page.click('#tab-messages');
-  await page.waitForFunction(() => document.querySelector('#panel-messages .message'));
+  await page.waitForFunction(() => document.querySelector('#panel-messages pre.messages'));
+  // one RDF Message Log: the prefixes once, a MESSAGE after each message, and a comment before it
+  const log = await text('#panel-messages pre.messages');
+  assert.match(log, /^VERSION "1\.2-messages"\nPREFIX tss: <https:\/\/w3id\.org\/tss#>/);
+  assert.equal(log.match(/^PREFIX tss:/gm).length, 1);
+  assert.match(log, /\nMESSAGE\n# row 1: /);
+  assert.ok(await page.$('#panel-messages pre.messages .tk-keyword'), 'highlighted');
   // the expansion: the points link to their field; with the alignment, they are SOSA observations too
   assert.match(await text('#panel-messages'), /tss:hasPoint/);
   assert.match(await text('#panel-messages'), /tss:field/);
   await page.select('#msg-align', 'sosa');
   // derived in the browser by rdfjs-inference-engine, from the TSS vocabulary: the chains over tss:field too
   await page.waitForFunction(() => /each next row/.test(document.querySelector('#panel-messages').textContent), { timeout: 60000 });
+  assert.match(await page.evaluate(() => location.hash), /&tab=messages&align=sosa$/);
   const messages = await text('#panel-messages');
   for (const derived of [/a sosa:Observation/, /sosa:hasSimpleResult/, /sosa:resultTime/, /sosa:observedProperty/]) assert.match(messages, derived);
   console.log(`  ok alignment: ${messages.match(/so the background is closed once: .*?each next row\./)?.[0]}`);

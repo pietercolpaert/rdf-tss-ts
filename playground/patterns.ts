@@ -13,6 +13,15 @@ export interface PatternField {
   unit?: string;
 }
 
+/** The choices of the patterns view, as text: what a link to the view holds. */
+export interface PatternSettings {
+  field: string;
+  period: string;
+  window: string;
+  shift: string;
+  gaps: string;
+}
+
 export interface PatternInput {
   /** The numeric fields. */
   fields: PatternField[];
@@ -20,6 +29,10 @@ export interface PatternInput {
   /** The values of a field, aligned with `times`. */
   values(fieldId: string): (string | undefined)[];
   symbol(unit?: string): string;
+  /** Choices to start with, such as those of a link; the others get their defaults. */
+  initial?: Partial<PatternSettings>;
+  /** Called when the reader changes a choice. */
+  onChange?(settings: PatternSettings): void;
 }
 
 /** Longer series take too long to compare window by window (a minute for 100 000 values). */
@@ -377,10 +390,12 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
 
   /* ---------- wiring ---------- */
 
+  const settings = (): PatternSettings => ({ field: fieldSelect.value, period: periodSelect.value, window: windowInput.value, shift: shiftInput.value, gaps: gapSelect.value });
   const schedule = () => {
     clearTimeout(timer);
     status.textContent = 'Comparing the windows …';
     timer = setTimeout(() => void run(), 250);
+    input.onChange?.(settings());
   };
   fieldSelect.addEventListener('change', () => {
     reset();
@@ -396,7 +411,17 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
 
   if (input.fields.length === 0) status.textContent = 'This source has no numeric fields.';
   else {
+    // the field and the period first: the defaults of the window and the shift depend on them
+    const { initial = {} } = input;
+    const choose = (control: HTMLSelectElement, value?: string) => {
+      if (value !== undefined && [...control.options].some((o) => o.value === value)) control.value = value;
+    };
+    choose(fieldSelect, initial.field);
+    choose(periodSelect, initial.period);
+    choose(gapSelect, initial.gaps);
     reset();
+    if (initial.window && Number(initial.window) >= 2) windowInput.value = initial.window;
+    if (initial.shift && Number(initial.shift) >= 0) shiftInput.value = initial.shift;
     void run();
   }
 

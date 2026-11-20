@@ -4,6 +4,7 @@ import {
   createEyemindUnitConverter,
   serializeRdf,
   type FieldMetadata,
+  type RDFMessage,
   type ReadableSource,
   type Row,
   type AlignerOptions,
@@ -12,6 +13,7 @@ import {
   TSS_VOCABULARY_SOURCE,
 } from '../src/index.js';
 import { ZoomGroup, renderChart, type Series } from './chart.js';
+import { highlightTurtle } from './highlight.js';
 import { renderPatterns } from './patterns.js';
 
 interface Example {
@@ -93,6 +95,40 @@ const loadAligner = () =>
     // @ts-expect-error resolved by the bundler: the rules as text
     import('owl2rl-rules'),
   ]).then(([engine, rules]) => ({ engine: (engine as { default?: AlignerOptions['engine'] }).default ?? (engine as unknown as AlignerOptions['engine']), owl2rl: (rules as { default: string }).default })));
+
+/**
+ * The view, in the hash after the dataset: `#weather-csv&tab=messages&rows=5&align=sosa`. The
+ * dataset comes first, as an example id or an encoded URL, so a link of only a dataset still
+ * works; then the tab and the choices made in it.
+ */
+let view = new URLSearchParams();
+
+function datasetOfHash(): { dataset: string; params: URLSearchParams } {
+  const raw = location.hash.slice(1);
+  const at = raw.indexOf('&');
+  return { dataset: decodeURIComponent(at < 0 ? raw : raw.slice(0, at)), params: new URLSearchParams(at < 0 ? '' : raw.slice(at + 1)) };
+}
+
+function writeHash(): void {
+  if (!state) return;
+  const dataset = state.example ? state.example.id : encodeURIComponent(state.url);
+  // colons and slashes may stay as they are in a hash: times and IRIs read better
+  const params = view.toString().replace(/%3A/g, ':').replace(/%2F/g, '/');
+  history.replaceState(null, '', `#${dataset}${params ? `&${params}` : ''}`);
+}
+
+/** Change the view: a key with `undefined` is left out, as is its default. */
+function setView(changes: Record<string, string | undefined>): void {
+  for (const [key, value] of Object.entries(changes)) {
+    if (value === undefined || value === '') view.delete(key);
+    else view.set(key, value);
+  }
+  writeHash();
+}
+
+/** A unit in a link: the name of a QUDT unit, `qudt`, or the IRI of another unit. */
+const unitParam = (unit: string) => (unit.startsWith(QUDT_UNIT) ? unit.slice(QUDT_UNIT.length) : unit);
+const unitOfParam = (text: string) => (text === 'qudt' || /^[a-z][a-z0-9+.-]*:/i.test(text) ? text : QUDT_UNIT + text);
 
 interface State {
   url: string;
@@ -182,7 +218,7 @@ function familyOf(unit?: string): string[] | undefined {
   return FAMILIES.find((family) => name && family.includes(name))?.map((n) => QUDT_UNIT + n);
 }
 
-async function open(url: string, example?: Example): Promise<void> {
+async function open(url: string, example?: Example, params = new URLSearchParams()): Promise<void> {
   setStatus(`Fetching ${url} …`);
   $('result').hidden = true;
   for (const stop of state?.stopCharts ?? []) stop();
@@ -201,12 +237,14 @@ async function open(url: string, example?: Example): Promise<void> {
       unit.set(f.id, f.unit);
     }
     state = { url, example, source, times: readings.map((r) => r.time), values, unit, selectedUnit: new Map(), rendered: new Set(), stopCharts: [] };
-    history.replaceState(null, '', `#${example ? example.id : encodeURIComponent(url)}`);
+    view = params;
+    writeHash();
     $<HTMLInputElement>('url').value = url;
     selectDataset(example);
     renderSummary();
     $('tab-compare').hidden = !(example && compaction && example.group.startsWith('Telraam LDES'));
-    selectTab('chart');
+    const tab = view.get('tab');
+    selectTab(tab && document.querySelector<HTMLButtonElement>(`.tabs button[data-tab="${tab}"]:not([hidden])`) ? tab : 'chart');
     setStatus('');
     $('result').hidden = false;
     renderCode();
@@ -229,6 +267,7 @@ function renderSummary(): void {
 }
 
 function selectTab(name: string): void {
+  setView({ tab: name === 'chart' ? undefined : name });
   for (const tab of document.querySelectorAll<HTMLButtonElement>('.tabs button')) tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
   for (const panel of document.querySelectorAll<HTMLElement>('.panel')) panel.hidden = panel.id !== `panel-${name}`;
   if (state && !state.rendered.has(name)) {
@@ -278,6 +317,10 @@ async function renderCharts(): Promise<void> {
   let index = 0;
   // zooming in on one chart zooms the others to the same times
   const zoom = new ZoomGroup();
+  // the zoom is part of the view: from and until, as times
+  const iso = (t: number) => new Date(t).toISOString().replace('.000Z', 'Z');
+  zoom.subscribe(() => setView({ from: zoom.view ? iso(zoom.view[0]) : undefined, until: zoom.view ? iso(zoom.view[1]) : undefined }));
+  const restore: (() => void)[] = [];
   for (const [, fields] of all) {
     const section = document.createElement('div');
     section.className = 'chart';
@@ -340,6 +383,16 @@ async function renderCharts(): Promise<void> {
           note.style.color = 'var(--bad)';
         }
       });
+      // the unit is part of the view, by the first field of the chart
+      const key = `unit.${fields[0].localName}`;
+      select.addEventListener('change', () => setView({ [key]: select.value === fields[0].unit ? undefined : unitParam(select.value) }));
+      const linked = view.get(key);
+      if (linked && [...select.options].some((o) => o.value === unitOfParam(linked))) {
+        restore.push(() => {
+          select.value = unitOfParam(linked);
+          select.dispatchEvent(new Event('change'));
+        });
+      }
       const caption = document.createElement('label');
       caption.textContent = 'Unit ';
       caption.append(select);
@@ -351,6 +404,9 @@ async function renderCharts(): Promise<void> {
     draw();
     index++;
   }
+  for (const apply of restore) apply();
+  const [from, until] = [Date.parse(view.get('from') ?? ''), Date.parse(view.get('until') ?? '')];
+  if (from < until) zoom.set([from, until]);
   if (index > 0 && [...all.values()].some((fields) => convertible(fields[0].unit))) {
     const hint = document.createElement('p');
     hint.className = 'muted';
@@ -367,7 +423,18 @@ async function renderPatternsTab(): Promise<void> {
   const fields = current.source.metadata.fields
     .filter((f) => f.id !== timeField && f.id !== stepField && isNumeric(f))
     .map((f) => ({ id: f.id, label: label(f), unit: current.unit.get(f.id) }));
-  current.stopCharts.push(renderPatterns($('panel-patterns'), { fields, times: current.times, values: (id) => current.values.get(id)!, symbol }));
+  // the field by its local name in the view
+  const byName = new Map(current.source.metadata.fields.map((f) => [f.localName, f.id]));
+  const initial = {
+    field: byName.get(view.get('field') ?? ''),
+    period: view.get('period') ?? undefined,
+    window: view.get('window') ?? undefined,
+    shift: view.get('shift') ?? undefined,
+    gaps: view.get('gaps') ?? undefined,
+  };
+  const onChange = (s: { field: string; period: string; window: string; shift: string; gaps: string }) =>
+    setView({ field: current.source.resolveField(s.field).localName, period: s.period, window: s.window, shift: s.shift, gaps: s.gaps });
+  current.stopCharts.push(renderPatterns($('panel-patterns'), { fields, times: current.times, values: (id) => current.values.get(id)!, symbol, initial, onChange }));
 }
 
 /* ---------- table ---------- */
@@ -395,10 +462,41 @@ async function renderMetadata(): Promise<void> {
   const { source } = state!;
   const turtle = await serializeRdf([...source.dataset], 'text/turtle', PREFIXES);
   const panel = $('panel-metadata');
-  panel.innerHTML = `<p class="muted">The RDF that describes the source${source.kind.startsWith('Embedded') ? ', with the embedded points' : ''}: ${new TextEncoder().encode(turtle).length} bytes as Turtle.</p><pre>${esc(turtle)}</pre>`;
+  panel.innerHTML = `<p class="muted">The RDF that describes the source${source.kind.startsWith('Embedded') ? ', with the embedded points' : ''}: ${new TextEncoder().encode(turtle).length} bytes as Turtle.</p><pre>${highlightTurtle(turtle)}</pre>`;
 }
 
 /* ---------- RDF messages ---------- */
+
+/** The prefixes of `PREFIXES` that these quads use. */
+function usedPrefixes(quads: { subject: { value: string }; predicate: { value: string }; object: { value: string; termType: string; datatype?: { value: string } } }[]): Record<string, string> {
+  const iris = new Set<string>();
+  for (const q of quads) {
+    iris.add(q.subject.value);
+    // rdf:type is written as `a`
+    if (q.predicate.value !== 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') iris.add(q.predicate.value);
+    if (q.object.termType === 'NamedNode') iris.add(q.object.value);
+    if (q.object.datatype) iris.add(q.object.datatype.value);
+  }
+  return Object.fromEntries(Object.entries(PREFIXES).filter(([, ns]) => [...iris].some((iri) => iri.startsWith(ns) && iri.length > ns.length)));
+}
+
+/**
+ * Messages as one RDF Message Log, as the specification writes it: the version label and the
+ * prefixes once, every message in Turtle, a `MESSAGE` delimiter after each, and before each a
+ * comment that says what it holds.
+ */
+async function messageLog(messages: { quads: RDFMessage['quads']; comment: string }[]): Promise<string> {
+  const prefixes = usedPrefixes(messages.flatMap((m) => m.quads) as never);
+  const head = ['VERSION "1.2-messages"', ...Object.entries(prefixes).map(([name, ns]) => `PREFIX ${name}: <${ns}>`)].join('\n');
+  const bodies = await Promise.all(
+    messages.map(async (m) => {
+      const turtle = await serializeRdf(m.quads, 'text/turtle', prefixes);
+      // the prefixes are declared once, at the top
+      return `# ${m.comment}\n${turtle.replace(/^@prefix[^\n]*\n/gm, '').trim()}\nMESSAGE`;
+    }),
+  );
+  return `${head}\n\n${bodies.join('\n')}\n`;
+}
 
 async function renderMessages(): Promise<void> {
   const panel = $('panel-messages');
@@ -406,13 +504,19 @@ async function renderMessages(): Promise<void> {
     <label>Rows <input id="msg-count" type="number" min="1" max="50" value="3" style="width:4rem"></label>
     <label>Also write what a reasoner derives <select id="msg-align"><option value="">nothing</option><option value="sosa">SOSA observations</option><option value="saref">SAREF measurements</option></select></label>
   </div><div id="msg-out"></div>`;
+  // the choices of a link
+  const rowsInView = Number(view.get('rows'));
+  if (Number.isInteger(rowsInView) && rowsInView >= 1 && rowsInView <= 50) $<HTMLInputElement>('msg-count').value = String(rowsInView);
+  const alignInView = view.get('align');
+  if (alignInView === 'sosa' || alignInView === 'saref') $<HTMLSelectElement>('msg-align').value = alignInView;
   const run = async () => {
     const count = Number($<HTMLInputElement>('msg-count').value) || 3;
     const align = $<HTMLSelectElement>('msg-align').value as '' | 'sosa' | 'saref';
+    setView({ rows: count === 3 ? undefined : String(count), align: align || undefined });
     const out = $('msg-out');
     out.textContent = 'Working …';
     try {
-      const parts: string[] = [];
+      const messages: { quads: RDFMessage['quads']; comment: string }[] = [];
       let points = 0;
       let index = 0;
       let rows = 0;
@@ -434,16 +538,21 @@ async function renderMessages(): Promise<void> {
         const rowPoints = message.quads.filter((q) => q.predicate.value === 'https://w3id.org/tss#hasPoint').length;
         points += rowPoints;
         if (index > 1 && rowPoints > 0) rows++;
-        const text = await message.serialize('text/turtle', PREFIXES);
-        const title = index === 1 ? 'Message 1: the metadata' : rowPoints > 0 ? `Message ${index}: row ${rows}` : `Message ${index}: the ending`;
-        parts.push(`<div class="message"><h4>${title}</h4><pre>${esc(text)}</pre></div>`);
+        const time = message.quads.find((q) => q.predicate.value === 'https://w3id.org/tss#time')?.object.value;
+        const comment =
+          index === 1
+            ? 'the metadata: the description of the source and its fields'
+            : rowPoints > 0
+              ? `row ${rows}: ${time}, ${rowPoints} point${rowPoints === 1 ? '' : 's'}`
+              : 'the ending: tss:immutable true and the stored summaries';
+        messages.push({ quads: message.quads, comment });
         if (index > count) break;
         last = performance.now();
       }
       const derivedNote = align
         ? `<p class="muted">With <b>${align === 'sosa' ? 'SOSA observations' : 'SAREF measurements'}</b>, the triples about each point other than <code>tss:</code> ones are derived in your browser by a reasoner, <a href="https://www.npmjs.com/package/rdfjs-inference-engine">rdfjs-inference-engine</a> (OWL 2 RL rules for Eyeling), from the <a href="${TSS_VOCABULARY_SOURCE}">TSS vocabulary of the specification</a> and the description of the source: the library itself writes none of them. The rules are specialized to the shape of the points and to the observations asked for (SHACL in and out shapes), so the background is closed once: ${Math.round(loaded)} ms to load the reasoner, ${Math.round(prepared)} ms to prepare it with the first row${reasoned ? `, then ${(rowTime / reasoned).toFixed(1)} ms for each next row` : ''}.</p>`
         : '';
-      out.innerHTML = `<p class="muted">The expansion of the source into points: the first message is the metadata, with the default property of each describing field that states no <code>tss:property</code>; each next message holds one row, with a point for every value of a value field (${points} points in ${rows} rows here), which states its field, time and reading with <code>tss:field</code>, <code>tss:time</code> and <code>tss:value</code>; an immutable source ends with a message with <code>tss:immutable true</code> and the stored summaries. These are the three kinds of messages of the RDF Message Stream Profile of the specification. The TSS vocabulary is aligned with SOSA and SAREF, so a reasoner derives observations from it. A source is a table; an RDF Message Log is a stream of small RDF documents: this turns one into the other.</p>${derivedNote}${parts.join('')}`;
+      out.innerHTML = `<p class="muted">The expansion of the source into points, as one RDF Message Log: the first message is the metadata, with the default property of each describing field that states no <code>tss:property</code>; each next message holds one row, with a point for every value of a value field (${points} points in ${rows} rows here), which states its field, time and reading with <code>tss:field</code>, <code>tss:time</code> and <code>tss:value</code>; an immutable source ends with a message with <code>tss:immutable true</code> and the stored summaries. These are the three kinds of messages of the RDF Message Stream Profile of the specification, each ended by <code>MESSAGE</code>. A source is a table; an RDF Message Log is a stream of small RDF documents: this turns one into the other.</p>${derivedNote}<pre class="messages">${highlightTurtle(await messageLog(messages))}</pre>`;
     } catch (error) {
       out.textContent = (error as Error).message;
     }
@@ -627,11 +736,19 @@ async function start(): Promise<void> {
     setStatus('The examples are not available; paste the URL of a source above.');
   }
   renderExamples();
-  const hash = decodeURIComponent(location.hash.slice(1));
-  const fromHash = examples.find((e) => e.id === hash);
-  if (fromHash) await open(exampleUrl(fromHash), fromHash);
-  else if (/^https?:/.test(hash)) await open(hash);
-  else if (examples[0]) await open(exampleUrl(examples[0]), examples[0]);
+  // a hash the reader changes, such as a link pasted in the address bar, opens its view
+  window.addEventListener('hashchange', () => void openHash());
+  if (!(await openHash()) && examples[0]) await open(exampleUrl(examples[0]), examples[0]);
+}
+
+/** Open the dataset and the view of the hash; `false` when the hash names no dataset. */
+async function openHash(): Promise<boolean> {
+  const { dataset, params } = datasetOfHash();
+  const example = examples.find((e) => e.id === dataset);
+  if (example) await open(exampleUrl(example), example, params);
+  else if (/^https?:/.test(dataset)) await open(dataset, undefined, params);
+  else return false;
+  return true;
 }
 
 void start();

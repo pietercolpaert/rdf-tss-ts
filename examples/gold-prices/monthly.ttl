@@ -2,6 +2,8 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+@prefix unit: <http://qudt.org/vocab/unit/> .
 
 # Monthly gold prices since 1833, from the gold-prices data package of the core datasets on
 # GitHub (https://github.com/datasets/gold-prices). This document only describes the CSV file:
@@ -34,11 +36,30 @@
 
 <#price>
     a tss:ValueField ;
-    rdfs:label "Gold price (USD per troy ounce)"@en ;
+    rdfs:label "Gold price"@en ;
     tss:columnName "Price" ;
     tss:datatype xsd:decimal ;
+    tss:unit <#USD-PER-OZ_TROY> ;
     # gold (Wikidata)
     tss:featureOfInterest <http://www.wikidata.org/entity/Q897> .
+
+# QUDT has the US dollar and the troy ounce, but not their quotient, so the unit is made of the
+# two as QUDT makes its own derived units. It states no qudt:conversionMultiplier on purpose:
+# QUDT gives every currency the multiplier 1 and the same dimension vector, but an exchange rate
+# changes over time, so a price in dollars is not converted to another currency as a unit is.
+<#USD-PER-OZ_TROY>
+    a qudt:DerivedUnit, qudt:Unit ;
+    rdfs:label "US dollar per troy ounce"@en ;
+    qudt:symbol "$/oz{Troy}" ;
+    qudt:hasFactorUnit [
+        a qudt:FactorUnit ;
+        qudt:exponent 1 ;
+        qudt:hasUnit unit:CCY_USD
+    ], [
+        a qudt:FactorUnit ;
+        qudt:exponent -1 ;
+        qudt:hasUnit unit:OZ_TROY
+    ] .
 
 <#date>
     a tss:MetaField ;

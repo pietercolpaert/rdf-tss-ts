@@ -97,7 +97,11 @@ let state: State | undefined;
 let examples: Example[] = [];
 let compaction: Compaction | undefined;
 
-const symbol = (iri?: string) => (iri ? (SYMBOLS[iri.replace(QUDT_UNIT, '')] ?? iri.replace(QUDT_UNIT, '')) : '');
+/** The `qudt:symbol` of the units the metadata defines itself, such as a unit made of QUDT units. */
+const unitSymbols = new Map<string, string>();
+const symbol = (iri?: string) => (iri ? (unitSymbols.get(iri) ?? SYMBOLS[iri.replace(QUDT_UNIT, '')] ?? iri.replace(QUDT_UNIT, '')) : '');
+/** Only the units of the QUDT catalog can be converted: a unit the metadata makes itself has no conversion. */
+const convertible = (iri?: string) => !!iri && iri.startsWith(QUDT_UNIT);
 const label = (f: FieldMetadata) => f.labels[0] ?? f.localName;
 const local = (iri: string) => iri.replace(/[#/]+$/, '').split(/[#/]/).pop() ?? iri;
 const esc = (text: string) => text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -142,6 +146,11 @@ async function open(url: string, example?: Example): Promise<void> {
   for (const stop of state?.stopCharts ?? []) stop();
   try {
     const source = await Source.fetch(url, { unitConverter: lazyConverter });
+    const units = new Set(source.metadata.fields.map((f) => f.unit).filter((u): u is string => !!u));
+    unitSymbols.clear();
+    for (const q of source.dataset.match()) {
+      if (q.predicate.value === 'http://qudt.org/schema/qudt/symbol' && units.has(q.subject.value)) unitSymbols.set(q.subject.value, q.object.value);
+    }
     const readings = await readAll(source);
     const values = new Map<string, (string | undefined)[]>();
     const unit = new Map<string, string | undefined>();
@@ -237,7 +246,7 @@ async function renderCharts(): Promise<void> {
       stopChart = renderChart(area, { series: lines, step: counts, zero: counts, unit: unit ? symbol(unit) : undefined, zoom });
       state!.stopCharts.push(stopChart);
     };
-    if (fields[0].unit) {
+    if (fields[0].unit && convertible(fields[0].unit)) {
       const controls = document.createElement('div');
       controls.className = 'chart-controls';
       const select = document.createElement('select');
@@ -279,7 +288,7 @@ async function renderCharts(): Promise<void> {
     draw();
     index++;
   }
-  if (index > 0 && [...all.values()].some((fields) => fields[0].unit)) {
+  if (index > 0 && [...all.values()].some((fields) => convertible(fields[0].unit))) {
     const hint = document.createElement('p');
     hint.className = 'muted';
     hint.textContent = 'Change the unit of a chart: the readings are converted with QUDT, thanks to eyemind, while they are read.';

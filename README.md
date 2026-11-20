@@ -122,6 +122,8 @@ A single unit IRI is for a source whose fields share a dimension: it throws `Uni
 
 Conversion only applies to fields with a `tss:unit`. Converted values are numbers computed with the [QUDT](https://qudt.org/) unit catalog of [eyemind](https://github.com/eyereasoner/eyemind), so they are `xsd:double`s rounded to 12 significant digits; only `'source'` keeps the published text exactly. Converting to a unit of a different dimension throws `UnitConversionError`, and so does a unit that is not in the catalog.
 
+A unit that QUDT does not have can be made in the metadata from QUDT units, as QUDT makes its own derived units: the [gold prices](examples/gold-prices/monthly.ttl) are in `<#USD-PER-OZ_TROY>`, a `qudt:DerivedUnit` with the factor units `unit:CCY_USD` (exponent 1) and `unit:OZ_TROY` (exponent −1) and the `qudt:symbol` `"$/oz{Troy}"`. Such a unit describes the values, but is not converted: it is not in the catalog. That is on purpose for a currency: QUDT gives every currency the conversion multiplier 1, but an exchange rate changes over time, so a price is not converted to another currency as a unit is.
+
 The conversion of a unit is looked up once, with eyemind, and then applied to every reading with plain arithmetic, so reading stays fast. In the browser, hand the library eyemind's `main` yourself, see the [playground](playground/app.ts).
 
 ### Follow a live source

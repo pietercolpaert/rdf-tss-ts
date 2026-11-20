@@ -83,6 +83,9 @@ try {
   // gold prices: a time grid of one month without a step field, over a CSV file on another site
   await choose('gold-prices');
   assert.match(await text('#subtitle'), /CSV source · 36 rows · 2 fields · from 1833-01-01T00:00:00Z · growing/);
+  // the unit the metadata makes of QUDT units shows its qudt:symbol, and has no conversion to choose
+  assert.equal(await text('#panel-chart .chart h3'), 'Gold price ($/oz{Troy})');
+  assert.equal((await page.$$('#panel-chart .chart select')).length, 0, 'no unit to convert to');
   await page.click('#tab-table');
   await page.waitForFunction(() => document.querySelector('#panel-table table'));
   const goldRows = await page.$$eval('#panel-table tbody tr', (trs) => [0, 13].map((i) => [...trs[i].children].map((td) => td.textContent)));

@@ -70,13 +70,24 @@ export function niceTicks(min: number, max: number, count = 5): number[] {
   return ticks;
 }
 
-/** Times at round steps (every 3 hours, every day, …) in UTC. */
+/** Times at round steps (every 3 hours, every day, …, every 10 years) in UTC. */
 export function timeTicks(min: number, max: number, count: number): number[] {
   const minute = 60_000;
   const hour = 60 * minute;
   const day = 24 * hour;
-  const steps = [minute, 5 * minute, 10 * minute, 15 * minute, 30 * minute, hour, 2 * hour, 3 * hour, 6 * hour, 12 * hour, day, 2 * day, 7 * day, 14 * day, 30 * day, 90 * day, 365 * day];
   const raw = (max - min) / count;
+  if (raw > 90 * day) {
+    // whole years, on the first of January: 1, 2, 5, 10, 20, 25, 50, 100, … years apart
+    const years = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].find((n) => n * 365.25 * day >= raw) ?? 1000;
+    const ticks: number[] = [];
+    for (let year = Math.ceil(new Date(min).getUTCFullYear() / years) * years; ; year += years) {
+      const t = Date.UTC(year, 0, 1);
+      if (t > max) break;
+      if (t >= min) ticks.push(t);
+    }
+    return ticks;
+  }
+  const steps = [minute, 5 * minute, 10 * minute, 15 * minute, 30 * minute, hour, 2 * hour, 3 * hour, 6 * hour, 12 * hour, day, 2 * day, 7 * day, 14 * day, 30 * day, 90 * day];
   const step = steps.find((s) => s >= raw) ?? steps[steps.length - 1];
   const ticks: number[] = [];
   for (let t = Math.ceil(min / step) * step; t <= max; t += step) ticks.push(t);
@@ -88,7 +99,13 @@ const formatTick = (v: number) => (Math.abs(v) >= 1e5 || (v !== 0 && Math.abs(v)
 function timeFormatter(range: number): (t: number) => string {
   const day = 86_400_000;
   const options: Intl.DateTimeFormatOptions =
-    range <= 2 * day ? { hour: '2-digit', minute: '2-digit' } : range <= 120 * day ? { month: 'short', day: 'numeric' } : { year: 'numeric', month: 'short' };
+    range <= 2 * day
+      ? { hour: '2-digit', minute: '2-digit' }
+      : range <= 120 * day
+        ? { month: 'short', day: 'numeric' }
+        : range <= 3 * 365 * day
+          ? { year: 'numeric', month: 'short' }
+          : { year: 'numeric' };
   const format = new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC', hour12: false });
   return (t) => format.format(t);
 }

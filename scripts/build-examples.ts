@@ -4,7 +4,8 @@
  *   - a weather day in every format (embedded RDF, embedded JSON, CSV, Arrow, Parquet),
  *   - a time grid, written by hand because the writer states each time,
  *   - three locations of the Telraam LDES, and how much smaller they are than the LDES,
- *   - months of Telraam counts and speeds, if examples/telraam-months/ exists.
+ *   - months of Telraam counts and speeds, if examples/telraam-months/ exists,
+ *   - monthly gold prices since 1833: a description of a CSV file published elsewhere.
  *
  *   npm run examples [outputDirectory]     (default: _site/examples)
  */
@@ -98,16 +99,16 @@ async function timeGrid(): Promise<void> {
 ex:weather-grid a tss:CSVSource ;
     rdfs:label "Weather in Ghent, ${day}, on a time grid" ;
     tss:immutable true ;
-    tss:from "${day}T00:00:00Z"^^xsd:dateTimeStamp ;
-    tss:until "2026-11-18T00:00:00Z"^^xsd:dateTimeStamp ;
+    tss:from "${day}T00:00:00Z"^^xsd:dateTime ;
+    tss:until "2026-11-18T00:00:00Z"^^xsd:dateTime ;
     tss:dataFile <weather-grid.csv> ;
-    tss:timeBase "${day}T00:00:00Z"^^xsd:dateTimeStamp ;
+    tss:timeBase "${day}T00:00:00Z"^^xsd:dateTime ;
     tss:timeStep "PT1H"^^xsd:duration ;
     tss:timeField ex:time ;
     tss:stepField ex:step ;
     tss:hasField ex:time, ex:step, ex:temperature, ex:humidity .
 
-ex:time a tss:MetaField ; tss:datatype xsd:dateTimeStamp .
+ex:time a tss:MetaField ; tss:datatype xsd:dateTime .
 ex:step a tss:MetaField ; tss:columnName "step" ; tss:datatype xsd:integer .
 ex:temperature a tss:ValueField ; rdfs:label "Air temperature" ; tss:columnName "temp" ; tss:datatype xsd:double ;
     tss:observedProperty qk:Temperature ; tss:unit unit:DEG_C .
@@ -177,6 +178,25 @@ interface MonthsEntry {
   series: string[];
 }
 
+const GOLD = 'Gold prices since 1833';
+
+/**
+ * Monthly gold prices since 1833: only the description is published here, the CSV file is read
+ * from the gold-prices data package on GitHub. A time grid of one month without a step field.
+ */
+async function gold(): Promise<void> {
+  await cp(join(root, 'examples', 'gold-prices'), join(out, 'gold-prices'), { recursive: true });
+  add({
+    id: 'gold-prices',
+    title: 'Monthly gold prices (USD per troy ounce)',
+    group: GOLD,
+    description:
+      'A description of a CSV file that someone else publishes: the gold-prices data package on GitHub. The file has one row per month and no time column the specification can use, so the time of a row is its position on a time grid of one month from 1833-01-01.',
+    metadata: 'gold-prices/monthly.ttl',
+    kind: 'CSV (time grid)',
+  });
+}
+
 /**
  * Months of Telraam counts and V85 speeds per location, made from the compressed RDF Message
  * Log of Telraam by `scripts/telraam-log.ts` into examples/telraam-months/ (the log is 1.6 GB).
@@ -222,9 +242,10 @@ add({ id: 'weather-arrow', title: 'Arrow', group, description: 'An Arrow IPC str
 add({ id: 'weather-parquet', title: 'Parquet', group, description: 'A Parquet file: written once, compact, with typed columns.', metadata: 'weather-parquet.ttl', kind: 'Parquet' });
 await telraam();
 await telraamMonths();
+await gold();
 
 // show the groups in this order
-const order = [TELRAAM_MONTHS, TELRAAM_DAY, group];
+const order = [TELRAAM_MONTHS, GOLD, TELRAAM_DAY, group];
 examples.sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
 await writeFile(join(out, 'index.json'), JSON.stringify(examples, null, 2));
 console.log(`wrote ${examples.length} examples to ${out}`);

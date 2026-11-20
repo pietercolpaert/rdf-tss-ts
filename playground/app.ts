@@ -343,14 +343,18 @@ async function renderMessages(): Promise<void> {
       const parts: string[] = [];
       let points = 0;
       let index = 0;
+      let rows = 0;
       for await (const message of state!.source.expand(align ? { align } : {})) {
         index++;
-        points += message.quads.filter((q) => q.predicate.value === 'https://w3id.org/tss#hasPoint').length;
+        const rowPoints = message.quads.filter((q) => q.predicate.value === 'https://w3id.org/tss#hasPoint').length;
+        points += rowPoints;
+        if (index > 1 && rowPoints > 0) rows++;
         const text = await message.serialize('text/turtle', PREFIXES);
-        parts.push(`<div class="message"><h4>${index === 1 ? 'Message 1: the metadata' : `Message ${index}: row ${index - 1}`}</h4><pre>${esc(text)}</pre></div>`);
+        const title = index === 1 ? 'Message 1: the metadata' : rowPoints > 0 ? `Message ${index}: row ${rows}` : `Message ${index}: the ending`;
+        parts.push(`<div class="message"><h4>${title}</h4><pre>${esc(text)}</pre></div>`);
         if (index > count) break;
       }
-      out.innerHTML = `<p class="muted">The expansion of the source into points: the first message is the metadata, with the default property of each field that states no <code>tss:property</code>; each next message holds one row, with a point for every value of a value field (${points} points in ${index - 1} rows here). Each point links to its field with <code>tss:field</code>, and the TSS vocabulary is aligned with SOSA and SAREF, so a reasoner derives observations from it. A source is a table; an RDF Message Log is a stream of small RDF documents: this turns one into the other.</p>${parts.join('')}`;
+      out.innerHTML = `<p class="muted">The expansion of the source into points: the first message is the metadata, with the default property of each field that states no <code>tss:property</code>; each next message holds one row, with a point for every value of a value field (${points} points in ${rows} rows here); an immutable source ends with a message with <code>tss:immutable true</code> and the stored summaries. These are the three kinds of messages of the RDF Message Stream Profile of the specification. Each point links to its field with <code>tss:field</code>, and the TSS vocabulary is aligned with SOSA and SAREF, so a reasoner derives observations from it. A source is a table; an RDF Message Log is a stream of small RDF documents: this turns one into the other.</p>${parts.join('')}`;
     } catch (error) {
       out.textContent = (error as Error).message;
     }

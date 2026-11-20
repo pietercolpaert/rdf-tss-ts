@@ -10,7 +10,7 @@ import type { RawRow } from './rows.js';
 function sortByTime(rows: RawRow[]): RawRow[] {
   const keyed = rows.map((row) => {
     const instant = tryInstantOf(row.time);
-    if (instant === null) throw new ValidationError(`the time ${JSON.stringify(row.time)} is not an xsd:dateTimeStamp`);
+    if (instant === null) throw new ValidationError(`the time ${JSON.stringify(row.time)} is not a time with a timezone (an xsd:dateTime such as 2024-05-12T08:00:00Z)`);
     return { row, instant };
   });
   keyed.sort((a, b) => (a.instant < b.instant ? -1 : a.instant > b.instant ? 1 : 0));
@@ -48,7 +48,7 @@ export function embeddedRdfRows(ds: Dataset, parsed: ParsedSource): RawRow[] {
     const timeValue = objectOf(ds, node, time.property);
     if (!timeValue) throw new ValidationError(`point ${index} has no time (${time.property})`);
     const instant = tryInstantOf(timeValue.value);
-    if (instant === null) throw new ValidationError(`the time ${JSON.stringify(timeValue.value)} is not an xsd:dateTimeStamp`);
+    if (instant === null) throw new ValidationError(`the time ${JSON.stringify(timeValue.value)} is not a time with a timezone (an xsd:dateTime such as 2024-05-12T08:00:00Z)`);
     let row = rows.get(instant);
     if (!row) rows.set(instant, (row = { time: timeValue.value, values: new Map(), nodes: new Map() }));
     for (const f of fields) {

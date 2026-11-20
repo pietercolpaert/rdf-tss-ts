@@ -16,7 +16,7 @@ import { parseSource, type ParsedSource } from './metadata.js';
 import { tss, xsd } from './ns.js';
 import type { Dataset, Quad, Term } from './rdf.js';
 import { Row, Value } from './row.js';
-import { expansionHead, toRDFMessages, type ExpandOptions } from './expand.js';
+import { expansionEnding, expansionHead, toRDFMessages, type ExpandOptions } from './expand.js';
 import { arrowRows, parquetRows } from './formats/table.js';
 import { collect, openData, type DataContext } from './formats/access.js';
 import { csvRows } from './formats/csv.js';
@@ -230,7 +230,7 @@ export class ReadableSource {
 
   private toRow(plan: Plan, raw: RawRow, state: PassState): Row | null {
     const instant = tryInstantOf(raw.time);
-    if (instant === null) throw new ValidationError(`the time ${JSON.stringify(raw.time)} is not an xsd:dateTimeStamp`);
+    if (instant === null) throw new ValidationError(`the time ${JSON.stringify(raw.time)} is not a time with a timezone (an xsd:dateTime such as 2024-05-12T08:00:00Z)`);
     const meta = this.metadata;
     if (meta.from && instant < toInstant(meta.from)) return null;
     if (meta.until && instant >= toInstant(meta.until)) return null;
@@ -344,15 +344,19 @@ export class ReadableSource {
   }
 
   /**
-   * Expand the source into its points as RDF (spec: "Expanding a source into points"): a first
-   * message with the metadata, without `tss:points`, and the default field properties, and
-   * then one message per row with the points of its value fields. With `follow`, the rows that
-   * are added later follow, as with `read`.
+   * Expand the source into its points as RDF (spec: "Expanding a source into points"), as RDF
+   * messages that follow the RDF Message Stream Profile: a description message with the
+   * metadata, without `tss:points`, and the default field properties; one message per row with
+   * the points of its value fields; and, when the source is immutable, an ending message with
+   * `tss:immutable true` and the stored summaries. With `follow`, the rows that are added later
+   * follow, as with `read`, and the ending message when the source is ended.
    */
   async *expand(options: ExpandOptions & Pick<ReadOptions, 'from' | 'until' | 'follow' | 'signal'> = {}): AsyncGenerator<RDFMessage> {
     const { from, until, follow, signal, ...rest } = options;
     if (rest.metadata !== false) yield expansionHead(this, rest);
     yield* toRDFMessages(this.read({ from, until, follow, signal }), { ...rest, metadata: false });
+    const ending = rest.metadata !== false ? expansionEnding(this) : undefined;
+    if (ending) yield ending;
   }
 
   /** A short description, for logs. */

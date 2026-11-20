@@ -102,9 +102,9 @@ export type UnitChoice = 'source' | 'qudt' | (string & {});
 
 /** Options of `read()`. */
 export interface ReadOptions {
-  /** Included; an `xsd:dateTimeStamp` or a `Date`. Default: the start of the source. */
+  /** Included; an `xsd:dateTime` with a timezone, or a `Date`. Default: the start of the source. */
   from?: string | Date;
-  /** Excluded; an `xsd:dateTimeStamp` or a `Date`. Default: the end of the source. */
+  /** Excluded; an `xsd:dateTime` with a timezone, or a `Date`. Default: the end of the source. */
   until?: string | Date;
   /** Fields to include, by local name or IRI. Default: all. */
   fields?: string[];
@@ -121,7 +121,7 @@ export interface ReadOptions {
 
 /** A row to append: a time and the values of some fields. */
 export interface RowInput {
-  /** An `xsd:dateTimeStamp` (with timezone), or a `Date`. */
+  /** An `xsd:dateTime` with a timezone, or a `Date`. */
   time: string | Date;
   /** Values by field local name or IRI. A field left out or `null` has no value. */
   values: Record<string, string | number | bigint | boolean | null | undefined>;

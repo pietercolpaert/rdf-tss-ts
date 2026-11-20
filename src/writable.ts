@@ -52,6 +52,8 @@ export class WritableSource extends ReadableSource {
   private closed = false;
   private lastInstant?: Instant;
   private total = 0;
+  /** The rows in the data file: on a time grid without a step field, the step of the next row. */
+  private dataRows = 0;
   private readonly stats = new Map<string, FieldStats>();
   private pending: NormalizedRow[] = [];
   /** The column of a CSV file by position. */
@@ -104,7 +106,7 @@ export class WritableSource extends ReadableSource {
     if (meta.kind !== 'EmbeddedRDF' && meta.kind !== 'EmbeddedJSON' && !dataPath) {
       throw new NotWritableError(`cannot write to ${this.dataFileIri()}: only local data files can be written`);
     }
-    if (meta.stepField && meta.kind !== 'CSV') throw new NotWritableError('time grids can only be written to CSV sources');
+    if ((meta.stepField || meta.timeBase !== undefined) && meta.kind !== 'CSV') throw new NotWritableError('time grids can only be written to CSV sources');
 
     if (meta.kind === 'EmbeddedRDF' && this.messages.length === 0) this.messages = [[...this.store]];
     if (meta.kind === 'CSV') await this.initCsv(fresh);
@@ -198,6 +200,7 @@ export class WritableSource extends ReadableSource {
     const from = meta.from ? toInstant(meta.from) : undefined;
     const until = meta.until ? toInstant(meta.until) : undefined;
     for await (const raw of this.rows()) {
+      this.dataRows++;
       const instant = instantOf(raw.time);
       if (this.lastInstant === undefined || instant > this.lastInstant) this.lastInstant = instant;
       if ((from !== undefined && instant < from) || (until !== undefined && instant >= until)) continue;
@@ -223,7 +226,7 @@ export class WritableSource extends ReadableSource {
       time = formatInstant(toInstant(input.time));
     } else {
       time = input.time;
-      if (parseTime(time) === null) problems.push({ rule: 'time', message: `${where}: ${JSON.stringify(time)} is not an xsd:dateTimeStamp (it needs a timezone)` });
+      if (parseTime(time) === null) problems.push({ rule: 'time', message: `${where}: ${JSON.stringify(time)} is not an xsd:dateTime with a timezone` });
     }
     const values = new Map<string, string>();
     for (const [key, raw] of Object.entries(input.values ?? {})) {
@@ -334,20 +337,32 @@ export class WritableSource extends ReadableSource {
         this.addJsonPoints(rows);
         return;
       case 'CSV': {
-        const lines = rows.map((row) => {
+        // on a time grid without a step field, the step of a row is its position: every step gets a row
+        const byPosition = meta.timeBase !== undefined && !meta.stepField;
+        let position = BigInt(this.dataRows);
+        const lines: string[] = [];
+        for (const row of rows) {
           const encoded = this.encodeValues(row.values);
-          const step = meta.stepField ? this.stepOf(row.instant) : undefined;
-          return csvLine(
-            this.csvColumns.map((f) => {
-              if (!f) return undefined;
-              if (f.id === meta.timeField) return row.time;
-              if (f.id === meta.stepField) return String(step);
-              return encoded.get(f.id);
-            }),
-            meta.delimiter,
+          const step = meta.timeBase !== undefined ? this.stepOf(row.instant) : undefined;
+          if (byPosition) {
+            if (step! < position) throw new ValidationError(`${row.time} is at step ${step} of the time grid, but the data file already has ${position} rows`);
+            for (; position < step!; position++) lines.push(this.emptyCsvLine());
+            position++;
+          }
+          lines.push(
+            csvLine(
+              this.csvColumns.map((f) => {
+                if (!f) return undefined;
+                if (f.id === meta.timeField) return row.time;
+                if (f.id === meta.stepField) return String(step);
+                return encoded.get(f.id);
+              }),
+              meta.delimiter,
+            ),
           );
-        });
+        }
         await appendLocal(dataPath!, lines.join(''));
+        this.dataRows += lines.length;
         return;
       }
       case 'Arrow': {
@@ -360,6 +375,12 @@ export class WritableSource extends ReadableSource {
         this.pending.push(...rows);
         return;
     }
+  }
+
+  /** A row of empty values; a file of one column gets `""`, since an empty line is no row. */
+  private emptyCsvLine(): string {
+    const line = csvLine(this.csvColumns.map(() => undefined), this.metadata.delimiter);
+    return line === '\n' ? '""\n' : line;
   }
 
   /**
@@ -381,7 +402,7 @@ export class WritableSource extends ReadableSource {
         const point = blankNode();
         quads.push(
           quad(source as NamedNode, namedNode(tss('hasPoint')), point),
-          quad(point, namedNode(time.property), literal(row.time, namedNode(xsd('dateTimeStamp')))),
+          quad(point, namedNode(time.property), literal(row.time, namedNode(time.datatype === xsd('dateTimeStamp') ? xsd('dateTimeStamp') : xsd('dateTime')))),
           quad(point, namedNode(f.property), this.literalOf(f, text)),
         );
         for (const d of describers(f.id)) {
@@ -443,7 +464,7 @@ export class WritableSource extends ReadableSource {
     const out: Quad[] = [quad(source as never, namedNode(tss('immutable')), literal('true', namedNode(xsd('boolean'))))];
     if (this.setup.summaries === false) return out;
     const now = BigInt(Date.now()) * 1_000_000n;
-    const stamp = (text: string) => literal(text, namedNode(xsd('dateTimeStamp')));
+    const stamp = (text: string) => literal(text, namedNode(xsd('dateTime')));
     const integer = (n: number) => literal(String(n), namedNode(xsd('integer')));
     for (const [id, stats] of this.stats) {
       const field = this.parsed.fieldTerms.get(id)!;

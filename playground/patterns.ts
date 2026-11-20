@@ -150,6 +150,8 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
 
   let grid: Grid | null = null;
   let samplesPerPeriod = 1;
+  /** A day or week holds fewer than 3 values (monthly prices, say): there are no contexts to compare. */
+  const coarse = () => samplesPerPeriod < 3;
 
   /** The defaults for the field and period: a window that fills the period but for the shift. */
   function reset(): void {
@@ -162,7 +164,8 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
     samplesPerPeriod = Math.round(period / grid.step);
     const shift = Math.min(2, Math.max(0, samplesPerPeriod - 3));
     shiftInput.value = String(shift);
-    windowInput.value = String(Math.max(2, samplesPerPeriod - shift));
+    // without contexts, a window of 12 values: a year of monthly values
+    windowInput.value = String(coarse() ? Math.max(2, Math.min(12, Math.floor(grid.values.length / 4))) : Math.max(2, samplesPerPeriod - shift));
   }
 
   /* ---------- results ---------- */
@@ -183,14 +186,17 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
     const shift = Math.max(0, Math.round(Number(shiftInput.value) || 0));
     const period = periodSelect.value === 'week' ? 'week' : 'day';
     // a window of a context starts at most `shift` values into its period: say whether it still ends inside it
-    const fit =
-      m + shift === samplesPerPeriod
+    const fit = coarse()
+      ? ''
+      : m + shift === samplesPerPeriod
         ? `: a ${period} minus the shift tolerance, so a window that starts late still ends within its ${period}`
         : m + shift > samplesPerPeriod
           ? `: longer than a ${period} minus the shift tolerance, so a window that starts late runs into the next ${period}`
           : '';
     windowText.textContent = `= ${duration(m * grid.step)}, one value per ${duration(grid.step)}${fit}`;
-    const contexts = contextsOf(grid, m, { period, shift });
+    const contexts: Contexts = coarse()
+      ? { of: new Int32Array(Math.max(0, grid.values.length - m + 1)).fill(-1), count: 0, starts: [], period: period === 'week' ? 7 * DAY : DAY }
+      : contextsOf(grid, m, { period, shift });
     const filled = fillGaps(grid.values, gapSelect.value as GapFill);
     const started = performance.now();
     status.textContent = 'Comparing the windows … 0%';
@@ -250,6 +256,10 @@ export function renderPatterns(panel: HTMLElement, input: PatternInput): () => v
     const unit = contexts.period === 7 * DAY ? 'week' : 'day';
     section.append(element('h3', undefined, `Contextual matrix profile: ${unit} against ${unit}`));
     results.append(section);
+    if (coarse()) {
+      section.append(element('p', 'note', `There is one value per ${duration(g.step)}, so a ${unit} holds no window: the contextual matrix profile needs several values per ${unit}.`));
+      return;
+    }
     if (contexts.count < 2) {
       section.append(element('p', 'note', `The series needs at least two ${unit}s with a window that starts within the shift tolerance.`));
       return;

@@ -22,8 +22,8 @@ export function buildStore(options: CreateOptions, dataFileRef?: string): Store 
   if (options.label) add(source, RDFS + 'label', literal(options.label));
   // a growing source does not state tss:immutable: it is added when the source is ended
   if (options.immutable) add(source, tss('immutable'), lit('true', xsd('boolean')));
-  if (options.from) add(source, tss('from'), lit(options.from, xsd('dateTimeStamp')));
-  if (options.until) add(source, tss('until'), lit(options.until, xsd('dateTimeStamp')));
+  if (options.from) add(source, tss('from'), lit(options.from, xsd('dateTime')));
+  if (options.until) add(source, tss('until'), lit(options.until, xsd('dateTime')));
   add(source, tss('timeField'), namedNode(options.timeField.id));
   if (external) {
     if (!dataFileRef) throw new Error(`a ${options.kind} source needs a dataFile`);
@@ -39,7 +39,7 @@ export function buildStore(options: CreateOptions, dataFileRef?: string): Store 
   const time = namedNode(options.timeField.id);
   add(source, tss('hasField'), time);
   add(time, RDF + 'type', namedNode(META_FIELD));
-  add(time, tss('datatype'), namedNode(xsd('dateTimeStamp')));
+  add(time, tss('datatype'), namedNode(xsd('dateTime')));
   // the time field of an embedded RDF source has tss:time as default property: no column name needed
   if (options.kind !== 'EmbeddedRDF' || options.timeField.columnName !== undefined) {
     add(time, tss('columnName'), literal(options.timeField.columnName ?? localNameOf(options.timeField.id)));

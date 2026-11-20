@@ -41,6 +41,14 @@ try {
   page.on('pageerror', (error) => problems.push(`page error: ${error.message}`));
   page.on('console', (message) => message.type() === 'error' && problems.push(`console error: ${message.text()}`));
   page.on('requestfailed', (request) => problems.push(`request failed: ${request.url()}`));
+  // the gold prices are read from GitHub: answer with three years of months, so the test runs offline
+  const GOLD = 'https://raw.githubusercontent.com/datasets/gold-prices/';
+  const goldMonths = Array.from({ length: 36 }, (_, n) => `${1833 + Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, '0')}-01,${(18.93 + n / 10).toFixed(3)}`);
+  await page.setRequestInterception(true);
+  page.on('request', (request) => {
+    if (!request.url().startsWith(GOLD)) return request.continue();
+    request.respond({ status: 200, contentType: 'text/plain', headers: { 'Access-Control-Allow-Origin': '*' }, body: `Date,Price\n${goldMonths.join('\n')}\n` });
+  });
 
   const ready = () => page.waitForFunction(() => !document.getElementById('result').hidden && document.querySelector('#panel-chart svg'), { timeout: 20000 });
   const text = (selector) => page.$eval(selector, (e) => e.textContent);
@@ -71,6 +79,19 @@ try {
     const subtitle = await text('#subtitle');
     console.log(`  ok ${example.id.padEnd(28)} ${subtitle}`);
   }
+
+  // gold prices: a time grid of one month without a step field, over a CSV file on another site
+  await choose('gold-prices');
+  assert.match(await text('#subtitle'), /CSV source · 36 rows · 2 fields · from 1833-01-01T00:00:00Z · growing/);
+  await page.click('#tab-table');
+  await page.waitForFunction(() => document.querySelector('#panel-table table'));
+  const goldRows = await page.$$eval('#panel-table tbody tr', (trs) => [0, 13].map((i) => [...trs[i].children].map((td) => td.textContent)));
+  assert.deepEqual(goldRows, [
+    ['1833-01-01T00:00:00Z', '18.930', '1833-01-01'],
+    ['1834-02-01T00:00:00Z', '20.230', '1834-02-01'],
+  ]);
+  console.log(`  ok gold: the rows are at their month; ${goldRows[1].join(' ')}`);
+  await page.click('#tab-chart');
 
   // units: temperature in Fahrenheit, with QUDT through eyemind
   await choose('weather-csv');

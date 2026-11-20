@@ -10,6 +10,13 @@ import { parseDuration, tryInstantOf } from './time.js';
 
 const LIMIT = 200;
 
+/** The datatypes of a time of a source; `xsd:dateTime` is recommended. */
+const TIME_DATATYPES = [xsd('dateTime'), xsd('dateTimeStamp')];
+
+/** A time stated in the metadata: a literal with one of the time datatypes, and a timezone. */
+const isTimeLiteral = (t: Term) =>
+  t.termType === 'Literal' && TIME_DATATYPES.includes((t as { datatype?: { value: string } }).datatype?.value ?? '') && tryInstantOf(t.value) !== null;
+
 const isBoolean = (t: Term) => t.termType === 'Literal' && ['true', 'false', '1', '0'].includes(t.value);
 
 /** Check a source against the requirements of the specification, and say where each fails. */
@@ -77,7 +84,7 @@ function metadataRules(source: ReadableSource, add: Add): void {
   if (from.length > 1) add('window', 'at most one tss:from', id);
   if (until.length > 1) add('window', 'at most one tss:until', id);
   for (const [name, terms] of [['tss:from', from], ['tss:until', until]] as const) {
-    if (terms[0] && tryInstantOf(terms[0].value) === null) add('window', `${name} is an xsd:dateTimeStamp`, id);
+    if (terms[0] && !isTimeLiteral(terms[0])) add('window', `${name} is an xsd:dateTime (or xsd:dateTimeStamp) with a timezone`, id);
   }
   if (from[0] && until[0]) {
     const a = tryInstantOf(from[0].value);
@@ -119,14 +126,15 @@ function metadataRules(source: ReadableSource, add: Add): void {
   const hasGrid = base.length > 0 || step.length > 0;
   if (hasGrid) {
     if (base.length !== 1 || step.length !== 1) add('time-grid', 'tss:timeBase and tss:timeStep are stated together, once', id);
-    if (base[0] && tryInstantOf(base[0].value) === null) add('time-grid', 'tss:timeBase is an xsd:dateTimeStamp', id);
+    if (base[0] && !isTimeLiteral(base[0])) add('time-grid', 'tss:timeBase is an xsd:dateTime (or xsd:dateTimeStamp) with a timezone', id);
     const duration = step[0] ? parseDuration(step[0].value) : null;
     if (step[0] && (!duration || (!duration.years && !duration.months && !duration.days && duration.clockNs === 0n))) {
       add('time-grid', 'tss:timeStep is an xsd:duration of more than zero', id);
     }
+    // without a step field, the step of a row is its position in the data file
     const stepFields = many(node, tss('stepField'));
-    if (stepFields.length !== 1) add('step-field', 'a time grid has exactly one tss:stepField', id);
-    else {
+    if (stepFields.length > 1) add('step-field', 'a time grid has at most one tss:stepField', id);
+    else if (stepFields.length === 1) {
       const stepId = termId(stepFields[0]);
       const stepField = meta.fields.find((f) => f.id === stepId);
       if (!stepField) add('step-field', 'the step field is one of the fields of the source', id);
@@ -163,7 +171,7 @@ function metadataRules(source: ReadableSource, add: Add): void {
 
     const datatypes = many(fieldTerm, tss('datatype'));
     if (datatypes.length !== 1 || datatypes[0].termType !== 'NamedNode') add('datatype', 'a field has exactly one tss:datatype (an IRI)', at);
-    if (isTime && f.datatype !== xsd('dateTimeStamp')) add('time-datatype', 'the datatype of the time field is xsd:dateTimeStamp', at);
+    if (isTime && !TIME_DATATYPES.includes(f.datatype)) add('time-datatype', 'the datatype of the time field is xsd:dateTime or xsd:dateTimeStamp', at);
 
     // the field property
     const stated_ = many(fieldTerm, tss('property'));
@@ -243,7 +251,7 @@ async function dataRules(source: ReadableSource, add: Add): Promise<void> {
       row++;
       const instant = tryInstantOf(raw.time);
       if (instant === null) {
-        add('time', `the time ${JSON.stringify(raw.time)} is not an xsd:dateTimeStamp`, undefined, row);
+        add('time', `the time ${JSON.stringify(raw.time)} is not a time with a timezone (an xsd:dateTime such as 2024-05-12T08:00:00Z)`, undefined, row);
         continue;
       }
       const earlier = seen.get(instant);
@@ -292,6 +300,7 @@ function embeddedRdfRules(source: ReadableSource, add: Add): void {
     const where = point.termType === 'NamedNode' ? point.value : undefined;
     const times = timeField.property ? objectsOf(ds, point, timeField.property) : [];
     if (times.length !== 1) add('point-time', `a point has exactly one time (${timeField.property}), not ${times.length}`, where, index);
+    else if (!isTimeLiteral(times[0])) add('point-time', `the time of a point is an xsd:dateTime (or xsd:dateTimeStamp) literal with a timezone`, where, index);
     const own = valueFields.filter((f) => objectsOf(ds, point, f.property!).length > 0);
     if (own.length !== 1) add('point-value', `a point has the value of exactly one value field, not ${own.length}`, where, index);
     for (const f of others) {

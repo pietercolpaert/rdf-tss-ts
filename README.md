@@ -2,9 +2,9 @@
 
 A TypeScript library to read, follow, write and expand [RDF Time Series Sources](https://knowledgeonwebscale.github.io/rdf-tss/) (RDF-TSS).
 
-> **Status: first implementation of an API draft.** The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change. This version follows [pull request #31](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/31), which builds on [#28](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/28) (*Snippets* were renamed to *Sources*) and [#25](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/25) (a source *grows* until it is *ended* with `tss:immutable true`, and followers use plain HTTP: `Range`, `ETag`, `max-age`).
+> **Status: first implementation of an API draft.** The RDF-TSS spec itself is marked *Not Ready For Implementation*, so names and behaviour may still change. This version follows [pull request #33](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/33) (times as `xsd:dateTime`, an optional step field on a time grid, and the RDF Message Stream Profile), which builds on [#31](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/31), which builds on [#28](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/28) (*Snippets* were renamed to *Sources*) and [#25](https://github.com/KNowledgeOnWebScale/rdf-tss/pull/25) (a source *grows* until it is *ended* with `tss:immutable true`, and followers use plain HTTP: `Range`, `ETag`, `max-age`).
 
-**Try the [playground](https://pieter.pm/rdf-tss-ts/)**: pick a dataset from the drop-down (months of Telraam traffic counts and speeds, and a day of weather in every format), see charts (large series are downsampled to an average per day, with a min–max band; drag to zoom in on the raw values), convert units with QUDT, find repeating patterns with the matrix profile and the contextual matrix profile, and see the source expanded into points as RDF Messages. The Telraam data is read from the [Telraam LDES](https://ldes.telraam-api.net/measurements) as RDF Messages and turned into binary sources, see [Telraam](#telraam).
+**Try the [playground](https://pieter.pm/rdf-tss-ts/)**: pick a dataset from the drop-down (months of Telraam traffic counts and speeds, monthly gold prices since 1833 from a CSV file on GitHub, and a day of weather in every format), see charts (large series are downsampled to an average per day, with a min–max band; drag to zoom in on the raw values), convert units with QUDT, find repeating patterns with the matrix profile and the contextual matrix profile, and see the source expanded into points as RDF Messages. The Telraam data is read from the [Telraam LDES](https://ldes.telraam-api.net/measurements) as RDF Messages and turned into binary sources, see [Telraam](#telraam).
 
 ## What is a source?
 
@@ -18,7 +18,7 @@ A source is a table of readings described in RDF: one time column, and one colum
 | `tss:ArrowSource` | an external Arrow file | yes* (IPC streaming format; the IPC file format is read-only, for immutable sources) |
 | `tss:ParquetSource` | an external Parquet file | no, written once |
 
-\* Growing is by appending bytes: a CSV row, an Arrow record batch, or a message at the end of an RDF Message Log. An embedded RDF source is an [RDF Message Log](https://w3c-cg.github.io/rsp/spec/messages): the metadata is the first message and every row is a message. See [Open spec issues](#open-spec-issues).
+\* Growing is by appending bytes: a CSV row, an Arrow record batch, or a message at the end of an RDF Message Log. An embedded RDF source is an [RDF Message Log](https://w3c-cg.github.io/rsp/spec/messages): the metadata is the first message, every row is a message, and a last message ends the source. See [Open spec issues](#open-spec-issues).
 
 ### Fields: value fields, meta fields and field properties
 
@@ -31,12 +31,18 @@ So an embedded RDF point looks like this, one reading per point:
 
 ```turtle
 ex:source tss:hasPoint [
-    tss:time "2024-05-12T08:00:00Z"^^xsd:dateTimeStamp ;
+    tss:time "2024-05-12T08:00:00Z"^^xsd:dateTime ;
     ex:conductivity "4810.5"^^xsd:double
 ] .
 ```
 
 The library gives each field's `kind` (`'value'` or `'meta'`), its resolved `property`, and whether that is the `defaultProperty`, in `source.metadata.fields`. A document of the earlier *Snippets* drafts (`tss:EmbeddedRDFSnippet`, …) is refused with a message that names the new class.
+
+### Times and time grids
+
+A time is an `xsd:dateTime` with a timezone (`Z` or an offset such as `+02:00`), such as `"2024-05-12T08:00:00Z"`; `xsd:dateTimeStamp` is allowed too. The time field states one of the two as its `tss:datatype`, and the library writes `xsd:dateTime`, which the spec recommends. Times are compared as moments, so `08:00:00Z` and `10:00:00+02:00` are the same time.
+
+A data file can leave out the times: on a *time grid*, row n is at `tss:timeBase` + n × `tss:timeStep`, in calendar steps for years and months. The step of a row is in the column of its `tss:stepField`, which lets the file leave out rows; or, without a step field, it is the row's position in the file, from 0 for the first row. The [gold prices](examples/gold-prices/monthly.ttl) of the playground describe a CSV file that someone else publishes this way: one row per month since 1833, on a grid of `P1M`.
 
 ## Install
 
@@ -150,7 +156,7 @@ On an immutable source, `follow: true` behaves like a normal read, so you can al
 
 ```ts
 for await (const message of source.expand()) {
-  publish(message);   // first the metadata, then one message per row
+  publish(message);   // the metadata, one message per row, and the ending of an immutable source
 }
 ```
 
@@ -159,6 +165,9 @@ for await (const message of source.expand()) {
 - The first message is the metadata document, without `tss:points`, plus the default property of each field that states no `tss:property` (`ex:value-field tss:property <data.csv#value>`), and, for a value field, that this property is a subproperty of `tss:value`. A property the publisher states keeps the meaning of its own vocabulary: it is not made a subproperty of anything.
 - Every next message holds one row: the source `tss:hasPoint` one point per value of a value field. The point links to its field (`tss:field`), and states the time (the field property of the time field) and its value (the field property of its value field, the decoded value as published), plus the values of the describing fields that describe its field. The values of other meta fields, such as a step or an identifier, are not stated.
 - A point is a blank node, the RDF node of the embedded point, or the IRI made by the `tss:aboutUrl` URI template of its field (`'https://example.org/obs/{time}'`).
+- The last message of an immutable source is its ending: `tss:immutable true` and the stored summaries, which the first message leaves out. A growing source has none, until it is ended while you follow it.
+
+These are the three kinds of messages of the spec's *RDF Message Stream Profile* (`tss:MessageStreamProfile`, exported as `MESSAGE_STREAM_PROFILE`): a description message for each source, a row message for each row, with the time of its row as timestamp, and an ending message. A row message is read with the description message of its source, which comes first. The log of a growing `tss:EmbeddedRDFSource` that the library writes has the same shape.
 
 It takes `from`, `until`, `follow` and `signal` as `read()` does. To expand rows that you read yourself, use `toRDFMessages(source.read(options))`; the values have to be as published, so a unit conversion throws.
 
@@ -220,7 +229,7 @@ The time field is a `tss:MetaField`. A field with `describesField` is a meta fie
 
 With `file`, the metadata is kept up to date on disk, so followers see every append; without it, call `await source.serialize('text/turtle')` and write the result yourself. The lock is taken on the metadata file (or on the data file when there is no `file`).
 
-Each `append` checks the rows (datatypes, unique increasing times, inside the `from`/`until` window of the source) and then only *adds data at the end*: a CSV row, an Arrow record batch, a message of the log with one point per value. The window is fixed when the source is created, and no summaries are written while it grows. If a row does not conform, nothing is changed and a `ValidationError` is thrown. An embedded RDF source can only state the values of describing fields, on the points they describe: a value of another meta field, or of a describing field whose value field has no value in the row, is refused.
+Each `append` checks the rows (datatypes, unique increasing times, inside the `from`/`until` window of the source) and then only *adds data at the end*: a CSV row, an Arrow record batch, a message of the log with one point per value. The window is fixed when the source is created, and no summaries are written while it grows. If a row does not conform, nothing is changed and a `ValidationError` is thrown. A CSV source on a time grid with a step of fixed length (not months or years) can be appended to as well: a row's time has to be on the grid, and without a step field the library writes a row of empty values for every step without readings, so that each row stays at the step of its position. An embedded RDF source can only state the values of describing fields, on the points they describe: a value of another meta field, or of a describing field whose value field has no value in the row, is refused.
 
 ### Continue writing to an existing source
 
@@ -281,7 +290,7 @@ In the future, writing could also target a remote location that supports POST (e
 | `kind` | `'EmbeddedRDF' \| 'EmbeddedJSON' \| 'CSV' \| 'Parquet' \| 'Arrow'` |
 | `metadata` | time field, fields (with `kind`, `property`, `defaultProperty`, `aboutUrl`, …), `from`, `until`, `immutable`, labels |
 | `read(options?)` | `AsyncIterable<Row>`, see below |
-| `expand(options?)` | `AsyncIterable<RDFMessage>`: the metadata, then the points of each row |
+| `expand(options?)` | `AsyncIterable<RDFMessage>`: the metadata, the points of each row, and the ending of an immutable source |
 | `summary(field)` | the summary stored in the source for a field |
 | `validate()` | a `Report` listing every rule that fails and where |
 
@@ -300,7 +309,7 @@ In the future, writing could also target a remote location that supports POST (e
 
 | Option | Default | Description |
 |---|---|---|
-| `metadata` | `true` | start with the metadata and the default field properties |
+| `metadata` | `true` | start with the metadata and the default field properties, and end an immutable source with its ending message |
 | `align` | none | `'sosa'`, `'saref'` or both: also write what a reasoner derives from the alignment |
 
 ### Creating and writing
@@ -334,7 +343,7 @@ Source.create(options: CreateOptions): Promise<WritableSource>
 ```ts
 interface Row {
   source: ReadableSource;                // the source this row comes from
-  time: string;                          // xsd:dateTimeStamp, exactly as published
+  time: string;                          // xsd:dateTime with a timezone, exactly as published
   get(field: string): Value | undefined; // local name or IRI; undefined means no value
   fields(): Iterable<[string, Value]>;
 }

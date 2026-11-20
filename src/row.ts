@@ -31,7 +31,7 @@ export class Row {
   constructor(
     /** The source this row comes from. */
     readonly source: ReadableSource,
-    /** The time as published: an `xsd:dateTimeStamp`. */
+    /** The time as published: an `xsd:dateTime` with a timezone. */
     readonly time: string,
     private readonly values: Map<string, Value>,
     /** @internal The RDF node of the point of each value field, in an embedded RDF source. */

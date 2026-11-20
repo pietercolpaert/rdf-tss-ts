@@ -116,6 +116,8 @@ export class Seen {
 
 export class CsvFollower implements Follower {
   private columns?: CsvColumns;
+  /** The rows read so far: on a time grid without a step field, the step of the next row. */
+  private rowsRead = 0;
   private readonly seen = new Seen();
   private readonly utf8: boolean;
 
@@ -133,10 +135,14 @@ export class CsvFollower implements Follower {
   async poll(signal?: AbortSignal): Promise<PollResult> {
     const result = await this.source.read(signal);
     if (!result || 'gone' in result) return { rows: [], ended: 'gone' in (result ?? {}) };
-    if (result.whole) this.columns = undefined;
+    if (result.whole) {
+      this.columns = undefined;
+      this.rowsRead = 0;
+    }
     const text = new TextDecoder(this.meta.encoding).decode(result.bytes);
-    const parsed = await parseCsvText(this.meta, text, this.columns);
+    const parsed = await parseCsvText(this.meta, text, this.columns, this.rowsRead);
     this.columns = parsed.columns;
+    this.rowsRead += parsed.rows.length;
     // another encoding than UTF-8: the offset in bytes of a character is not known, so read everything again
     this.source.offset = this.utf8 ? (result.whole ? 0 : this.source.offset) + new TextEncoder().encode(text.slice(0, parsed.consumed)).length : 0;
     return { rows: this.seen.fresh(parsed.rows), ended: false };
@@ -195,6 +201,8 @@ export function walkArrowMessages(bytes: Uint8Array): WalkedMessages {
 
 export class ArrowFollower implements Follower {
   private prefix?: Uint8Array;
+  /** The rows read so far: on a time grid without a step field, the step of the next row. */
+  private rowsRead = 0;
   private readonly seen = new Seen();
 
   constructor(
@@ -211,6 +219,8 @@ export class ArrowFollower implements Follower {
     if (!result || 'gone' in result) return { rows: [], ended: 'gone' in (result ?? {}) };
     if (result.whole) this.prefix = undefined;
     const walked = walkArrowMessages(result.bytes);
+    // the stream is read from its start, or only its record batches after the ones read before
+    const rowsBefore = this.prefix ? this.rowsRead : 0;
     let readable: Uint8Array;
     if (!this.prefix) {
       readable = result.bytes.subarray(0, walked.end);
@@ -225,8 +235,9 @@ export class ArrowFollower implements Follower {
     }
     const rows: RawRow[] = [];
     if (walked.end > 0 && walked.types.length > 0 && walked.types.some((t) => t === RECORD_BATCH)) {
-      for await (const row of arrowRows(this.meta, readable, { skip: 0, strict: false })) rows.push(row);
+      for await (const row of arrowRows(this.meta, readable, { skip: 0, strict: false, rowsBefore })) rows.push(row);
     }
+    this.rowsRead = rowsBefore + rows.length;
     this.source.offset = this.prefix ? this.source.offset + walked.end : 0;
     return { rows: this.seen.fresh(rows), ended: walked.eos };
   }

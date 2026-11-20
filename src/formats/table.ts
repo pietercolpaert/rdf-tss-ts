@@ -59,16 +59,19 @@ export function arrowCellToLexical(arrow: typeof import('apache-arrow'), vector:
   return String(value);
 }
 
-/** The rows of an Arrow data file in the IPC streaming or the IPC file format. */
+/**
+ * The rows of an Arrow data file in the IPC streaming or the IPC file format. `rowsBefore` is
+ * the number of rows before the record batches of `bytes`, when they are a part of a stream.
+ */
 export async function* arrowRows(
   meta: SourceMetadata,
   bytes: Uint8Array,
-  options: { skip: number; strict: boolean },
+  options: { skip: number; strict: boolean; rowsBefore?: number },
 ): AsyncIterable<RawRow> {
   const arrow = await import('apache-arrow');
   const convert = makeRowConverter(meta);
   const reader = arrow.RecordBatchReader.from(bytes);
-  let rowNumber = 0;
+  let rowNumber = options.rowsBefore ?? 0;
   try {
     for (const batch of reader) {
       const columns = new Map<string, import('apache-arrow').Vector>();
@@ -80,7 +83,7 @@ export async function* arrowRows(
       }
       for (let i = 0; i < batch.numRows; i++) {
         rowNumber++;
-        if (rowNumber <= options.skip) continue;
+        if (rowNumber - (options.rowsBefore ?? 0) <= options.skip) continue;
         const access = (f: FieldMetadata) => {
           const column = columns.get(f.id);
           return column ? arrowCellToLexical(arrow, column, i) : undefined;

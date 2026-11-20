@@ -2,7 +2,7 @@ export { Source, type FetchOptions, type OpenOptions } from './source.js';
 export { ReadableSource } from './readable.js';
 export { WritableSource } from './writable.js';
 export { Row, Value } from './row.js';
-export { toRDFMessages, expansionHead, pointsOfRow, type Alignment, type ExpandOptions } from './expand.js';
+export { toRDFMessages, expansionHead, expansionEnding, pointsOfRow, type Alignment, type ExpandOptions } from './expand.js';
 export {
   convertUnit,
   createEyemindUnitConverter,
@@ -30,3 +30,4 @@ export type {
 export type { Dataset } from './rdf.js';
 export { parseRdf, serializeRdf } from './rdf.js';
 export { expandTemplate } from './iri.js';
+export { MESSAGE_STREAM_PROFILE } from './ns.js';

@@ -102,13 +102,16 @@ function columnsOfHeader(meta: SourceMetadata, header: string[]): CsvColumns {
 
 /**
  * Read the complete records of (a part of) a CSV file that start at a record. `columns` are
- * those of the header, when the text does not start with it. Returns the rows, the columns
- * and the number of characters of the complete records: the next part starts there.
+ * those of the header, when the text does not start with it, and `rowsBefore` the number of
+ * rows before the text (the position of a row is its step on a time grid without a step
+ * field). Returns the rows, the columns and the number of characters of the complete
+ * records: the next part starts there.
  */
 export async function parseCsvText(
   meta: SourceMetadata,
   text: string,
   columns?: CsvColumns,
+  rowsBefore = 0,
 ): Promise<{ rows: RawRow[]; columns?: CsvColumns; consumed: number }> {
   const convert = makeRowConverter(meta);
   let known = columns;
@@ -121,7 +124,7 @@ export async function parseCsvText(
   async function* one() {
     yield text;
   }
-  let rowNumber = 0;
+  let rowNumber = rowsBefore;
   for await (const row of parseCsv(one(), meta.delimiter)) {
     if (!row.terminated) break;
     consumed = row.end;

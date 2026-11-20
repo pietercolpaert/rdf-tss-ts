@@ -1,0 +1,48 @@
+@prefix tss: <https://w3id.org/tss#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# Monthly gold prices since 1833, from the gold-prices data package of the core datasets on
+# GitHub (https://github.com/datasets/gold-prices). This document only describes the CSV file:
+# the rows are read from where the data package publishes them.
+#
+# The file has one row per month, without gaps, so the time of a row is its step on a time
+# grid of one month from 1833-01-01: the first row is January 1833, the next February 1833, and
+# so on. The source has no step field, and its Date column is not read as the time.
+<#source>
+    a tss:CSVSource ;
+    rdfs:label "Gold prices, monthly since 1833"@en ;
+    rdfs:comment "The price of gold in US dollars per troy ounce, one value per month. From 1833 to 1959 every month repeats the annual average of Timothy Green's historical gold price table (National Mining Association); from 1960 on the values are monthly prices from the World Bank Commodity Markets (Pink Sheet). A new row is added every month."@en ;
+    dcterms:source <https://github.com/datasets/gold-prices> ;
+    dcterms:license <https://opendatacommons.org/licenses/pddl/1-0/> ;
+    rdfs:seeAlso <https://raw.githubusercontent.com/datasets/gold-prices/refs/heads/main/datapackage.json> ;
+    tss:from "1833-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:dataFile <https://raw.githubusercontent.com/datasets/gold-prices/refs/heads/main/data/monthly-processed.csv> ;
+    tss:timeBase "1833-01-01T00:00:00Z"^^xsd:dateTime ;
+    tss:timeStep "P1M"^^xsd:duration ;
+    tss:timeField <#month> ;
+    tss:hasField <#month>,
+        <#price>,
+        <#date> .
+
+# The time field: computed from the position of the row, so it has no column.
+<#month>
+    a tss:MetaField ;
+    rdfs:label "Month"@en ;
+    tss:datatype xsd:dateTime .
+
+<#price>
+    a tss:ValueField ;
+    rdfs:label "Gold price (USD per troy ounce)"@en ;
+    tss:columnName "Price" ;
+    tss:datatype xsd:decimal ;
+    # gold (Wikidata)
+    tss:featureOfInterest <http://www.wikidata.org/entity/Q897> .
+
+<#date>
+    a tss:MetaField ;
+    rdfs:label "Date as written in the file"@en ;
+    rdfs:comment "The first day of the month, YYYY-MM-DD. A date has no time of day and no timezone, so it is not the time of the row."@en ;
+    tss:columnName "Date" ;
+    tss:datatype xsd:date .

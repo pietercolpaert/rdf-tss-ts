@@ -20,7 +20,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-shapes.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --coverage",
     "test:watch": "vitest",

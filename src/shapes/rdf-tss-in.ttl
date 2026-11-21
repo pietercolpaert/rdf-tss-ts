@@ -1,0 +1,19 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix tss: <https://w3id.org/tss#> .
+
+# Trusted input shapes for reasoning over one expanded RDF-TSS row message.
+# Blank-node points are given temporary IRIs before they reach the reasoner.
+<urn:tss:shapes#source>
+    a sh:NodeShape ;
+    sh:targetSubjectsOf tss:hasPoint ;
+    sh:closed true ;
+    sh:property [ sh:path tss:hasPoint ; sh:nodeKind sh:IRI ] .
+
+<urn:tss:shapes#point>
+    a sh:NodeShape ;
+    sh:targetObjectsOf tss:hasPoint ;
+    sh:closed true ;
+    sh:property
+        [ sh:path tss:field ; sh:nodeKind sh:IRI ] ,
+        [ sh:path tss:time ; sh:nodeKind sh:Literal ] ,
+        [ sh:path tss:value ; sh:nodeKind sh:Literal ] .

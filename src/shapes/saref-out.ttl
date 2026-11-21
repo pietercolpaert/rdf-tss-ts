@@ -1,0 +1,16 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix saref: <https://saref.etsi.org/core/> .
+
+# Requested output for the SAREF alignment.
+<urn:tss:shapes#saref>
+    a sh:NodeShape ;
+    sh:targetClass saref:Measurement ;
+    sh:property
+        [ sh:path rdf:type ; sh:in ( saref:Measurement ) ] ,
+        [ sh:path saref:hasTimestamp ] ,
+        [ sh:path saref:hasValue ] ,
+        [ sh:path saref:relatesToProperty ] ,
+        [ sh:path saref:measurementMadeBy ] ,
+        [ sh:path saref:isMeasurementOf ] ,
+        [ sh:path saref:isMeasuredIn ] .

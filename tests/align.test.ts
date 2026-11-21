@@ -83,4 +83,20 @@ describe('the alignment, derived by a reasoner', () => {
     for await (const m of source.expand({ metadata: false })) messages.push(m);
     expect(derived(messages[0])).toEqual({});
   });
+
+  it('combines the SOSA and SAREF output shape files', async () => {
+    const source = await Source.open(await parseRdf(SOURCE));
+    const messages: RDFMessage[] = [];
+    for await (const m of source.expand({ align: ['sosa', 'saref'], metadata: false })) messages.push(m);
+    const temperature = derived(messages[0])['ex:temp'];
+    expect(temperature).toHaveLength(14);
+    expect(temperature).toEqual(expect.arrayContaining([
+      'a sosa:Observation',
+      'a saref:Measurement',
+      'sosa:hasSimpleResult 18.2',
+      'saref:hasValue 18.2',
+      'qudt:hasUnit unit:DEG_C',
+      'saref:isMeasuredIn unit:DEG_C',
+    ]));
+  });
 });

@@ -1,0 +1,17 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix qudt: <http://qudt.org/schema/qudt/> .
+
+# Requested output for the SSN/SOSA alignment, including the reading's unit.
+<urn:tss:shapes#sosa>
+    a sh:NodeShape ;
+    sh:targetClass sosa:Observation ;
+    sh:property
+        [ sh:path rdf:type ; sh:in ( sosa:Observation ) ] ,
+        [ sh:path sosa:resultTime ] ,
+        [ sh:path sosa:hasSimpleResult ] ,
+        [ sh:path sosa:observedProperty ] ,
+        [ sh:path sosa:madeBySensor ] ,
+        [ sh:path sosa:hasFeatureOfInterest ] ,
+        [ sh:path qudt:hasUnit ] .

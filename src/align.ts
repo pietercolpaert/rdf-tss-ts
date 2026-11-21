@@ -12,7 +12,7 @@
  * asked for. So the background is closed once, and every row costs little.
  */
 import { Parser, Writer } from 'n3';
-import { QUDT, RDF, SAREF, SOSA, tss } from './ns.js';
+import { RDF, tss } from './ns.js';
 import type { Quad, Term } from './rdf.js';
 import { blankNode, literal, namedNode, quad } from './rdf.js';
 import { isNode } from './platform.js';
@@ -48,51 +48,33 @@ export interface AlignerOptions {
   eyemind?: EyemindReasoning;
 }
 
-/** The shape of the points of a row message: what the rules are specialized to. */
-const SHAPES_IN = `@prefix sh: <http://www.w3.org/ns/shacl#> .
-@prefix tss: <https://w3id.org/tss#> .
-<urn:tss:shapes#source> a sh:NodeShape ; sh:targetSubjectsOf tss:hasPoint ; sh:closed true ;
-    sh:property [ sh:path tss:hasPoint ; sh:nodeKind sh:IRI ] .
-<urn:tss:shapes#point> a sh:NodeShape ; sh:targetObjectsOf tss:hasPoint ; sh:closed true ;
-    sh:property [ sh:path tss:field ; sh:nodeKind sh:IRI ] ,
-        [ sh:path tss:time ; sh:nodeKind sh:Literal ] ,
-        [ sh:path tss:value ; sh:nodeKind sh:Literal ] .
-`;
-
-/** What each alignment asks for: the class of a point, and the properties derived for it. */
-const ASKED: Record<Alignment, { class: string; properties: string[] }> = {
-  sosa: {
-    class: SOSA + 'Observation',
-    properties: [
-      SOSA + 'resultTime',
-      SOSA + 'hasSimpleResult',
-      SOSA + 'observedProperty',
-      SOSA + 'madeBySensor',
-      SOSA + 'hasFeatureOfInterest',
-      QUDT + 'hasUnit',
-    ],
-  },
-  saref: {
-    class: SAREF + 'Measurement',
-    properties: [
-      SAREF + 'hasTimestamp',
-      SAREF + 'hasValue',
-      SAREF + 'relatesToProperty',
-      SAREF + 'measurementMadeBy',
-      SAREF + 'isMeasurementOf',
-      SAREF + 'isMeasuredIn',
-    ],
-  },
+/** Turtle assets are shipped beside this module, in Node and in the playground. */
+const INPUT_SHAPE = new URL('./shapes/rdf-tss-in.ttl', import.meta.url);
+const OUTPUT_SHAPES: Record<Alignment, URL> = {
+  sosa: new URL('./shapes/sosa-out.ttl', import.meta.url),
+  saref: new URL('./shapes/saref-out.ttl', import.meta.url),
 };
 
-/** The shape of the observations asked for: only the rules that can derive these are kept. */
-function shapesOut(alignments: Alignment[]): string {
-  const shapes = alignments.map((a) => {
-    const { class: cls, properties } = ASKED[a];
-    const paths = [`[ sh:path <${RDF}type> ; sh:in ( <${cls}> ) ]`, ...properties.map((p) => `[ sh:path <${p}> ]`)];
-    return `<urn:tss:shapes#${a}> a sh:NodeShape ; sh:targetClass <${cls}> ;\n    sh:property ${paths.join(' ,\n        ')} .`;
-  });
-  return `@prefix sh: <http://www.w3.org/ns/shacl#> .\n${shapes.join('\n')}\n`;
+const shapeTexts = new Map<string, Promise<string>>();
+
+/** Load each shape only when needed, once per module instance. */
+function loadShape(url: URL): Promise<string> {
+  let text = shapeTexts.get(url.href);
+  if (!text) {
+    text = (async () => {
+      if (isNode) {
+        const { readFile } = await import('node:fs/promises');
+        return readFile(url, 'utf8');
+      }
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`loading SHACL shape ${url.href}: HTTP ${response.status}`);
+      return response.text();
+    })();
+    shapeTexts.set(url.href, text);
+    // A transient fetch failure should not prevent a later attempt.
+    void text.catch(() => shapeTexts.delete(url.href));
+  }
+  return text;
 }
 
 /** The limits of the compiled programs of eyemind, as its command line sets them. */
@@ -141,16 +123,26 @@ const nTriples = (quads: Quad[]) => new Writer({ format: 'N-Triples' }).quadsToS
  */
 export async function createAligner(description: Quad[], alignments: Alignment[], options: AlignerOptions = {}): Promise<Aligner> {
   const eyemind = options.eyemind ?? (await (defaults ??= loadEyemind()));
+  const outputUrls = alignments.map((a) => OUTPUT_SHAPES[a]);
+  const [input, ...outputs] = await Promise.all([INPUT_SHAPE, ...outputUrls].map(loadShape));
   const reasoner = eyemind.loadMessageReasoner(
     [
       [TSS_VOCABULARY, 'tss.ttl'],
       [nTriples(description), 'description.nt'],
     ],
     null,
-    { owl2rl: true, shaclIn: [[SHAPES_IN, 'points.ttl']], shaclOut: [[shapesOut(alignments), 'observations.ttl']], limits: LIMITS },
+    {
+      owl2rl: true,
+      shaclIn: [[input, 'rdf-tss-in.ttl']],
+      shaclOut: outputs.map((text, i) => [text, outputUrls[i].pathname.split('/').pop()!]),
+      limits: LIMITS,
+    },
   );
-  const classes = new Set(alignments.map((a) => ASKED[a].class));
-  const properties = new Set(alignments.flatMap((a) => ASKED[a].properties));
+  // The same Turtle files also determine which derived triples are returned.
+  const outputQuads = outputs.flatMap((text) => new Parser({ format: 'Turtle' }).parse(text));
+  const sh = 'http://www.w3.org/ns/shacl#';
+  const classes = new Set(outputQuads.filter((q) => q.predicate.value === sh + 'targetClass').map((q) => q.object.value));
+  const properties = new Set(outputQuads.filter((q) => q.predicate.value === sh + 'path').map((q) => q.object.value));
   return {
     align(points: Quad[]): Quad[] {
       const skolem = (t: Term) => (t.termType === 'BlankNode' ? namedNode(SKOLEM + t.value) : t);

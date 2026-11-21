@@ -132,7 +132,9 @@ A unit that QUDT does not have can be made in the metadata, as QUDT makes its ow
 
 A describing field with the property `qudt:standardUncertainty` holds the standard uncertainty of the value it describes, one standard deviation: it is a difference of values, so it is converted with the scale of its unit, without the offset (±0.5 °C is ±0.5 K).
 
-The conversion of a unit is looked up once, with eyemind, and then applied to every reading with plain arithmetic, so reading stays fast. In the browser, hand the library eyemind's `main` yourself, see the [playground](playground/app.ts).
+The conversion of a unit is looked up once, with eyemind, and then applied to every reading with plain arithmetic, so reading stays fast. eyemind normalizes a quantity to an SI unit of its dimension that its input uses, so the library hands it the unit to convert from and the unit to convert to together: in a dimension with several SI units, such as W/m² and W/(m²·sr), units normalized apart could come back under two names of one unit. In the browser, hand the library eyemind's `main` yourself, see the [playground](playground/app.ts).
+
+The playground offers the units of the quantity kind of a reading, from QUDT: W/m² can be read in kW/m², W/cm² or BTU/(ft²·h), but not in W/(m²·sr), a radiance of the same dimension. `npm run qudt-units` writes the units that eyemind converts, with their symbol, label and quantity kinds (`qudt:unitForQuantityKind`), from the release of QUDT of its catalog, to [playground/qudt-units.json](playground/qudt-units.json). The menu takes the `tss:observedProperty` of a field when it is a quantity kind of QUDT, and the quantity kinds of its unit; SI units come first, a unit more than three orders of magnitude away is left out, and a difference of temperatures gets no unit with an offset, such as °F.
 
 ### Follow a live source
 

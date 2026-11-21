@@ -14,6 +14,13 @@ describe('unit conversion with QUDT and eyemind', () => {
     expect(await convertUnit('1', unit('MI'), unit('KiloM'))).toBe('1.609344');
   });
 
+  it('converts between units of a dimension that has several SI units, such as W/m² and W/(m²·sr)', async () => {
+    // eyemind normalizes to a unit of its input: probed apart, W/m² and kW/m² were normalized to two names of one unit
+    expect(await convertUnit('800', unit('W-PER-M2'), unit('KiloW-PER-M2'))).toBe('0.8');
+    expect(await convertUnit('0.8', unit('KiloW-PER-M2'), unit('W-PER-M2'))).toBe('800');
+    expect(await convertUnit('800', unit('W-PER-M2'), unit('MegaJ-PER-M2-DAY'))).toBe('69.12');
+  });
+
   it('normalizes to the SI unit of the dimension with "qudt"', async () => {
     expect(await convertUnit('8.4', DEG_C, 'qudt')).toBe('281.55');
     expect(await convertUnit('50', unit('KiloM-PER-HR'), 'qudt')).toBe('13.8888888889');

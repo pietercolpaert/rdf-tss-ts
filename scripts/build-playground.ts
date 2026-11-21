@@ -45,6 +45,6 @@ await esbuild.build({
   logLevel: 'info',
 });
 
-for (const file of ['index.html', 'style.css', 'favicon.svg']) await copyFile(join(root, 'playground', file), join(site, file));
+for (const file of ['index.html', 'style.css', 'favicon.svg', 'qudt-units.json']) await copyFile(join(root, 'playground', file), join(site, file));
 await writeFile(join(site, '.nojekyll'), '');
 console.log(`built the playground in ${site}`);

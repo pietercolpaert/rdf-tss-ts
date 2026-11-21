@@ -169,6 +169,15 @@ try {
   assert.equal(swiss[1], 1);
   assert.match(swiss[2], /The band around Air temperature 2 m above ground; daily mean is its minimum and maximum/);
   console.log('  ok MeteoSwiss: the daily minimum and maximum are a band around the mean');
+  // the units of a chart are those of its quantity kind in QUDT: W/m² can be read in kW/m², and converts
+  const radiation = await page.$$eval('#panel-chart .chart', (charts) => charts.findIndex((c) => c.querySelector('h3').textContent.includes('(W/m²)')));
+  assert.ok(radiation >= 0, 'a chart in W/m²');
+  const offered = await page.$$eval('#panel-chart .chart select', (selects, i) => [...selects[i].options].map((o) => o.value), radiation);
+  assert.ok(offered.includes('http://qudt.org/vocab/unit/KiloW-PER-M2'), `kW/m² is offered: ${offered}`);
+  assert.ok(!offered.includes('http://qudt.org/vocab/unit/W-PER-M2-SR'), 'a radiance is not');
+  await (await page.$$('#panel-chart .chart select'))[radiation].select('http://qudt.org/vocab/unit/KiloW-PER-M2');
+  await page.waitForFunction((i) => document.querySelectorAll('#panel-chart .chart h3')[i].textContent.includes('(kW/m²)'), { timeout: 30000 }, radiation);
+  console.log(`  ok units of QUDT: W/m² offers ${offered.length - 2} units, and converts to kW/m²`);
 
   // units: temperature in Fahrenheit, with QUDT through eyemind
   await choose('weather-csv');

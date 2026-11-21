@@ -33,6 +33,7 @@
     "examples:meteoswiss": "tsx scripts/meteoswiss.ts",
     "examples:geosphere": "tsx scripts/geosphere.ts",
     "vocabulary": "tsx scripts/vocabulary.ts",
+    "qudt-units": "tsx scripts/qudt-units.ts",
     "build:playground": "tsx scripts/build-playground.ts",
     "build:site": "npm run examples && npm run build:playground",
     "serve": "npm run build:site && npx --yes http-server _site -c-1 -o"

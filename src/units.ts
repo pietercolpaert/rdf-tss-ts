@@ -111,7 +111,7 @@ async function loadEyemindMain(): Promise<EyemindMain> {
  */
 export class EyemindUnitConverter implements UnitConverter {
   private main?: EyemindMain;
-  private readonly cache = new Map<string, Promise<Affine>>();
+  private readonly cache = new Map<string, Promise<Affine[]>>();
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(options: { main?: EyemindMain } = {}) {
@@ -125,21 +125,28 @@ export class EyemindUnitConverter implements UnitConverter {
     return run;
   }
 
-  private affine(unit: string, definitions = ''): Promise<Affine> {
-    const key = `${unit}\n${definitions}`;
+  /**
+   * The conversions of these units to the unit eyemind normalizes them to. Units of one dimension
+   * that are probed together are normalized to the same unit: eyemind picks it from the units of
+   * its input, so units probed apart may be normalized to different units of the same dimension,
+   * such as W/m² to W-PER-M2 and kW/m² to kg.s-3.
+   */
+  private affines(units: string[], definitions = ''): Promise<Affine[]> {
+    const key = `${units.join('\n')}\n${definitions}`;
     let found = this.cache.get(key);
     if (!found) {
-      found = this.serial(() => this.probe(unit, definitions));
+      found = this.serial(() => this.probe(units, definitions));
       this.cache.set(key, found);
       found.catch(() => this.cache.delete(key));
     }
     return found;
   }
 
-  private async probe(unit: string, definitions: string): Promise<Affine> {
+  private async probe(units: string[], definitions: string): Promise<Affine[]> {
     this.main ??= await loadEyemindMain();
-    const quantity = (n: number, value: number) => `p:x${n} [ a qudt:QuantityValue ; qudt:numericValue ${value} ; qudt:unit <${unit}> ] .`;
-    const input = `@prefix qudt: <${QUDT}> .\n@prefix p: <${PROBE}> .\n${definitions}\n${PROBE_VALUES.map((value, n) => `p:s ${quantity(n, value)}`).join('\n')}\n`;
+    const quantity = (u: number, n: number, value: number) => `p:u${u}x${n} [ a qudt:QuantityValue ; qudt:numericValue ${value} ; qudt:unit <${units[u]}> ] .`;
+    const quantities = units.flatMap((_, u) => PROBE_VALUES.map((value, n) => `p:s ${quantity(u, n, value)}`));
+    const input = `@prefix qudt: <${QUDT}> .\n@prefix p: <${PROBE}> .\n${definitions}\n${quantities.join('\n')}\n`;
     let out = '';
     let err = '';
     const code = await this.main(['--qudt', '--to', 'turtle', 'probe.ttl'], {
@@ -148,7 +155,7 @@ export class EyemindUnitConverter implements UnitConverter {
       stdout: (text) => (out += text),
       stderr: (text) => (err += text),
     });
-    if (code !== 0) throw new UnitConversionError(`eyemind could not normalize ${unit}: ${err.trim() || `exit code ${code}`}`);
+    if (code !== 0) throw new UnitConversionError(`eyemind could not normalize ${units.join(' and ')}: ${err.trim() || `exit code ${code}`}`);
 
     const quads = new Parser({ format: 'text/turtle' }).parse(out);
     const byBlank = new Map<string, { source?: string; value?: number; unit?: string }>();
@@ -160,30 +167,33 @@ export class EyemindUnitConverter implements UnitConverter {
       if (q.predicate.value === QUDT + 'unit') entry.unit = q.object.value;
       byBlank.set(q.subject.value, entry);
     }
-    const results = PROBE_VALUES.map((_, n) => [...byBlank.values()].find((e) => e.source === `${PROBE}x${n}`));
-    if (results.some((r) => r?.value === undefined || r.unit === undefined)) {
-      throw new UnitConversionError(`unknown unit ${unit}: it is not in the QUDT catalog of eyemind, nor made of units that are, or it has no fixed conversion, as a currency`);
-    }
-    const [y0, y1, y2] = results.map((r) => r!.value!);
-    const si = results[0]!.unit!;
-    const scale = (y1 - y0) / PROBE_VALUES[1];
-    if (Math.abs(y2 - (PROBE_VALUES[2] * scale + y0)) > 1e-9 * Math.max(1, Math.abs(y2))) {
-      throw new UnitConversionError(`unit ${unit} is not a linear (affine) unit and cannot be converted`);
-    }
-    return { scale, offset: y0, si };
+    return units.map((unit, u) => {
+      const results = PROBE_VALUES.map((_, n) => [...byBlank.values()].find((e) => e.source === `${PROBE}u${u}x${n}`));
+      if (results.some((r) => r?.value === undefined || r.unit === undefined)) {
+        throw new UnitConversionError(`unknown unit ${unit}: it is not in the QUDT catalog of eyemind, nor made of units that are, or it has no fixed conversion, as a currency`);
+      }
+      const [y0, y1, y2] = results.map((r) => r!.value!);
+      const si = results[0]!.unit!;
+      const scale = (y1 - y0) / PROBE_VALUES[1];
+      if (Math.abs(y2 - (PROBE_VALUES[2] * scale + y0)) > 1e-9 * Math.max(1, Math.abs(y2))) {
+        throw new UnitConversionError(`unit ${unit} is not a linear (affine) unit and cannot be converted`);
+      }
+      return { scale, offset: y0, si };
+    });
   }
 
   async conversion(from: string, to: 'qudt' | string, options: UnitConversionOptions = {}): Promise<UnitConversion> {
     if (from === to) return { unit: from, convert: (x) => x, convertDifference: (x) => x };
-    const source = await this.affine(from, options.definitions);
     if (to === 'qudt') {
+      const [source] = await this.affines([from], options.definitions);
       return {
         unit: source.si,
         convert: (x) => roundNumber(source.scale * x + source.offset, DIGITS),
         convertDifference: (x) => roundNumber(source.scale * x, DIGITS),
       };
     }
-    const target = await this.affine(to, options.definitions);
+    // probed together, so units of one dimension are normalized to the same unit
+    const [source, target] = await this.affines([from, to], options.definitions);
     if (target.si !== source.si) {
       throw new UnitConversionError(`cannot convert ${from} (SI unit ${source.si}) to ${to} (SI unit ${target.si}): different dimensions`);
     }

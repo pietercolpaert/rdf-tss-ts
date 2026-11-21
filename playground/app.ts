@@ -156,7 +156,75 @@ let compaction: Compaction | undefined;
 
 /** The `qudt:symbol` of the units the metadata defines itself, such as a unit made of QUDT units. */
 const unitSymbols = new Map<string, string>();
-const symbol = (iri?: string) => (iri ? (unitSymbols.get(iri) ?? SYMBOLS[iri.replace(QUDT_UNIT, '')] ?? iri.replace(QUDT_UNIT, '')) : '');
+const symbol = (iri?: string) =>
+  iri ? (unitSymbols.get(iri) ?? SYMBOLS[iri.replace(QUDT_UNIT, '')] ?? (iri.startsWith(QUDT_UNIT) ? qudtTable?.units[iri.slice(QUDT_UNIT.length)]?.[0] : undefined) ?? iri.replace(QUDT_UNIT, '')) : '';
+
+/**
+ * The units of QUDT that eyemind converts, with their symbol, label, quantity kinds, whether they
+ * are SI units and whether they have an offset: playground/qudt-units.json, written by
+ * scripts/qudt-units.ts. Loaded with the first chart that has a unit.
+ */
+interface QudtUnits {
+  release: string;
+  units: Record<string, [symbol: string, label: string, kinds: string[], si: 0 | 1, offset: 0 | 1, common: number, multiplier: number]>;
+}
+let qudtTable: QudtUnits | undefined;
+let qudtLoading: Promise<QudtUnits | undefined> | undefined;
+const loadQudtUnits = () =>
+  (qudtLoading ??= fetch('qudt-units.json')
+    .then((r) => (r.ok ? (r.json() as Promise<QudtUnits>) : undefined))
+    .then((table) => (qudtTable = table))
+    .catch(() => undefined));
+
+const QK = 'http://qudt.org/vocab/quantitykind/';
+/** Quantity kinds of differences of values: a unit with an offset, such as °C, is none of theirs. */
+const DIFFERENCES = new Set(['TemperatureDifference']);
+
+/** At most this many units to choose from. */
+const MAX_CHOICES = 15;
+/** A unit more orders of magnitude away than this is no way to read the values (MK for °C, pW/m² for W/m²). */
+const MAX_ORDERS = 3;
+
+/**
+ * The units a reading in `unit` can be shown in: units of QUDT of its quantity kinds. Those are
+ * the `tss:observedProperty` of the field when it is a quantity kind of QUDT, and the quantity
+ * kinds of the unit, in QUDT or in the metadata (`qudt:hasQuantityKind`). A unit has to share at
+ * least a quarter as much of its quantity kinds as the closest one does (so % gets ‰ and ratios,
+ * not bar per bar), and lie within a few orders of magnitude. SI units come first, then the most
+ * common ones, with the most codes in other systems, then the closest.
+ */
+function unitChoices(field: FieldMetadata, unit: string): string[] {
+  if (!qudtTable) return familyOf(unit) ?? [];
+  const table = qudtTable.units;
+  const name = unit.startsWith(QUDT_UNIT) ? unit.slice(QUDT_UNIT.length) : undefined;
+  const kinds = new Set([
+    ...(field.observedProperty?.startsWith(QK) ? [field.observedProperty.slice(QK.length)] : []),
+    ...(name && table[name]
+      ? table[name][2]
+      : [...state!.source.dataset.match(null, null, null)]
+          .filter((q) => q.subject.value === unit && q.predicate.value === 'http://qudt.org/schema/qudt/hasQuantityKind' && q.object.value.startsWith(QK))
+          .map((q) => q.object.value.slice(QK.length))),
+  ]);
+  const difference = [...kinds].some((k) => DIFFERENCES.has(k));
+  const multiplier = name ? table[name]?.[6] : undefined;
+  const ranked: { iri: string; closeness: number; si: number; common: number; orders: number; label: string }[] = [];
+  for (const [other, [, label, otherKinds, si, offset, common, otherMultiplier]] of Object.entries(table)) {
+    if (other === name || other.startsWith('Planck') || (difference && offset)) continue;
+    const shared = otherKinds.filter((k) => kinds.has(k)).length;
+    if (shared === 0) continue;
+    const orders = multiplier ? Math.abs(Math.log10(otherMultiplier / multiplier)) : 0;
+    if (orders > MAX_ORDERS + 1e-9) continue;
+    // the share of the quantity kinds of both units that they have in common
+    const closeness = shared / new Set([...kinds, ...otherKinds]).size;
+    ranked.push({ iri: QUDT_UNIT + other, closeness, si, common, orders, label });
+  }
+  const best = Math.max(0, ...ranked.map((r) => r.closeness));
+  return ranked
+    .filter((r) => r.closeness >= best / 4)
+    .sort((a, b) => b.si - a.si || b.common - a.common || b.closeness - a.closeness || a.orders - b.orders || a.label.localeCompare(b.label))
+    .slice(0, MAX_CHOICES)
+    .map((r) => r.iri);
+}
 /**
  * A unit of the QUDT catalog, or one the metadata makes itself (of QUDT units, or with its own
  * conversion multiplier), can be converted; a currency cannot, as its exchange rate changes
@@ -334,6 +402,7 @@ function seriesOf(fields: FieldMetadata[]): Series[] {
 }
 
 async function renderCharts(): Promise<void> {
+  if (state!.source.metadata.fields.some((f) => f.unit)) await loadQudtUnits();
   const panel = $('panel-chart');
   panel.replaceChildren();
   const { source } = state!;
@@ -366,7 +435,8 @@ async function renderCharts(): Promise<void> {
     const area = document.createElement('div');
     let stopChart: (() => void) | undefined;
 
-    const family = familyOf(fields[0].unit);
+    // the units of the quantity kind, from QUDT
+    const family = fields[0].unit ? unitChoices(fields[0], fields[0].unit) : [];
     const draw = () => {
       const lines = seriesOf(fields);
       const counts = !fields[0].unit && lines.every((s) => s.points.every((p) => p.v === null || (p.v >= 0 && Number.isInteger(p.v))));
@@ -381,7 +451,7 @@ async function renderCharts(): Promise<void> {
       const select = document.createElement('select');
       select.setAttribute('aria-label', 'Unit');
       const options: [string, string][] = [[fields[0].unit, `${symbol(fields[0].unit)} (as published)`]];
-      for (const unit of family ?? []) if (unit !== fields[0].unit) options.push([unit, symbol(unit)]);
+      for (const unit of family) if (unit !== fields[0].unit) options.push([unit, `${symbol(unit)}${qudtTable?.units[unit.slice(QUDT_UNIT.length)] ? ` (${qudtTable.units[unit.slice(QUDT_UNIT.length)][1]})` : ''}`]);
       options.push(['qudt', 'SI (QUDT normalized)']);
       for (const [value, text] of options) select.append(new Option(text, value));
       select.addEventListener('change', async () => {

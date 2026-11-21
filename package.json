@@ -48,7 +48,7 @@
   },
   "peerDependencies": {
     "apache-arrow": ">=17",
-    "eyemind": "0.8.17",
+    "eyemind": "0.8.19",
     "hyparquet": ">=1.30",
     "hyparquet-compressors": ">=1.1",
     "hyparquet-writer": ">=0.18"

@@ -66,7 +66,7 @@ Formats and units need packages that you only install when you use them (optiona
 |---|---|
 | Arrow sources | `apache-arrow` |
 | Parquet sources | `hyparquet` (reading), `hyparquet-writer` (writing), `hyparquet-compressors` (reading files compressed with ZSTD, Gzip, Brotli or LZ4) |
-| `unit: 'qudt'`, `unit: <IRI>`, `convertUnit`, `expand({ align })` | `eyemind` (version 0.8.17) |
+| `unit: 'qudt'`, `unit: <IRI>`, `convertUnit`, `expand({ align })` | `eyemind` (version 0.8.19) |
 
 ## Reading sources
 

@@ -76,7 +76,7 @@
     "apache-arrow": "^21.0.0",
     "buffer": "^6.0.3",
     "esbuild": "^0.28.2",
-    "eyemind": "0.8.17",
+    "eyemind": "0.8.19",
     "https-browserify": "^1.0.0",
     "hyparquet": "^1.33.1",
     "hyparquet-compressors": "1.1.3",
